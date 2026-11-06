@@ -296,9 +296,7 @@ public class DataSeeder implements CommandLineRunner {
         taoHocKy("Học kỳ 1", "2024-2025",
                 homNay.minusMonths(26), homNay.minusMonths(22),
                 homNay.minusMonths(27), homNay.minusMonths(26).plusDays(20), 12, 24);
-        taoHocKy("Học kỳ 2", "2026-2027",
-                homNay.plusDays(100), homNay.plusDays(240),
-                homNay.plusDays(70), homNay.plusDays(110), 12, 24);
+
 
         // 6. Tạo Quản trị viên
         taoUserWithHash("admin", encodedAdminPassword, Role.QUAN_TRI);
@@ -434,11 +432,9 @@ public class DataSeeder implements CommandLineRunner {
         dangKyHienTai(sv01, matLop);
         dangKyHienTai(sv01, ecoLop);
 
-        // sv02
+        // sv02 (không đăng ký lớp hiện tại để phục vụ E2E test)
         dangKyVoiDiem(sv02, lopCu, 7.0, 8.0);
         dangKyVoiDiem(sv02, lopMatCu, 8.0, 8.5);
-        dangKyHienTai(sv02, int20102);
-        dangKyHienTai(sv02, int30301);
 
         // sv03 (Điểm yếu < 5.0 -> Cần học lại / thi lại)
         dangKyVoiDiem(sv03, lopCu, 3.5, 4.0);
@@ -456,8 +452,8 @@ public class DataSeeder implements CommandLineRunner {
         dangKyHienTai(sv05, ecoLop);
 
         // sv06..sv20 giữ nguyên tương thích test
-        for (int i = 5; i < 20; i++) {
-            SinhVien sv = sinhVienList.get(i);
+        for (int i = 6; i <= 20; i++) {
+            SinhVien sv = sinhVienList.get(i - 1);
             dangKyVoiDiem(sv, lopCu, 6.5 + (i % 3), 7.0 + (i % 2));
             dangKyHienTai(sv, i % 2 == 0 ? int20102 : int20101);
             dangKyHienTai(sv, int30301);
@@ -466,18 +462,18 @@ public class DataSeeder implements CommandLineRunner {
         }
 
         // sv21..sv500: Phân bố GPA đầy đủ từ Xuất sắc, Giỏi, Khá, Trung bình đến Yếu / Học lại
-        Set<String> enrolledSet = new HashSet<>();
-        // Ghi nhận các lượt đã đăng ký trước đó
-        enrolledSet.add(sv01.getId() + "_" + lopCu.getId());
-        enrolledSet.add(sv01.getId() + "_" + lopMatCu.getId());
-        enrolledSet.add(sv01.getId() + "_" + lopEcoCu.getId());
-        enrolledSet.add(sv01.getId() + "_" + int30301.getId());
-        enrolledSet.add(sv01.getId() + "_" + int20101.getId());
-        enrolledSet.add(sv01.getId() + "_" + matLop.getId());
-        enrolledSet.add(sv01.getId() + "_" + ecoLop.getId());
+        // Chỉ đăng ký vào các lớp chung khác, tránh làm thay đổi sĩ số các lớp test (int30301, int20101, int20102)
+        List<LopHocPhan> generalCurrentClasses = new ArrayList<>();
+        for (int j = 5; j < currentClasses.size(); j++) {
+            generalCurrentClasses.add(currentClasses.get(j));
+        }
+        if (generalCurrentClasses.isEmpty()) {
+            generalCurrentClasses.add(matLop);
+            generalCurrentClasses.add(ecoLop);
+        }
 
-        for (int i = 20; i < 500; i++) {
-            SinhVien sv = sinhVienList.get(i);
+        for (int i = 21; i <= 500; i++) {
+            SinhVien sv = sinhVienList.get(i - 1);
             int tier = i % 100;
             double baseScore;
 
@@ -510,11 +506,14 @@ public class DataSeeder implements CommandLineRunner {
             double ck2 = Math.min(10.0, Math.max(1.0, Math.round((baseScore + ((i % 4) - 2) * 0.4) * 10.0) / 10.0));
             dangKyVoiDiem(sv, lopPast2, qt2, ck2);
 
-            // Đăng ký học kỳ hiện tại (1 - 2 lớp)
-            LopHocPhan curLop1 = currentClasses.get(i % currentClasses.size());
+            // Đăng ký học kỳ hiện tại vào các lớp mở rộng
+            LopHocPhan curLop1 = generalCurrentClasses.get(i % generalCurrentClasses.size());
             dangKyHienTai(sv, curLop1);
-            if (i % 2 == 0) {
-                dangKyHienTai(sv, int30301);
+            if (generalCurrentClasses.size() > 1 && i % 3 == 0) {
+                LopHocPhan curLop2 = generalCurrentClasses.get((i + 3) % generalCurrentClasses.size());
+                if (!curLop2.getId().equals(curLop1.getId()) && !curLop2.getMonHoc().getId().equals(curLop1.getMonHoc().getId())) {
+                    dangKyHienTai(sv, curLop2);
+                }
             }
         }
 
