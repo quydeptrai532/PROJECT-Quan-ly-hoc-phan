@@ -32,7 +32,7 @@ import ProgressPlannerPage from "./pages/student/ProgressPlannerPage";
 import CurriculumPage from "./pages/admin/CurriculumPage";
 import SupportRequestsPage from "./pages/student/SupportRequestsPage";
 import AdminSupportRequestsPage from "./pages/admin/AdminSupportRequestsPage";
-
+import AuditAlertsPage from "./pages/admin/AuditAlertsPage";
 function RootRedirect() {
   const { user } = useAuth();
   return <Navigate to={user ? homePath(user.role) : "/login"} replace />;
@@ -241,6 +241,15 @@ export default function App() {
       />
 
       <Route path="*" element={<Navigate to="/" replace />} />
+        <Route
+            path="/quan-tri/canh-bao-audit"
+            element={
+                <ProtectedRoute roles={["QUAN_TRI"]}>
+                    <AuditAlertsPage />
+                </ProtectedRoute>
+            }
+        />
     </Routes>
+
   );
 }
