@@ -15,8 +15,8 @@
 ## Chức năng theo vai trò
 
 - **SINH_VIEN**: dashboard tổng quan (tín chỉ, GPA, lịch hôm nay, biểu đồ GPA), cập nhật họ tên/email/SĐT, đổi mật khẩu, lập kế hoạch học tập bằng giỏ lớp và thời khóa biểu dự kiến, xác nhận đăng ký/hủy học phần, xem thời khóa biểu, điểm/GPA, lịch sử học tập & môn chưa đạt, xuất bảng điểm cá nhân PDF và trung tâm thông báo (nhận thông báo kết quả đăng ký/hủy, lớp học phần bị hủy, buổi học tạm nghỉ, thay đổi lịch học/giảng viên và công bố điểm lớp học phần).
-- **GIANG_VIEN**: dashboard tổng quan (lớp phụ trách, sĩ số, biểu đồ lấp đầy, lịch dạy hôm nay), thời khóa biểu giảng dạy, danh sách sinh viên, nhập/cập nhật điểm nháp hoặc import từ `.xlsx`, gửi duyệt bảng điểm lớp phụ trách (và chỉnh sửa/gửi duyệt lại khi được Phòng Đào tạo trả về), cùng trung tâm thông báo.
-- **QUAN_TRI**: quản lý khoa/ngành/lớp hành chính/môn học/học kỳ, cấu hình đợt đăng ký, mở/cập nhật/hủy lớp học phần, phê duyệt/trả về chỉnh sửa/công bố/khóa/mở khóa bảng điểm, quản lý sinh viên & giảng viên, khóa/mở tài khoản, nhập CSV, dashboard thống kê có biểu đồ và xuất CSV.
+- **GIANG_VIEN**: dashboard tổng quan (lớp phụ trách, sĩ số, biểu đồ lấp đầy, lịch dạy hôm nay), thời khóa biểu giảng dạy, danh sách sinh viên, nhập/cập nhật điểm nháp hoặc import từ `.xlsx`, gửi duyệt bảng điểm lớp phụ trách (và chỉnh sửa/gửi duyệt lại khi được Phòng Đào tạo trả về), thống kê điểm lớp và phân bố điểm theo học kỳ/môn/lớp phụ trách, cùng trung tâm thông báo.
+- **QUAN_TRI**: quản lý khoa/ngành/lớp hành chính/môn học/học kỳ, cấu hình đợt đăng ký, mở/cập nhật/hủy lớp học phần, phê duyệt/trả về chỉnh sửa/công bố/khóa/mở khóa bảng điểm, thống kê điểm lớp học phần và phân bố khoảng điểm theo học kỳ/khoa/môn/lớp, quản lý sinh viên & giảng viên, khóa/mở tài khoản, nhập CSV, dashboard thống kê có biểu đồ và xuất CSV.
 
 Sinh viên và giảng viên đăng nhập vào `/tong-quan`; quản trị vào `/quan-tri`.
 
@@ -50,6 +50,7 @@ frontend/
 docs/
   LECTURER_STUDENT_SCOPE.md # quy định phạm vi xem thông tin sinh viên cho giảng viên (QLSV-67)
   GRADE_APPROVAL_WORKFLOW.md # máy trạng thái gửi duyệt, phê duyệt, trả về, công bố và khóa bảng điểm (QLSV-74)
+  CLASS_GRADE_ANALYTICS.md # định nghĩa chỉ số, mẫu số và khoảng phân bố điểm lớp học phần (QLSV-75)
   TEST_PLAN.md    # test case theo FR/NFR và kết quả
   COURSE_PLANNER_DEMO.md # hướng dẫn demo Course Planner
   NOTIFICATION_DEMO.md # hướng dẫn trung tâm thông báo và cơ chế idempotency
@@ -138,6 +139,7 @@ Dữ liệu mẫu gồm 2 khoa, 3 ngành, 3 lớp hành chính, 8 môn học (c�
 11. Không xóa dữ liệu danh mục đang được tham chiếu; API trả `409 Conflict` kèm thông báo.
 12. Mở lớp học phần có cảnh báo trùng phòng/trùng lịch giảng viên (vẫn cho phép lưu, trả về danh sách `canhBao`).
 13. Giảng viên chỉ được gửi thông báo cho các lớp học phần mình phụ trách. Người nhận được xác minh trên server từ các sinh viên đang đăng ký hiệu lực (`DA_DANG_KY`). Thông báo gửi ngay lập tức tới Notification Center của đúng sinh viên, lưu người tạo, thời điểm và ghi audit log (`CLASS_ANNOUNCEMENT_CREATED`). Chi tiết: [docs/LECTURER_CLASS_ANNOUNCEMENTS.md](docs/LECTURER_CLASS_ANNOUNCEMENTS.md).
+14. Thống kê điểm lớp học phần và phân bố khoảng điểm (`[0.0, 4.0)`, `[4.0, 5.0)`, `[5.0, 6.5)`, `[6.5, 8.0)`, `[8.0, 10.0]`) chỉ tính thống kê chính thức trên các lớp có bảng điểm đã công bố (`DA_CONG_BO` hoặc `DA_KHOA`), dùng mẫu số là các bản ghi đăng ký hiệu lực đã có điểm tổng kết hợp lệ (không tính sinh viên chưa có điểm công bố thành `0.0`). Dữ liệu lớp chưa công bố được tách riêng ở khối tạm tính có nhãn cảnh báo cho giảng viên phụ trách / quản trị. Chi tiết: [docs/CLASS_GRADE_ANALYTICS.md](docs/CLASS_GRADE_ANALYTICS.md).
 
 ## API chính
 
@@ -174,6 +176,9 @@ Dữ liệu mẫu gồm 2 khoa, 3 ngành, 3 lớp hành chính, 8 môn học (c�
 | POST | `/api/giang-vien/lop-hoc-phan/{id}/gui-duyet-diem` | Giảng viên phụ trách gửi duyệt (hoặc gửi duyệt lại) bảng điểm lớp học phần (`NHAP`/`TRA_VE` → `CHO_DUYET`) |
 | POST | `/api/admin/lop-hoc-phan/{id}/phe-duyet-diem`, `/tra-ve-diem`, `/cong-bo-diem`, `/khoa-diem`, `/mo-khoa-diem` | Phòng Đào tạo (`QUAN_TRI`) phê duyệt, trả về chỉnh sửa (kèm lý do), công bố, khóa hoặc mở khóa bảng điểm (kèm lý do) |
 | GET | `/api/giang-vien/lop-hoc-phan/{id}/lich-su-bang-diem`, `/api/admin/lop-hoc-phan/{id}/lich-su-bang-diem` | Xem lịch sử chuyển trạng thái bảng điểm của lớp học phần |
+| GET | `/api/giang-vien/thong-ke-diem?hocKyId=&monHocId=&lopHocPhanId=` | Thống kê điểm lớp và phân bố khoảng điểm trong phạm vi lớp giảng viên phụ trách (không chứa PII sinh viên) |
+| GET | `/api/giang-vien/lop-hoc-phan/{id}/thong-ke-diem` | Thống kê điểm và phân bố của một lớp học phần cụ thể (tách riêng thống kê công bố và tạm tính chưa công bố) |
+| GET | `/api/admin/thong-ke/diem-lop?hocKyId=&khoaId=&monHocId=&lopHocPhanId=` | Quản trị viên thống kê điểm lớp học phần và phân bố điểm theo học kỳ, khoa, môn học, lớp học phần |
 | CRUD | `/api/admin/khoa`, `/nganh`, `/lop-hanh-chinh`, `/mon-hoc`, `/hoc-ky` | Quản trị danh mục |
 | GET/POST/DELETE | `/api/admin/mon-hoc/{id}/tien-quyet` | Cấu hình môn tiên quyết |
 | CRUD | `/api/admin/lop-hoc-phan` | Mở lớp học phần |

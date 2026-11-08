@@ -84,3 +84,8 @@ app:
     transaction-policy: ${GRADE_IMPORT_TRANSACTION_POLICY:ALL_OR_NOTHING}
     update-policy: ${GRADE_IMPORT_UPDATE_POLICY:OVERWRITE_EXISTING}
     policy-note: ${GRADE_IMPORT_POLICY_NOTE:Mẫu Excel chính thức gồm các cột maSinhVien, hoTen, diemQuaTrinh, diemCuoiKy trên 1 sheet BangDiem. Chính sách giao dịch mặc định là ALL_OR_NOTHING (chỉ ghi khi toàn bộ tệp hợp lệ) và chính sách cập nhật là OVERWRITE_EXISTING (ghi đè điểm nháp hiện có, không tạo bản ghi trùng). Các quyết định này đang áp dụng theo cấu hình mặc định và chờ Chủ dự án xác nhận chính thức.}
+  grade-analytics:
+    # QLSV-75 (TASK-LC-10): Cấu hình tập trung cho khoảng phân bố điểm và chính sách xử lý điểm thiếu (chờ Chủ dự án xác nhận, chưa phải quy chế chính thức)
+    missing-grade-policy: ${GRADE_ANALYTICS_MISSING_POLICY:EXCLUDE_FROM_DENOMINATOR}
+    official-regulation: ${GRADE_ANALYTICS_OFFICIAL_REGULATION:false}
+    policy-note: ${GRADE_ANALYTICS_POLICY_NOTE:Khoảng phân bố điểm ([0.0, 4.0), [4.0, 5.0), [5.0, 6.5), [6.5, 8.0), [8.0, 10.0]) và chính sách loại bản ghi chưa có điểm tổng kết công bố khỏi mẫu số tính điểm trung bình / tỷ lệ đạt-trượt (EXCLUDE_FROM_DENOMINATOR — không tự gán 0.0) đang áp dụng theo cấu hình tập trung dự kiến và chờ Chủ dự án chốt chính thức (không phải quy chế chính thức). Ngưỡng đạt lấy từ AcademicRules.DIEM_DAT = 5.0.}

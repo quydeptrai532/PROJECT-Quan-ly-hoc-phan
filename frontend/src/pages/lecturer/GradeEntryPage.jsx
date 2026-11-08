@@ -19,6 +19,7 @@ import {
 import api, { getErrorMessage } from "../../api/client";
 import ExportStudentsButton from "../../components/ExportStudentsButton";
 import ClassAnnouncementModal from "../../components/ClassAnnouncementModal";
+import GradeAnalyticsPanel from "../../components/GradeAnalyticsPanel";
 import GradeExcelImportModal from "../../components/GradeExcelImportModal";
 import { Alert, Badge, EmptyState, Modal, PageHeader, Spinner } from "../../components/ui";
 import { formatDateTime, formatDiem, lichHoc } from "../../lib/format";
@@ -64,13 +65,14 @@ export default function GradeEntryPage() {
     } = useApi(`/giang-vien/lop-hoc-phan/${id}/sinh-vien`);
 
     const [rows, setRows] = useState([]);
-    const [edits, setEdits] = useState({});
+    const [edits, setEdits] = useState([]);
     const [fieldErrors, setFieldErrors] = useState({});
     const [busyId, setBusyId] = useState(null);
     const [workflowBusy, setWorkflowBusy] = useState(false);
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
+    const [analyticsReloadKey, setAnalyticsReloadKey] = useState(0);
 
     const [profileModalOpen, setProfileModalOpen] = useState(false);
     const [announcementModalOpen, setAnnouncementModalOpen] = useState(false);
@@ -112,6 +114,7 @@ export default function GradeEntryPage() {
 
     const reloadAll = async () => {
         await Promise.all([reloadLop(), reloadTrangThai(), reloadSv()]);
+        setAnalyticsReloadKey((k) => k + 1);
     };
 
     const onChange = (dangKyId, field, value) => {
@@ -217,6 +220,7 @@ export default function GradeEntryPage() {
             });
             setMessage(`Đã lưu điểm cho ${row.maSinhVien} - ${row.hoTen}`);
             await Promise.all([reloadLop(), reloadTrangThai()]);
+            setAnalyticsReloadKey((k) => k + 1);
         } catch (err) {
             const responseData = err.response?.data;
             if (responseData?.errors && Array.isArray(responseData.errors) && responseData.errors.length > 0) {
@@ -280,6 +284,7 @@ export default function GradeEntryPage() {
             setFieldErrors({});
             setMessage(`Đã lưu thành công ${danhSachPayload.length} điểm sinh viên trong một thao tác`);
             await Promise.all([reloadLop(), reloadTrangThai()]);
+            setAnalyticsReloadKey((k) => k + 1);
         } catch (err) {
             const responseData = err.response?.data;
             if (responseData?.errors && Array.isArray(responseData.errors) && responseData.errors.length > 0) {
@@ -306,6 +311,7 @@ export default function GradeEntryPage() {
                     : "Đã gửi duyệt bảng điểm lên Phòng Đào tạo. Bảng điểm hiện tạm khóa chỉnh sửa và chưa phát thông báo tới sinh viên."
             );
             await Promise.all([reloadLop(), reloadTrangThai()]);
+            setAnalyticsReloadKey((k) => k + 1);
         } catch (err) {
             setError(getErrorMessage(err));
         } finally {
@@ -517,6 +523,15 @@ export default function GradeEntryPage() {
                         )}
                     </div>
                 </div>
+            )}
+
+            {/* Thống kê & phân bố điểm lớp học phần (QLSV-75 / TASK-LC-10) */}
+            {id && (
+                <GradeAnalyticsPanel
+                    mode="lecturer"
+                    singleClassId={id}
+                    reloadTrigger={analyticsReloadKey}
+                />
             )}
 
             <div className="card overflow-hidden">

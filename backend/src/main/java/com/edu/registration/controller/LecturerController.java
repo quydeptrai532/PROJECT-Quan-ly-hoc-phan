@@ -1,6 +1,7 @@
 package com.edu.registration.controller;
 
 import com.edu.registration.dto.CourseClassDtos;
+import com.edu.registration.dto.GradeAnalyticsDtos;
 import com.edu.registration.dto.GradeImportDtos;
 import com.edu.registration.dto.LecturerDtos;
 import com.edu.registration.dto.RegistrationDtos;
@@ -9,6 +10,7 @@ import com.edu.registration.service.ClassAbsenceNoticeService;
 import com.edu.registration.service.ClassStudentExportService;
 import com.edu.registration.service.CourseClassAnnouncementService;
 import com.edu.registration.service.CourseClassService;
+import com.edu.registration.service.GradeAnalyticsService;
 import com.edu.registration.service.GradeImportService;
 import com.edu.registration.service.GradeService;
 import com.edu.registration.service.LecturerDashboardService;
@@ -51,12 +53,13 @@ public class LecturerController {
     private final StudentAcademicProfileService studentAcademicProfileService;
     private final CourseClassAnnouncementService thongBaoLopHocPhanService;
     private final GradeImportService gradeImportService;
+    private final GradeAnalyticsService gradeAnalyticsService;
 
     public LecturerController(CourseClassService lopHocPhanService, GradeService diemService,
                                ClassAbsenceNoticeService thongBaoNghiService, ClassStudentExportService lopSinhVienExportService,
                                LecturerDashboardService giangVienDashboardService) {
         this(lopHocPhanService, diemService, thongBaoNghiService, lopSinhVienExportService,
-                giangVienDashboardService, null, null, null);
+                giangVienDashboardService, null, null, null, null);
     }
 
     public LecturerController(CourseClassService lopHocPhanService, GradeService diemService,
@@ -64,7 +67,7 @@ public class LecturerController {
                                LecturerDashboardService giangVienDashboardService,
                                StudentAcademicProfileService studentAcademicProfileService) {
         this(lopHocPhanService, diemService, thongBaoNghiService, lopSinhVienExportService,
-                giangVienDashboardService, studentAcademicProfileService, null, null);
+                giangVienDashboardService, studentAcademicProfileService, null, null, null);
     }
 
     public LecturerController(CourseClassService lopHocPhanService, GradeService diemService,
@@ -73,7 +76,17 @@ public class LecturerController {
                                StudentAcademicProfileService studentAcademicProfileService,
                                CourseClassAnnouncementService thongBaoLopHocPhanService) {
         this(lopHocPhanService, diemService, thongBaoNghiService, lopSinhVienExportService,
-                giangVienDashboardService, studentAcademicProfileService, thongBaoLopHocPhanService, null);
+                giangVienDashboardService, studentAcademicProfileService, thongBaoLopHocPhanService, null, null);
+    }
+
+    public LecturerController(CourseClassService lopHocPhanService, GradeService diemService,
+                               ClassAbsenceNoticeService thongBaoNghiService, ClassStudentExportService lopSinhVienExportService,
+                               LecturerDashboardService giangVienDashboardService,
+                               StudentAcademicProfileService studentAcademicProfileService,
+                               CourseClassAnnouncementService thongBaoLopHocPhanService,
+                               GradeImportService gradeImportService) {
+        this(lopHocPhanService, diemService, thongBaoNghiService, lopSinhVienExportService,
+                giangVienDashboardService, studentAcademicProfileService, thongBaoLopHocPhanService, gradeImportService, null);
     }
 
     @Autowired
@@ -82,7 +95,8 @@ public class LecturerController {
                                LecturerDashboardService giangVienDashboardService,
                                StudentAcademicProfileService studentAcademicProfileService,
                                CourseClassAnnouncementService thongBaoLopHocPhanService,
-                               GradeImportService gradeImportService) {
+                               GradeImportService gradeImportService,
+                               GradeAnalyticsService gradeAnalyticsService) {
         this.lopHocPhanService = lopHocPhanService;
         this.diemService = diemService;
         this.thongBaoNghiService = thongBaoNghiService;
@@ -91,6 +105,7 @@ public class LecturerController {
         this.studentAcademicProfileService = studentAcademicProfileService;
         this.thongBaoLopHocPhanService = thongBaoLopHocPhanService;
         this.gradeImportService = gradeImportService;
+        this.gradeAnalyticsService = gradeAnalyticsService;
     }
 
     @GetMapping("/giang-vien/me/ho-so")
@@ -318,5 +333,22 @@ public class LecturerController {
             @PathVariable Long id,
             @RequestBody(required = false) RegistrationDtos.MoKhoaBangDiemRequest request) {
         return diemService.moKhoaBangDiem(id, request != null ? request.lyDo() : null);
+    }
+
+    // --- Class Grade Analytics & Distribution (QLSV-75 / TASK-LC-10) ---
+
+    @GetMapping({"/giang-vien/thong-ke-diem", "/giang-vien/me/thong-ke-diem"})
+    @PreAuthorize("hasRole('GIANG_VIEN')")
+    public GradeAnalyticsDtos.BaoCaoThongKeDiemDto thongKeDiemGiangVien(
+            @RequestParam(required = false) Long hocKyId,
+            @RequestParam(required = false) Long monHocId,
+            @RequestParam(required = false) Long lopHocPhanId) {
+        return gradeAnalyticsService.thongKeChoGiangVien(hocKyId, monHocId, lopHocPhanId);
+    }
+
+    @GetMapping({"/giang-vien/lop-hoc-phan/{id}/thong-ke-diem", "/diem/lop-hoc-phan/{id}/thong-ke"})
+    @PreAuthorize("hasAnyRole('GIANG_VIEN', 'QUAN_TRI')")
+    public GradeAnalyticsDtos.ThongKeDiemLopItemDto thongKeDiemMotLop(@PathVariable Long id) {
+        return gradeAnalyticsService.thongKeMotLop(id);
     }
 }
