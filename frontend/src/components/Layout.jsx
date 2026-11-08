@@ -64,6 +64,7 @@ const NAV = {
     { to: "/quan-tri/giang-vien", label: "Giảng viên", icon: UserCog },
     { to: "/quan-tri/yeu-cau-ho-tro", label: "Yêu cầu hỗ trợ", icon: LifeBuoy },
     { to: "/quan-tri/nhat-ky-hoat-dong", label: "Nhật ký hoạt động", icon: History },
+      { to: "/quan-tri/canh-bao-audit", label: "Cảnh báo Audit", icon: Bell },
   ],
 };
 
