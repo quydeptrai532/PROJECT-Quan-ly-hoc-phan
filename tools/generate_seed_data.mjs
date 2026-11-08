@@ -437,8 +437,7 @@ INSERT INTO hoc_ky (id, ten, nam_hoc, ngay_bat_dau, ngay_ket_thuc, dang_ky_tu, d
 (2, 'Học kỳ 2', '2025-2026', '2026-02-15', '2026-06-30', '2026-01-20', '2026-03-05', 12, 24),
 (3, 'Học kỳ 1', '2026-2027', DATE_SUB(CURDATE(), INTERVAL 14 DAY), DATE_ADD(CURDATE(), INTERVAL 90 DAY), DATE_SUB(CURDATE(), INTERVAL 5 DAY), DATE_ADD(CURDATE(), INTERVAL 20 DAY), 12, 24),
 (4, 'Học kỳ 2', '2024-2025', '2025-02-15', '2025-06-30', '2025-01-20', '2025-03-05', 12, 24),
-(5, 'Học kỳ 1', '2024-2025', '2024-09-05', '2025-01-20', '2024-08-15', '2024-09-25', 12, 24),
-(6, 'Học kỳ 2', '2026-2027', '2027-02-20', '2027-06-30', '2027-01-15', '2027-03-05', 12, 24);
+(5, 'Học kỳ 1', '2024-2025', '2024-09-05', '2025-01-20', '2024-08-15', '2024-09-25', 12, 24);
 
 -- 5. BẢNG MON_HOC (50 môn học chia đều 8 kỳ)
 INSERT INTO mon_hoc (id, ma, ten, so_tin_chi, khoa_id) VALUES
@@ -592,11 +591,9 @@ addCurrentEnroll(1, 15);  // INT201.01
 addCurrentEnroll(1, 22);  // MAT101.01
 addCurrentEnroll(1, 21);  // ECO101.01
 
-// sv02
+// sv02 (no current enrollments to allow E2E registration tests)
 addGrade(2, 8, 7.0, 8.0); // INT101.01-HK2 (tk: 7.6)
 addGrade(2, 1, 8.0, 8.5); // MAT101.01-HK1 (tk: 8.3)
-addCurrentEnroll(2, 16);  // INT201.02
-addCurrentEnroll(2, 19);  // INT303.01
 
 // sv03
 addGrade(3, 8, 3.5, 4.0); // INT101.01-HK2 (tk: 3.8 - FAIL / HỌC LẠI)
@@ -658,11 +655,14 @@ for (let i = 21; i <= 500; i++) {
     addGrade(svId, cId, qt, ck);
   });
 
-  // Current semester enrollments
-  const currentClassId = 15 + (i % 15);
+  // Current semester enrollments (use classes 23..60, avoiding test classes 15, 16, 17, 18, 19, 21, 22)
+  const currentClassId = 23 + (i % 38);
   addCurrentEnroll(svId, currentClassId);
-  if (i % 2 === 0) {
-    addCurrentEnroll(svId, 19); // INT303.01
+  if (i % 3 === 0) {
+    const curClass2 = 23 + ((i + 7) % 38);
+    if (curClass2 !== currentClassId) {
+      addCurrentEnroll(svId, curClass2);
+    }
   }
 }
 
