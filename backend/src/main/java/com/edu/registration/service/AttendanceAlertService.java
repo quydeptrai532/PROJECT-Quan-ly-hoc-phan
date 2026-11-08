@@ -2,30 +2,30 @@ package com.edu.registration.service;
 
 import com.edu.registration.config.AttendanceProperties;
 import com.edu.registration.dto.AttendanceAlertDtos;
-import com.edu.registration.entity.BuoiHoc;
-import com.edu.registration.entity.CanhBaoDiemDanh;
-import com.edu.registration.entity.DangKyHocPhan;
-import com.edu.registration.entity.DiemDanh;
-import com.edu.registration.entity.GiangVien;
-import com.edu.registration.entity.LoaiNguongCanhBao;
-import com.edu.registration.entity.LopHocPhan;
+import com.edu.registration.entity.ClassSession;
+import com.edu.registration.entity.AttendanceAlert;
+import com.edu.registration.entity.CourseRegistration;
+import com.edu.registration.entity.AttendanceRecord;
+import com.edu.registration.entity.Lecturer;
+import com.edu.registration.entity.AlertThresholdType;
+import com.edu.registration.entity.CourseClass;
 import com.edu.registration.entity.Role;
-import com.edu.registration.entity.SinhVien;
-import com.edu.registration.entity.ThongBaoNghi;
-import com.edu.registration.entity.TrangThaiBangDiem;
-import com.edu.registration.entity.TrangThaiCanhBao;
-import com.edu.registration.entity.TrangThaiDangKy;
-import com.edu.registration.entity.TrangThaiDiemDanh;
+import com.edu.registration.entity.Student;
+import com.edu.registration.entity.ClassAbsenceNotice;
+import com.edu.registration.entity.GradeSheetStatus;
+import com.edu.registration.entity.AlertStatus;
+import com.edu.registration.entity.RegistrationStatus;
+import com.edu.registration.entity.AttendanceStatus;
 import com.edu.registration.entity.User;
 import com.edu.registration.exception.ApiException;
-import com.edu.registration.repository.BuoiHocRepository;
-import com.edu.registration.repository.CanhBaoDiemDanhRepository;
-import com.edu.registration.repository.DangKyHocPhanRepository;
-import com.edu.registration.repository.DiemDanhRepository;
-import com.edu.registration.repository.GiangVienRepository;
-import com.edu.registration.repository.LopHocPhanRepository;
-import com.edu.registration.repository.SinhVienRepository;
-import com.edu.registration.repository.ThongBaoNghiRepository;
+import com.edu.registration.repository.ClassSessionRepository;
+import com.edu.registration.repository.AttendanceAlertRepository;
+import com.edu.registration.repository.CourseRegistrationRepository;
+import com.edu.registration.repository.AttendanceRecordRepository;
+import com.edu.registration.repository.LecturerRepository;
+import com.edu.registration.repository.CourseClassRepository;
+import com.edu.registration.repository.StudentRepository;
+import com.edu.registration.repository.ClassAbsenceNoticeRepository;
 import com.edu.registration.security.CurrentUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,31 +52,31 @@ public class AttendanceAlertService {
 
     private static final Logger log = LoggerFactory.getLogger(AttendanceAlertService.class);
 
-    private final LopHocPhanRepository lopHocPhanRepository;
-    private final BuoiHocRepository buoiHocRepository;
-    private final DiemDanhRepository diemDanhRepository;
-    private final DangKyHocPhanRepository dangKyHocPhanRepository;
-    private final ThongBaoNghiRepository thongBaoNghiRepository;
-    private final CanhBaoDiemDanhRepository canhBaoDiemDanhRepository;
-    private final GiangVienRepository giangVienRepository;
-    private final SinhVienRepository sinhVienRepository;
+    private final CourseClassRepository lopHocPhanRepository;
+    private final ClassSessionRepository buoiHocRepository;
+    private final AttendanceRecordRepository diemDanhRepository;
+    private final CourseRegistrationRepository dangKyHocPhanRepository;
+    private final ClassAbsenceNoticeRepository thongBaoNghiRepository;
+    private final AttendanceAlertRepository canhBaoDiemDanhRepository;
+    private final LecturerRepository giangVienRepository;
+    private final StudentRepository sinhVienRepository;
     private final CurrentUser currentUser;
     private final AttendanceProperties attendanceProperties;
-    private final ThongBaoService thongBaoService;
+    private final NotificationService thongBaoService;
     private final AuditLogService auditLogService;
 
     @Autowired
-    public AttendanceAlertService(LopHocPhanRepository lopHocPhanRepository,
-                                  BuoiHocRepository buoiHocRepository,
-                                  DiemDanhRepository diemDanhRepository,
-                                  DangKyHocPhanRepository dangKyHocPhanRepository,
-                                  ThongBaoNghiRepository thongBaoNghiRepository,
-                                  CanhBaoDiemDanhRepository canhBaoDiemDanhRepository,
-                                  GiangVienRepository giangVienRepository,
-                                  SinhVienRepository sinhVienRepository,
+    public AttendanceAlertService(CourseClassRepository lopHocPhanRepository,
+                                  ClassSessionRepository buoiHocRepository,
+                                  AttendanceRecordRepository diemDanhRepository,
+                                  CourseRegistrationRepository dangKyHocPhanRepository,
+                                  ClassAbsenceNoticeRepository thongBaoNghiRepository,
+                                  AttendanceAlertRepository canhBaoDiemDanhRepository,
+                                  LecturerRepository giangVienRepository,
+                                  StudentRepository sinhVienRepository,
                                   CurrentUser currentUser,
                                   AttendanceProperties attendanceProperties,
-                                  ThongBaoService thongBaoService,
+                                  NotificationService thongBaoService,
                                   AuditLogService auditLogService) {
         this.lopHocPhanRepository = lopHocPhanRepository;
         this.buoiHocRepository = buoiHocRepository;
@@ -95,27 +95,27 @@ public class AttendanceAlertService {
     /**
      * Tính toán và đồng bộ lại cảnh báo vắng cho tất cả sinh viên trong lớp học phần.
      * Tính toán trực tiếp từ dữ liệu điểm danh và buổi học chuẩn, không dùng bộ đếm riêng rẽ.
-     * Loại trừ các buổi chưa diễn ra hoặc buổi bị hủy theo ThongBaoNghi.
+     * Loại trừ các buổi chưa diễn ra hoặc buổi bị hủy theo ClassAbsenceNotice.
      */
     public int kiemTraVaCapNhatCanhBaoChoLop(Long lopHocPhanId) {
-        LopHocPhan lop = lopHocPhanRepository.findById(lopHocPhanId).orElse(null);
+        CourseClass lop = lopHocPhanRepository.findById(lopHocPhanId).orElse(null);
         if (lop == null) {
             return 0;
         }
 
         // 1. Xác định các buổi học hợp lệ (đã hoặc đang diễn ra và không bị hủy)
         LocalDate today = LocalDate.now();
-        List<BuoiHoc> allSessions = buoiHocRepository.findByLopHocPhanIdOrderByNgayHocAscCaHocAsc(lopHocPhanId);
-        List<ThongBaoNghi> cancellations = thongBaoNghiRepository.findByLopHocPhanId(lopHocPhanId);
+        List<ClassSession> allSessions = buoiHocRepository.findByLopHocPhanIdOrderByNgayHocAscCaHocAsc(lopHocPhanId);
+        List<ClassAbsenceNotice> cancellations = thongBaoNghiRepository.findByLopHocPhanId(lopHocPhanId);
         Set<LocalDate> cancelledDates = cancellations.stream()
-                .map(ThongBaoNghi::getNgayNghi)
+                .map(ClassAbsenceNotice::getNgayNghi)
                 .collect(Collectors.toSet());
 
-        List<BuoiHoc> validSessions = allSessions.stream()
+        List<ClassSession> validSessions = allSessions.stream()
                 .filter(b -> !b.getNgayHoc().isAfter(today) && !cancelledDates.contains(b.getNgayHoc()))
                 .toList();
         Set<Long> validSessionIds = validSessions.stream()
-                .map(BuoiHoc::getId)
+                .map(ClassSession::getId)
                 .collect(Collectors.toSet());
         int tongSoBuoiHopLe = validSessions.size();
 
@@ -132,26 +132,26 @@ public class AttendanceAlertService {
         boolean alertEnabled = (effectiveNguongSoBuoi != null || effectiveNguongTyLe != null);
 
         // 3. Lấy danh sách sinh viên đăng ký hiệu lực
-        List<DangKyHocPhan> dangKys = dangKyHocPhanRepository.findByLopHocPhan(lop.getId(), TrangThaiDangKy.DA_DANG_KY);
-        List<DiemDanh> allDiemDanhs = diemDanhRepository.findByBuoiHocLopHocPhanId(lop.getId());
-        Map<Long, List<DiemDanh>> studentRecordsMap = allDiemDanhs.stream()
+        List<CourseRegistration> dangKys = dangKyHocPhanRepository.findByLopHocPhan(lop.getId(), RegistrationStatus.DA_DANG_KY);
+        List<AttendanceRecord> allDiemDanhs = diemDanhRepository.findByBuoiHocLopHocPhanId(lop.getId());
+        Map<Long, List<AttendanceRecord>> studentRecordsMap = allDiemDanhs.stream()
                 .filter(dd -> validSessionIds.contains(dd.getBuoiHoc().getId()))
                 .collect(Collectors.groupingBy(dd -> dd.getSinhVien().getId()));
 
         int evaluatedCount = 0;
 
-        for (DangKyHocPhan dk : dangKys) {
-            SinhVien sv = dk.getSinhVien();
+        for (CourseRegistration dk : dangKys) {
+            Student sv = dk.getSinhVien();
             if (sv == null || sv.getUser() == null || !sv.getUser().isTrangThai()) {
                 continue;
             }
 
-            List<DiemDanh> records = studentRecordsMap.getOrDefault(sv.getId(), Collections.emptyList());
+            List<AttendanceRecord> records = studentRecordsMap.getOrDefault(sv.getId(), Collections.emptyList());
 
             int vang = 0;
             int muon = 0;
             int coPhep = 0;
-            for (DiemDanh r : records) {
+            for (AttendanceRecord r : records) {
                 if (r.getTrangThai() == null) continue;
                 switch (r.getTrangThai()) {
                     case VANG -> vang++;
@@ -172,23 +172,23 @@ public class AttendanceAlertService {
             // Đánh giá ngưỡng số buổi vắng
             if (effectiveNguongSoBuoi != null) {
                 boolean breach = soBuoiVang >= effectiveNguongSoBuoi;
-                evaluateAlertRow(lop, sv, LoaiNguongCanhBao.SO_BUOI_VANG, (double) effectiveNguongSoBuoi,
+                evaluateAlertRow(lop, sv, AlertThresholdType.SO_BUOI_VANG, (double) effectiveNguongSoBuoi,
                         soBuoiVang, tongSoBuoiHopLe, tyLeVang, breach);
                 evaluatedCount++;
             } else {
                 // Nếu ngưỡng số buổi không còn áp dụng, giải tỏa cảnh báo cũ nếu có
-                resolveOldAlertIfPresent(lop, sv, LoaiNguongCanhBao.SO_BUOI_VANG, soBuoiVang, tongSoBuoiHopLe, tyLeVang);
+                resolveOldAlertIfPresent(lop, sv, AlertThresholdType.SO_BUOI_VANG, soBuoiVang, tongSoBuoiHopLe, tyLeVang);
             }
 
             // Đánh giá ngưỡng tỷ lệ vắng
             if (effectiveNguongTyLe != null) {
                 boolean breach = tongSoBuoiHopLe > 0 && tyLeVang >= effectiveNguongTyLe;
-                evaluateAlertRow(lop, sv, LoaiNguongCanhBao.TY_LE_VANG, effectiveNguongTyLe,
+                evaluateAlertRow(lop, sv, AlertThresholdType.TY_LE_VANG, effectiveNguongTyLe,
                         soBuoiVang, tongSoBuoiHopLe, tyLeVang, breach);
                 evaluatedCount++;
             } else {
                 // Nếu ngưỡng tỷ lệ không còn áp dụng, giải tỏa cảnh báo cũ nếu có
-                resolveOldAlertIfPresent(lop, sv, LoaiNguongCanhBao.TY_LE_VANG, soBuoiVang, tongSoBuoiHopLe, tyLeVang);
+                resolveOldAlertIfPresent(lop, sv, AlertThresholdType.TY_LE_VANG, soBuoiVang, tongSoBuoiHopLe, tyLeVang);
             }
         }
 
@@ -201,16 +201,16 @@ public class AttendanceAlertService {
      */
     public AttendanceAlertDtos.BaoCaoCanhBaoLopDto layBaoCaoCanhBaoLop(Long lopHocPhanId) {
         User actor = currentUser.get();
-        LopHocPhan lop = kiemTraQuyenGiangVienVoiLop(lopHocPhanId, actor);
+        CourseClass lop = kiemTraQuyenGiangVienVoiLop(lopHocPhanId, actor);
 
         // Đồng bộ lại cảnh báo mới nhất
         kiemTraVaCapNhatCanhBaoChoLop(lopHocPhanId);
 
         LocalDate today = LocalDate.now();
-        List<BuoiHoc> allSessions = buoiHocRepository.findByLopHocPhanIdOrderByNgayHocAscCaHocAsc(lopHocPhanId);
-        List<ThongBaoNghi> cancellations = thongBaoNghiRepository.findByLopHocPhanId(lopHocPhanId);
+        List<ClassSession> allSessions = buoiHocRepository.findByLopHocPhanIdOrderByNgayHocAscCaHocAsc(lopHocPhanId);
+        List<ClassAbsenceNotice> cancellations = thongBaoNghiRepository.findByLopHocPhanId(lopHocPhanId);
         Set<LocalDate> cancelledDates = cancellations.stream()
-                .map(ThongBaoNghi::getNgayNghi)
+                .map(ClassAbsenceNotice::getNgayNghi)
                 .collect(Collectors.toSet());
         int tongSoBuoiHopLe = (int) allSessions.stream()
                 .filter(b -> !b.getNgayHoc().isAfter(today) && !cancelledDates.contains(b.getNgayHoc()))
@@ -232,7 +232,7 @@ public class AttendanceAlertService {
             alertEnabled = true;
         }
 
-        List<CanhBaoDiemDanh> alerts = canhBaoDiemDanhRepository
+        List<AttendanceAlert> alerts = canhBaoDiemDanhRepository
                 .findByLopHocPhanIdOrderByThoiGianCapNhatDescThoiGianTaoDesc(lopHocPhanId);
 
         List<AttendanceAlertDtos.CanhBaoDiemDanhDto> alertDtos = alerts.stream()
@@ -240,7 +240,7 @@ public class AttendanceAlertService {
                 .toList();
 
         long activeCount = alerts.stream()
-                .filter(a -> a.getTrangThai() == TrangThaiCanhBao.DANG_CANH_BAO)
+                .filter(a -> a.getTrangThai() == AlertStatus.DANG_CANH_BAO)
                 .count();
 
         return new AttendanceAlertDtos.BaoCaoCanhBaoLopDto(
@@ -264,7 +264,7 @@ public class AttendanceAlertService {
     public AttendanceAlertDtos.BaoCaoCanhBaoLopDto capNhatCauHinhNguongLop(
             Long lopHocPhanId, AttendanceAlertDtos.CauHinhNguongLopRequest request) {
         User actor = currentUser.get();
-        LopHocPhan lop = kiemTraQuyenGiangVienVoiLop(lopHocPhanId, actor);
+        CourseClass lop = kiemTraQuyenGiangVienVoiLop(lopHocPhanId, actor);
 
         Integer oldNguongSoBuoi = lop.getNguongSoBuoiVang();
         Double oldNguongTyLe = lop.getNguongTyLeVang();
@@ -299,17 +299,17 @@ public class AttendanceAlertService {
      * Danh sách cảnh báo chuyên cần thuộc các lớp do giảng viên phụ trách (hoặc tất cả cho Quản trị).
      */
     @Transactional(readOnly = true)
-    public List<AttendanceAlertDtos.CanhBaoDiemDanhDto> danhSachCanhBaoCuaGiangVien(TrangThaiCanhBao trangThai) {
+    public List<AttendanceAlertDtos.CanhBaoDiemDanhDto> danhSachCanhBaoCuaGiangVien(AlertStatus trangThai) {
         User actor = currentUser.get();
         if (actor.getRole() == Role.QUAN_TRI) {
-            List<CanhBaoDiemDanh> list = (trangThai == null)
+            List<AttendanceAlert> list = (trangThai == null)
                     ? canhBaoDiemDanhRepository.findAll()
                     : canhBaoDiemDanhRepository.findAll().stream().filter(a -> a.getTrangThai() == trangThai).toList();
             return list.stream().map(this::mapToDto).toList();
         }
 
         if (actor.getRole() == Role.GIANG_VIEN) {
-            GiangVien gv = giangVienRepository.findByUser(actor)
+            Lecturer gv = giangVienRepository.findByUser(actor)
                     .orElseThrow(() -> ApiException.notFound("Không tìm thấy hồ sơ giảng viên"));
             return canhBaoDiemDanhRepository.findByGiangVienIdAndTrangThai(gv.getId(), trangThai)
                     .stream().map(this::mapToDto).toList();
@@ -322,23 +322,23 @@ public class AttendanceAlertService {
      * Danh sách cảnh báo chuyên cần của sinh viên đang đăng nhập.
      */
     @Transactional(readOnly = true)
-    public List<AttendanceAlertDtos.CanhBaoDiemDanhDto> danhSachCanhBaoCuaSinhVien(TrangThaiCanhBao trangThai) {
+    public List<AttendanceAlertDtos.CanhBaoDiemDanhDto> danhSachCanhBaoCuaSinhVien(AlertStatus trangThai) {
         User actor = currentUser.get();
-        SinhVien sv = sinhVienRepository.findByUser(actor)
+        Student sv = sinhVienRepository.findByUser(actor)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy hồ sơ sinh viên"));
         return canhBaoDiemDanhRepository.findBySinhVienIdAndTrangThai(sv.getId(), trangThai)
                 .stream().map(this::mapToDto).toList();
     }
 
-    private void evaluateAlertRow(LopHocPhan lop, SinhVien sv,
-                                  LoaiNguongCanhBao loaiNguong, double giaTriNguong,
+    private void evaluateAlertRow(CourseClass lop, Student sv,
+                                  AlertThresholdType loaiNguong, double giaTriNguong,
                                   int soBuoiVang, int tongBuoiHopLe, double tyLeVang,
                                   boolean breach) {
-        Optional<CanhBaoDiemDanh> existingOpt = canhBaoDiemDanhRepository
+        Optional<AttendanceAlert> existingOpt = canhBaoDiemDanhRepository
                 .findBySinhVienIdAndLopHocPhanIdAndLoaiNguong(sv.getId(), lop.getId(), loaiNguong);
 
         String subjectName = lop.getMonHoc() != null ? lop.getMonHoc().getTen() : "";
-        String thresholdDesc = loaiNguong == LoaiNguongCanhBao.SO_BUOI_VANG
+        String thresholdDesc = loaiNguong == AlertThresholdType.SO_BUOI_VANG
                 ? ((int) giaTriNguong + " buổi")
                 : (giaTriNguong + "%");
 
@@ -353,7 +353,7 @@ public class AttendanceAlertService {
                     + ":" + soBuoiVang + "/" + tongBuoiHopLe + ":ALERT";
 
             if (existingOpt.isEmpty()) {
-                CanhBaoDiemDanh alert = new CanhBaoDiemDanh();
+                AttendanceAlert alert = new AttendanceAlert();
                 alert.setLopHocPhan(lop);
                 alert.setSinhVien(sv);
                 alert.setLoaiNguong(loaiNguong);
@@ -361,12 +361,12 @@ public class AttendanceAlertService {
                 alert.setSoBuoiVang(soBuoiVang);
                 alert.setTongBuoiHopLe(tongBuoiHopLe);
                 alert.setTyLeVang(tyLeVang);
-                alert.setTrangThai(TrangThaiCanhBao.DANG_CANH_BAO);
+                alert.setTrangThai(AlertStatus.DANG_CANH_BAO);
                 alert.setThongDiep(msg);
                 alert.setIdempotencyKey(idempKey);
                 alert.setThoiGianTao(now);
                 alert.setThoiGianCapNhat(now);
-                CanhBaoDiemDanh saved = canhBaoDiemDanhRepository.saveAndFlush(alert);
+                AttendanceAlert saved = canhBaoDiemDanhRepository.saveAndFlush(alert);
 
                 auditLogService.execute("ATTENDANCE_ALERT_TRIGGERED", "ATTENDANCE_ALERT", saved.getId(), ctx -> {
                     ctx.changes(Map.of(), Map.of(
@@ -378,7 +378,7 @@ public class AttendanceAlertService {
                             "tyLeVang", tyLeVang,
                             "loaiNguong", loaiNguong.name(),
                             "giaTriNguong", giaTriNguong,
-                            "trangThaiCanhBao", TrangThaiCanhBao.DANG_CANH_BAO.name()
+                            "trangThaiCanhBao", AlertStatus.DANG_CANH_BAO.name()
                     ));
                     return null;
                 });
@@ -388,8 +388,8 @@ public class AttendanceAlertService {
                             soBuoiVang, tongBuoiHopLe, tyLeVang, false);
                 }
             } else {
-                CanhBaoDiemDanh alert = existingOpt.get();
-                boolean wasActive = alert.getTrangThai() == TrangThaiCanhBao.DANG_CANH_BAO;
+                AttendanceAlert alert = existingOpt.get();
+                boolean wasActive = alert.getTrangThai() == AlertStatus.DANG_CANH_BAO;
                 boolean numbersChanged = alert.getSoBuoiVang() != soBuoiVang || alert.getTongBuoiHopLe() != tongBuoiHopLe
                         || Math.abs(alert.getTyLeVang() - tyLeVang) > 0.01 || Math.abs(alert.getGiaTriNguong() - giaTriNguong) > 0.01;
 
@@ -398,11 +398,11 @@ public class AttendanceAlertService {
                     alert.setSoBuoiVang(soBuoiVang);
                     alert.setTongBuoiHopLe(tongBuoiHopLe);
                     alert.setTyLeVang(tyLeVang);
-                    alert.setTrangThai(TrangThaiCanhBao.DANG_CANH_BAO);
+                    alert.setTrangThai(AlertStatus.DANG_CANH_BAO);
                     alert.setThongDiep(msg);
                     alert.setIdempotencyKey(idempKey);
                     alert.setThoiGianCapNhat(now);
-                    CanhBaoDiemDanh saved = canhBaoDiemDanhRepository.saveAndFlush(alert);
+                    AttendanceAlert saved = canhBaoDiemDanhRepository.saveAndFlush(alert);
 
                     String action = !wasActive ? "ATTENDANCE_ALERT_TRIGGERED" : "ATTENDANCE_ALERT_UPDATED";
                     auditLogService.execute(action, "ATTENDANCE_ALERT", saved.getId(), ctx -> {
@@ -415,7 +415,7 @@ public class AttendanceAlertService {
                                 "tyLeVang", tyLeVang,
                                 "loaiNguong", loaiNguong.name(),
                                 "giaTriNguong", giaTriNguong,
-                                "trangThaiCanhBao", TrangThaiCanhBao.DANG_CANH_BAO.name()
+                                "trangThaiCanhBao", AlertStatus.DANG_CANH_BAO.name()
                         ));
                         return null;
                     });
@@ -429,8 +429,8 @@ public class AttendanceAlertService {
         } else {
             // Dưới ngưỡng: nếu đang ở DANG_CANH_BAO thì giải tỏa
             if (existingOpt.isPresent()) {
-                CanhBaoDiemDanh alert = existingOpt.get();
-                if (alert.getTrangThai() == TrangThaiCanhBao.DANG_CANH_BAO) {
+                AttendanceAlert alert = existingOpt.get();
+                if (alert.getTrangThai() == AlertStatus.DANG_CANH_BAO) {
                     String msg = "Cảnh báo chuyên cần đã được giải tỏa: Sinh viên " + sv.getHoTen() + " (" + sv.getMa() + ")"
                             + " hiện có số buổi vắng là " + soBuoiVang + "/" + tongBuoiHopLe + " buổi hợp lệ ("
                             + String.format(Locale.US, "%.1f", tyLeVang) + "%),"
@@ -441,14 +441,14 @@ public class AttendanceAlertService {
                     alert.setSoBuoiVang(soBuoiVang);
                     alert.setTongBuoiHopLe(tongBuoiHopLe);
                     alert.setTyLeVang(tyLeVang);
-                    alert.setTrangThai(TrangThaiCanhBao.DA_GIAI_TOA);
+                    alert.setTrangThai(AlertStatus.DA_GIAI_TOA);
                     alert.setThongDiep(msg);
                     alert.setIdempotencyKey(idempKey);
                     alert.setThoiGianCapNhat(now);
-                    CanhBaoDiemDanh saved = canhBaoDiemDanhRepository.saveAndFlush(alert);
+                    AttendanceAlert saved = canhBaoDiemDanhRepository.saveAndFlush(alert);
 
                     auditLogService.execute("ATTENDANCE_ALERT_RESOLVED", "ATTENDANCE_ALERT", saved.getId(), ctx -> {
-                        ctx.changes(Map.of("trangThaiCanhBao", TrangThaiCanhBao.DANG_CANH_BAO.name()), Map.of(
+                        ctx.changes(Map.of("trangThaiCanhBao", AlertStatus.DANG_CANH_BAO.name()), Map.of(
                                 "canhBaoId", saved.getId(),
                                 "lopHocPhanId", lop.getId(),
                                 "sinhVienId", sv.getId(),
@@ -457,7 +457,7 @@ public class AttendanceAlertService {
                                 "tyLeVang", tyLeVang,
                                 "loaiNguong", loaiNguong.name(),
                                 "giaTriNguong", giaTriNguong,
-                                "trangThaiCanhBao", TrangThaiCanhBao.DA_GIAI_TOA.name()
+                                "trangThaiCanhBao", AlertStatus.DA_GIAI_TOA.name()
                         ));
                         return null;
                     });
@@ -471,12 +471,12 @@ public class AttendanceAlertService {
         }
     }
 
-    private void resolveOldAlertIfPresent(LopHocPhan lop, SinhVien sv, LoaiNguongCanhBao loaiNguong,
+    private void resolveOldAlertIfPresent(CourseClass lop, Student sv, AlertThresholdType loaiNguong,
                                          int soBuoiVang, int tongBuoiHopLe, double tyLeVang) {
         canhBaoDiemDanhRepository.findBySinhVienIdAndLopHocPhanIdAndLoaiNguong(sv.getId(), lop.getId(), loaiNguong)
                 .ifPresent(alert -> {
-                    if (alert.getTrangThai() == TrangThaiCanhBao.DANG_CANH_BAO) {
-                        alert.setTrangThai(TrangThaiCanhBao.DA_GIAI_TOA);
+                    if (alert.getTrangThai() == AlertStatus.DANG_CANH_BAO) {
+                        alert.setTrangThai(AlertStatus.DA_GIAI_TOA);
                         alert.setSoBuoiVang(soBuoiVang);
                         alert.setTongBuoiHopLe(tongBuoiHopLe);
                         alert.setTyLeVang(tyLeVang);
@@ -487,8 +487,8 @@ public class AttendanceAlertService {
                 });
     }
 
-    public LopHocPhan kiemTraQuyenGiangVienVoiLop(Long lopHocPhanId, User actor) {
-        LopHocPhan lop = lopHocPhanRepository.findById(lopHocPhanId)
+    public CourseClass kiemTraQuyenGiangVienVoiLop(Long lopHocPhanId, User actor) {
+        CourseClass lop = lopHocPhanRepository.findById(lopHocPhanId)
                 .orElseThrow(() -> ApiException.notFound("Lớp học phần không tồn tại"));
 
         if (actor.getRole() == Role.QUAN_TRI) {
@@ -496,7 +496,7 @@ public class AttendanceAlertService {
         }
 
         if (actor.getRole() == Role.GIANG_VIEN) {
-            GiangVien gv = giangVienRepository.findByUser(actor)
+            Lecturer gv = giangVienRepository.findByUser(actor)
                     .orElseThrow(() -> ApiException.notFound("Không tìm thấy hồ sơ giảng viên"));
             if (lop.getGiangVien() == null || !lop.getGiangVien().getId().equals(gv.getId())) {
                 throw ApiException.forbidden("Bạn không phụ trách lớp học phần này");
@@ -507,9 +507,9 @@ public class AttendanceAlertService {
         throw ApiException.forbidden("Bạn không có quyền thực hiện thao tác này");
     }
 
-    private AttendanceAlertDtos.CanhBaoDiemDanhDto mapToDto(CanhBaoDiemDanh a) {
-        LopHocPhan lop = a.getLopHocPhan();
-        SinhVien sv = a.getSinhVien();
+    private AttendanceAlertDtos.CanhBaoDiemDanhDto mapToDto(AttendanceAlert a) {
+        CourseClass lop = a.getLopHocPhan();
+        Student sv = a.getSinhVien();
         return new AttendanceAlertDtos.CanhBaoDiemDanhDto(
                 a.getId(),
                 lop != null ? lop.getId() : null,

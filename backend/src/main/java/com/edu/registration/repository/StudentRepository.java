@@ -1,0 +1,41 @@
+package com.edu.registration.repository;
+
+import com.edu.registration.entity.Student;
+import com.edu.registration.entity.User;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface StudentRepository extends JpaRepository<Student, Long> {
+
+    Optional<Student> findByUser(User user);
+
+    @EntityGraph(attributePaths = {"khoa", "nganh", "lopHanhChinh", "chuongTrinh"})
+    Optional<Student> findWithAcademicProfileByUserId(Long userId);
+
+    @EntityGraph(attributePaths = {"khoa", "nganh", "lopHanhChinh", "chuongTrinh"})
+    Optional<Student> findWithAcademicProfileById(Long id);
+
+    @Query("select sv from Student sv join fetch sv.user u where u.trangThai = true")
+    List<Student> findAllActiveWithUser();
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select sv from Student sv where sv.user.id = :userId")
+    Optional<Student> findByUserIdForUpdate(@Param("userId") Long userId);
+
+    Optional<Student> findByMa(String ma);
+
+    boolean existsByMa(String ma);
+
+    @EntityGraph(attributePaths = {"user", "khoa", "nganh", "lopHanhChinh"})
+    List<Student> findAllByOrderByMaAsc();
+
+    @EntityGraph(attributePaths = {"user", "khoa", "nganh", "lopHanhChinh"})
+    List<Student> findByHoTenContainingIgnoreCaseOrMaContainingIgnoreCaseOrderByMaAsc(String hoTen, String ma);
+}

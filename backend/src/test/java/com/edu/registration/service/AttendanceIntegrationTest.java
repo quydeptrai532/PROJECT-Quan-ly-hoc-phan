@@ -2,7 +2,7 @@ package com.edu.registration.service;
 
 import com.edu.registration.dto.AttendanceDtos;
 import com.edu.registration.entity.AuditLog;
-import com.edu.registration.entity.TrangThaiDiemDanh;
+import com.edu.registration.entity.AttendanceStatus;
 import com.edu.registration.repository.AuditLogRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

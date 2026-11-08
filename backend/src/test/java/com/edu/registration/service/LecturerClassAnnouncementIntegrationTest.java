@@ -2,7 +2,7 @@ package com.edu.registration.service;
 
 import com.edu.registration.entity.AuditLog;
 import com.edu.registration.repository.AuditLogRepository;
-import com.edu.registration.repository.ThongBaoRepository;
+import com.edu.registration.repository.NotificationRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -43,7 +43,7 @@ class LecturerClassAnnouncementIntegrationTest {
     private AuditLogRepository auditLogRepository;
 
     @Autowired
-    private ThongBaoRepository thongBaoRepository;
+    private NotificationRepository thongBaoRepository;
 
     private String login(String username, String password) throws Exception {
         MvcResult res = mockMvc.perform(post("/api/auth/login")

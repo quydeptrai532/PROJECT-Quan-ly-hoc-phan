@@ -1,6 +1,6 @@
 package com.edu.registration.dto;
 
-import com.edu.registration.entity.TrangThaiDiemDanh;
+import com.edu.registration.entity.AttendanceStatus;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -94,7 +94,7 @@ public final class AttendanceDtos {
             Long sinhVienId,
 
             @NotNull(message = "Trạng thái điểm danh không được để trống")
-            TrangThaiDiemDanh trangThai,
+            AttendanceStatus trangThai,
 
             @Size(max = 255, message = "Ghi chú không vượt quá 255 ký tự")
             String ghiChu
@@ -113,7 +113,7 @@ public final class AttendanceDtos {
             String maSinhVien,
             String hoTenSinhVien,
             String lopHanhChinh,
-            TrangThaiDiemDanh trangThai,
+            AttendanceStatus trangThai,
             String ghiChu,
             String nguoiCapNhat,
             LocalDateTime thoiGianCapNhat

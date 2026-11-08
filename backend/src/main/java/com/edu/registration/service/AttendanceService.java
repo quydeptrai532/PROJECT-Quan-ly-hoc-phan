@@ -2,25 +2,25 @@ package com.edu.registration.service;
 
 import com.edu.registration.config.AttendanceProperties;
 import com.edu.registration.dto.AttendanceDtos;
-import com.edu.registration.entity.BuoiHoc;
-import com.edu.registration.entity.DangKyHocPhan;
-import com.edu.registration.entity.DiemDanh;
-import com.edu.registration.entity.GiangVien;
-import com.edu.registration.entity.HocKy;
-import com.edu.registration.entity.LopHocPhan;
+import com.edu.registration.entity.ClassSession;
+import com.edu.registration.entity.CourseRegistration;
+import com.edu.registration.entity.AttendanceRecord;
+import com.edu.registration.entity.Lecturer;
+import com.edu.registration.entity.Semester;
+import com.edu.registration.entity.CourseClass;
 import com.edu.registration.entity.Role;
-import com.edu.registration.entity.SinhVien;
-import com.edu.registration.entity.TrangThaiDangKy;
-import com.edu.registration.entity.TrangThaiDiemDanh;
+import com.edu.registration.entity.Student;
+import com.edu.registration.entity.RegistrationStatus;
+import com.edu.registration.entity.AttendanceStatus;
 import com.edu.registration.entity.User;
 import com.edu.registration.exception.ApiException;
-import com.edu.registration.repository.BuoiHocRepository;
-import com.edu.registration.repository.DangKyHocPhanRepository;
-import com.edu.registration.repository.DiemDanhRepository;
-import com.edu.registration.repository.GiangVienRepository;
-import com.edu.registration.repository.HocKyRepository;
-import com.edu.registration.repository.LopHocPhanRepository;
-import com.edu.registration.repository.SinhVienRepository;
+import com.edu.registration.repository.ClassSessionRepository;
+import com.edu.registration.repository.CourseRegistrationRepository;
+import com.edu.registration.repository.AttendanceRecordRepository;
+import com.edu.registration.repository.LecturerRepository;
+import com.edu.registration.repository.SemesterRepository;
+import com.edu.registration.repository.CourseClassRepository;
+import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.security.CurrentUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,25 +53,25 @@ public class AttendanceService {
     public static final String AUDIT_ACTION_RECORDED = "ATTENDANCE_RECORDED";
     public static final String AUDIT_ENTITY = "CLASS_ATTENDANCE";
 
-    private final BuoiHocRepository buoiHocRepository;
-    private final DiemDanhRepository diemDanhRepository;
-    private final LopHocPhanRepository lopHocPhanRepository;
-    private final DangKyHocPhanRepository dangKyHocPhanRepository;
-    private final GiangVienRepository giangVienRepository;
-    private final SinhVienRepository sinhVienRepository;
-    private final HocKyRepository hocKyRepository;
+    private final ClassSessionRepository buoiHocRepository;
+    private final AttendanceRecordRepository diemDanhRepository;
+    private final CourseClassRepository lopHocPhanRepository;
+    private final CourseRegistrationRepository dangKyHocPhanRepository;
+    private final LecturerRepository giangVienRepository;
+    private final StudentRepository sinhVienRepository;
+    private final SemesterRepository hocKyRepository;
     private final CurrentUser currentUser;
     private final AuditLogService auditLogService;
     private final AttendanceProperties attendanceProperties;
     private final AttendanceAlertService attendanceAlertService;
 
-    public AttendanceService(BuoiHocRepository buoiHocRepository,
-                             DiemDanhRepository diemDanhRepository,
-                             LopHocPhanRepository lopHocPhanRepository,
-                             DangKyHocPhanRepository dangKyHocPhanRepository,
-                             GiangVienRepository giangVienRepository,
-                             SinhVienRepository sinhVienRepository,
-                             HocKyRepository hocKyRepository,
+    public AttendanceService(ClassSessionRepository buoiHocRepository,
+                             AttendanceRecordRepository diemDanhRepository,
+                             CourseClassRepository lopHocPhanRepository,
+                             CourseRegistrationRepository dangKyHocPhanRepository,
+                             LecturerRepository giangVienRepository,
+                             StudentRepository sinhVienRepository,
+                             SemesterRepository hocKyRepository,
                              CurrentUser currentUser,
                              AuditLogService auditLogService,
                              AttendanceProperties attendanceProperties) {
@@ -81,13 +81,13 @@ public class AttendanceService {
     }
 
     @Autowired
-    public AttendanceService(BuoiHocRepository buoiHocRepository,
-                             DiemDanhRepository diemDanhRepository,
-                             LopHocPhanRepository lopHocPhanRepository,
-                             DangKyHocPhanRepository dangKyHocPhanRepository,
-                             GiangVienRepository giangVienRepository,
-                             SinhVienRepository sinhVienRepository,
-                             HocKyRepository hocKyRepository,
+    public AttendanceService(ClassSessionRepository buoiHocRepository,
+                             AttendanceRecordRepository diemDanhRepository,
+                             CourseClassRepository lopHocPhanRepository,
+                             CourseRegistrationRepository dangKyHocPhanRepository,
+                             LecturerRepository giangVienRepository,
+                             StudentRepository sinhVienRepository,
+                             SemesterRepository hocKyRepository,
                              CurrentUser currentUser,
                              AuditLogService auditLogService,
                              AttendanceProperties attendanceProperties,
@@ -111,10 +111,10 @@ public class AttendanceService {
      */
     public AttendanceDtos.BuoiHocDto taoBuoiHoc(AttendanceDtos.TaoBuoiHocRequest request) {
         User actor = currentUser.get();
-        LopHocPhan lop = kiemTraQuyenGiangVienVoiLop(request.lopHocPhanId(), actor);
+        CourseClass lop = kiemTraQuyenGiangVienVoiLop(request.lopHocPhanId(), actor);
 
         LocalDate ngayHoc = request.ngayHoc();
-        HocKy hocKy = lop.getHocKy();
+        Semester hocKy = lop.getHocKy();
         if (hocKy != null) {
             if (ngayHoc.isBefore(hocKy.getNgayBatDau()) || ngayHoc.isAfter(hocKy.getNgayKetThuc())) {
                 throw ApiException.badRequest("Ngày học (" + ngayHoc + ") phải nằm trong thời gian học kỳ: "
@@ -128,7 +128,7 @@ public class AttendanceService {
                     + ") của lớp " + lop.getMa() + " đã tồn tại.");
         }
 
-        BuoiHoc buoiHoc = new BuoiHoc();
+        ClassSession buoiHoc = new ClassSession();
         buoiHoc.setLopHocPhan(lop);
         buoiHoc.setNgayHoc(ngayHoc);
         buoiHoc.setCaHoc(caHoc);
@@ -142,7 +142,7 @@ public class AttendanceService {
         buoiHoc.setThoiGianTao(LocalDateTime.now());
 
         try {
-            BuoiHoc saved = buoiHocRepository.saveAndFlush(buoiHoc);
+            ClassSession saved = buoiHocRepository.saveAndFlush(buoiHoc);
             auditLogService.execute(AUDIT_ACTION_SESSION_CREATED, AUDIT_ENTITY, saved.getId(), context -> {
                 context.changes(Map.of(), Map.of(
                         "buoiHocId", saved.getId(),
@@ -169,7 +169,7 @@ public class AttendanceService {
      */
     public AttendanceDtos.BuoiHocDto capNhatBuoiHoc(Long buoiHocId, AttendanceDtos.CapNhatBuoiHocRequest request) {
         User actor = currentUser.get();
-        BuoiHoc buoiHoc = buoiHocRepository.findWithDetailsById(buoiHocId)
+        ClassSession buoiHoc = buoiHocRepository.findWithDetailsById(buoiHocId)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy buổi học"));
 
         kiemTraQuyenGiangVienVoiLop(buoiHoc.getLopHocPhan().getId(), actor);
@@ -181,14 +181,14 @@ public class AttendanceService {
         LocalDate ngayMoi = request.ngayHoc() != null ? request.ngayHoc() : buoiHoc.getNgayHoc();
         Integer caMoi = request.caHoc() != null ? request.caHoc() : buoiHoc.getCaHoc();
 
-        HocKy hocKy = buoiHoc.getLopHocPhan().getHocKy();
+        Semester hocKy = buoiHoc.getLopHocPhan().getHocKy();
         if (hocKy != null && (ngayMoi.isBefore(hocKy.getNgayBatDau()) || ngayMoi.isAfter(hocKy.getNgayKetThuc()))) {
             throw ApiException.badRequest("Ngày học (" + ngayMoi + ") phải nằm trong thời gian học kỳ: "
                     + hocKy.getNgayBatDau() + " đến " + hocKy.getNgayKetThuc());
         }
 
         if (!ngayMoi.equals(buoiHoc.getNgayHoc()) || !caMoi.equals(buoiHoc.getCaHoc())) {
-            Optional<BuoiHoc> trung = buoiHocRepository.findByLopHocPhanIdAndNgayHocAndCaHoc(
+            Optional<ClassSession> trung = buoiHocRepository.findByLopHocPhanIdAndNgayHocAndCaHoc(
                     buoiHoc.getLopHocPhan().getId(), ngayMoi, caMoi);
             if (trung.isPresent() && !trung.get().getId().equals(buoiHoc.getId())) {
                 throw ApiException.conflict("Buổi học vào ngày " + ngayMoi + " (ca " + caMoi
@@ -206,7 +206,7 @@ public class AttendanceService {
         buoiHoc.setThoiGianCapNhat(LocalDateTime.now());
 
         try {
-            BuoiHoc saved = buoiHocRepository.saveAndFlush(buoiHoc);
+            ClassSession saved = buoiHocRepository.saveAndFlush(buoiHoc);
             auditLogService.execute(AUDIT_ACTION_SESSION_UPDATED, AUDIT_ENTITY, saved.getId(), context -> {
                 context.changes(Map.of(), Map.of(
                         "buoiHocId", saved.getId(),
@@ -228,7 +228,7 @@ public class AttendanceService {
      */
     public AttendanceDtos.BuoiHocDto khoaBuoiHoc(Long buoiHocId, boolean khoa) {
         User actor = currentUser.get();
-        BuoiHoc buoiHoc = buoiHocRepository.findWithDetailsById(buoiHocId)
+        ClassSession buoiHoc = buoiHocRepository.findWithDetailsById(buoiHocId)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy buổi học"));
 
         kiemTraQuyenGiangVienVoiLop(buoiHoc.getLopHocPhan().getId(), actor);
@@ -248,7 +248,7 @@ public class AttendanceService {
         buoiHoc.setNguoiCapNhat(actor);
         buoiHoc.setThoiGianCapNhat(LocalDateTime.now());
 
-        BuoiHoc saved = buoiHocRepository.saveAndFlush(buoiHoc);
+        ClassSession saved = buoiHocRepository.saveAndFlush(buoiHoc);
         String auditAction = khoa ? AUDIT_ACTION_SESSION_LOCKED : AUDIT_ACTION_SESSION_UNLOCKED;
         auditLogService.execute(auditAction, AUDIT_ENTITY, saved.getId(), context -> {
             context.changes(Map.of(), Map.of(
@@ -267,7 +267,7 @@ public class AttendanceService {
      */
     public void xoaBuoiHoc(Long buoiHocId) {
         User actor = currentUser.get();
-        BuoiHoc buoiHoc = buoiHocRepository.findWithDetailsById(buoiHocId)
+        ClassSession buoiHoc = buoiHocRepository.findWithDetailsById(buoiHocId)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy buổi học"));
 
         kiemTraQuyenGiangVienVoiLop(buoiHoc.getLopHocPhan().getId(), actor);
@@ -295,23 +295,23 @@ public class AttendanceService {
      */
     public AttendanceDtos.BuoiHocChiTietDto luuDiemDanh(Long buoiHocId, AttendanceDtos.LuuDiemDanhRequest request) {
         User actor = currentUser.get();
-        BuoiHoc buoiHoc = buoiHocRepository.findWithDetailsById(buoiHocId)
+        ClassSession buoiHoc = buoiHocRepository.findWithDetailsById(buoiHocId)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy buổi học"));
 
-        LopHocPhan lop = kiemTraQuyenGiangVienVoiLop(buoiHoc.getLopHocPhan().getId(), actor);
+        CourseClass lop = kiemTraQuyenGiangVienVoiLop(buoiHoc.getLopHocPhan().getId(), actor);
 
         if (buoiHoc.isDaKhoa() && actor.getRole() != Role.QUAN_TRI) {
             throw ApiException.badRequest("Buổi học đã khóa. Chỉ Quản trị viên (quyền đặc biệt) mới có quyền chỉnh sửa điểm danh của buổi học đã khóa.");
         }
 
-        List<DangKyHocPhan> dangKys = dangKyHocPhanRepository.findByLopHocPhan(lop.getId(), TrangThaiDangKy.DA_DANG_KY);
-        Map<Long, SinhVien> sinhVienHopLeMap = dangKys.stream()
-                .map(DangKyHocPhan::getSinhVien)
+        List<CourseRegistration> dangKys = dangKyHocPhanRepository.findByLopHocPhan(lop.getId(), RegistrationStatus.DA_DANG_KY);
+        Map<Long, Student> sinhVienHopLeMap = dangKys.stream()
+                .map(CourseRegistration::getSinhVien)
                 .filter(sv -> sv != null && sv.getUser() != null && sv.getUser().isTrangThai())
-                .collect(Collectors.toMap(SinhVien::getId, sv -> sv, (a, b) -> a));
+                .collect(Collectors.toMap(Student::getId, sv -> sv, (a, b) -> a));
 
-        List<DiemDanh> existingList = diemDanhRepository.findByBuoiHocIdOrderBySinhVienMaAsc(buoiHocId);
-        Map<Long, DiemDanh> existingMap = existingList.stream()
+        List<AttendanceRecord> existingList = diemDanhRepository.findByBuoiHocIdOrderBySinhVienMaAsc(buoiHocId);
+        Map<Long, AttendanceRecord> existingMap = existingList.stream()
                 .collect(Collectors.toMap(dd -> dd.getSinhVien().getId(), dd -> dd));
 
         LocalDateTime now = LocalDateTime.now();
@@ -321,15 +321,15 @@ public class AttendanceService {
             if (item.sinhVienId() == null || item.trangThai() == null) {
                 continue;
             }
-            SinhVien sv = sinhVienHopLeMap.get(item.sinhVienId());
+            Student sv = sinhVienHopLeMap.get(item.sinhVienId());
             if (sv == null) {
                 throw ApiException.badRequest("Sinh viên ID " + item.sinhVienId()
                         + " không đăng ký hiệu lực trong lớp học phần này.");
             }
 
-            DiemDanh dd = existingMap.get(item.sinhVienId());
+            AttendanceRecord dd = existingMap.get(item.sinhVienId());
             if (dd == null) {
-                dd = new DiemDanh();
+                dd = new AttendanceRecord();
                 dd.setBuoiHoc(buoiHoc);
                 dd.setSinhVien(sv);
                 dd.setNguoiTao(actor);
@@ -375,24 +375,24 @@ public class AttendanceService {
      */
     @Transactional(readOnly = true)
     public AttendanceDtos.BuoiHocChiTietDto chiTietBuoiHocVaDiemDanh(Long buoiHocId) {
-        BuoiHoc buoiHoc = buoiHocRepository.findWithDetailsById(buoiHocId)
+        ClassSession buoiHoc = buoiHocRepository.findWithDetailsById(buoiHocId)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy buổi học"));
 
         User actor = currentUser.get();
         kiemTraQuyenDocLop(buoiHoc.getLopHocPhan(), actor);
 
-        List<DangKyHocPhan> dangKys = dangKyHocPhanRepository.findByLopHocPhan(
-                buoiHoc.getLopHocPhan().getId(), TrangThaiDangKy.DA_DANG_KY);
+        List<CourseRegistration> dangKys = dangKyHocPhanRepository.findByLopHocPhan(
+                buoiHoc.getLopHocPhan().getId(), RegistrationStatus.DA_DANG_KY);
 
-        List<DiemDanh> diemDanhs = diemDanhRepository.findByBuoiHocIdOrderBySinhVienMaAsc(buoiHocId);
-        Map<Long, DiemDanh> diemDanhMap = diemDanhs.stream()
+        List<AttendanceRecord> diemDanhs = diemDanhRepository.findByBuoiHocIdOrderBySinhVienMaAsc(buoiHocId);
+        Map<Long, AttendanceRecord> diemDanhMap = diemDanhs.stream()
                 .collect(Collectors.toMap(dd -> dd.getSinhVien().getId(), dd -> dd));
 
         List<AttendanceDtos.DiemDanhChiTietDto> chiTietList = new ArrayList<>();
-        for (DangKyHocPhan dk : dangKys) {
-            SinhVien sv = dk.getSinhVien();
+        for (CourseRegistration dk : dangKys) {
+            Student sv = dk.getSinhVien();
             if (sv == null) continue;
-            DiemDanh dd = diemDanhMap.get(sv.getId());
+            AttendanceRecord dd = diemDanhMap.get(sv.getId());
             String lopHanhChinh = sv.getLopHanhChinh() != null ? sv.getLopHanhChinh().getTen() : "";
             chiTietList.add(new AttendanceDtos.DiemDanhChiTietDto(
                     dd != null ? dd.getId() : null,
@@ -415,13 +415,13 @@ public class AttendanceService {
      */
     @Transactional(readOnly = true)
     public List<AttendanceDtos.BuoiHocDto> danhSachBuoiHocCuaLop(Long lopHocPhanId) {
-        LopHocPhan lop = lopHocPhanRepository.findById(lopHocPhanId)
+        CourseClass lop = lopHocPhanRepository.findById(lopHocPhanId)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy lớp học phần"));
 
         User actor = currentUser.get();
         kiemTraQuyenDocLop(lop, actor);
 
-        List<BuoiHoc> buoiHocs = buoiHocRepository.findByLopHocPhanIdOrderByNgayHocAscCaHocAsc(lopHocPhanId);
+        List<ClassSession> buoiHocs = buoiHocRepository.findByLopHocPhanIdOrderByNgayHocAscCaHocAsc(lopHocPhanId);
         return buoiHocs.stream().map(this::mapBuoiHocToDto).toList();
     }
 
@@ -430,17 +430,17 @@ public class AttendanceService {
      */
     @Transactional(readOnly = true)
     public AttendanceDtos.BaoCaoChuyenCanLopDto baoCaoChuyenCanLop(Long lopHocPhanId) {
-        LopHocPhan lop = lopHocPhanRepository.findById(lopHocPhanId)
+        CourseClass lop = lopHocPhanRepository.findById(lopHocPhanId)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy lớp học phần"));
 
         User actor = currentUser.get();
         kiemTraQuyenDocLop(lop, actor);
 
-        List<BuoiHoc> buoiHocs = buoiHocRepository.findByLopHocPhanIdOrderByNgayHocAscCaHocAsc(lopHocPhanId);
-        List<DangKyHocPhan> dangKys = dangKyHocPhanRepository.findByLopHocPhan(lopHocPhanId, TrangThaiDangKy.DA_DANG_KY);
-        List<DiemDanh> allDiemDanhs = diemDanhRepository.findByBuoiHocLopHocPhanId(lopHocPhanId);
+        List<ClassSession> buoiHocs = buoiHocRepository.findByLopHocPhanIdOrderByNgayHocAscCaHocAsc(lopHocPhanId);
+        List<CourseRegistration> dangKys = dangKyHocPhanRepository.findByLopHocPhan(lopHocPhanId, RegistrationStatus.DA_DANG_KY);
+        List<AttendanceRecord> allDiemDanhs = diemDanhRepository.findByBuoiHocLopHocPhanId(lopHocPhanId);
 
-        Map<Long, List<DiemDanh>> studentDiemDanhMap = allDiemDanhs.stream()
+        Map<Long, List<AttendanceRecord>> studentDiemDanhMap = allDiemDanhs.stream()
                 .collect(Collectors.groupingBy(dd -> dd.getSinhVien().getId()));
 
         int tongBuoi = buoiHocs.size();
@@ -449,11 +449,11 @@ public class AttendanceService {
                 ? "Số buổi quy định theo tín chỉ" : "Tổng số buổi đã diễn ra (" + tongBuoi + ")");
 
         List<AttendanceDtos.BaoCaoChuyenCanSinhVienDto> sinhVienReport = new ArrayList<>();
-        for (DangKyHocPhan dk : dangKys) {
-            SinhVien sv = dk.getSinhVien();
+        for (CourseRegistration dk : dangKys) {
+            Student sv = dk.getSinhVien();
             if (sv == null) continue;
 
-            List<DiemDanh> records = studentDiemDanhMap.getOrDefault(sv.getId(), Collections.emptyList());
+            List<AttendanceRecord> records = studentDiemDanhMap.getOrDefault(sv.getId(), Collections.emptyList());
             sinhVienReport.add(tinhBaoCaoSinhVien(sv, lop, tongBuoi, records));
         }
 
@@ -480,27 +480,27 @@ public class AttendanceService {
     @Transactional(readOnly = true)
     public List<AttendanceDtos.BaoCaoChuyenCanSinhVienDto> baoCaoChuyenCanTheoSinhVien(Long sinhVienId, Long hocKyId) {
         User actor = currentUser.get();
-        SinhVien sv = sinhVienRepository.findById(sinhVienId)
+        Student sv = sinhVienRepository.findById(sinhVienId)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy sinh viên"));
 
         // Kiểm tra quyền truy cập hồ sơ sinh viên
         if (actor.getRole() == Role.SINH_VIEN) {
-            SinhVien currentSv = sinhVienRepository.findByUser(actor)
+            Student currentSv = sinhVienRepository.findByUser(actor)
                     .orElseThrow(() -> ApiException.forbidden("Không tìm thấy hồ sơ sinh viên hiện tại"));
             if (!currentSv.getId().equals(sv.getId())) {
                 throw ApiException.forbidden("Bạn chỉ được xem báo cáo chuyên cần của chính mình");
             }
         }
 
-        List<DangKyHocPhan> dangKys;
+        List<CourseRegistration> dangKys;
         if (hocKyId != null) {
-            dangKys = dangKyHocPhanRepository.findTheoHocKy(sv.getId(), hocKyId, TrangThaiDangKy.DA_DANG_KY);
+            dangKys = dangKyHocPhanRepository.findTheoHocKy(sv.getId(), hocKyId, RegistrationStatus.DA_DANG_KY);
         } else {
-            dangKys = dangKyHocPhanRepository.findAllActiveOfStudent(sv.getId(), TrangThaiDangKy.DA_DANG_KY);
+            dangKys = dangKyHocPhanRepository.findAllActiveOfStudent(sv.getId(), RegistrationStatus.DA_DANG_KY);
         }
 
         if (actor.getRole() == Role.GIANG_VIEN) {
-            GiangVien gv = giangVienRepository.findByUser(actor)
+            Lecturer gv = giangVienRepository.findByUser(actor)
                     .orElseThrow(() -> ApiException.forbidden("Không tìm thấy hồ sơ giảng viên"));
             dangKys = dangKys.stream()
                     .filter(dk -> dk.getLopHocPhan().getGiangVien() != null
@@ -509,10 +509,10 @@ public class AttendanceService {
         }
 
         List<AttendanceDtos.BaoCaoChuyenCanSinhVienDto> result = new ArrayList<>();
-        for (DangKyHocPhan dk : dangKys) {
-            LopHocPhan lop = dk.getLopHocPhan();
-            List<BuoiHoc> buoiHocs = buoiHocRepository.findByLopHocPhanIdOrderByNgayHocAscCaHocAsc(lop.getId());
-            List<DiemDanh> records = diemDanhRepository.findBySinhVienAndLopHocPhan(sv.getId(), lop.getId());
+        for (CourseRegistration dk : dangKys) {
+            CourseClass lop = dk.getLopHocPhan();
+            List<ClassSession> buoiHocs = buoiHocRepository.findByLopHocPhanIdOrderByNgayHocAscCaHocAsc(lop.getId());
+            List<AttendanceRecord> records = diemDanhRepository.findBySinhVienAndLopHocPhan(sv.getId(), lop.getId());
             result.add(tinhBaoCaoSinhVien(sv, lop, buoiHocs.size(), records));
         }
 
@@ -525,19 +525,19 @@ public class AttendanceService {
     @Transactional(readOnly = true)
     public List<AttendanceDtos.BaoCaoChuyenCanSinhVienDto> baoCaoChuyenCanCuaSinhVienHienTai(Long hocKyId) {
         User actor = currentUser.get();
-        SinhVien sv = sinhVienRepository.findByUser(actor)
+        Student sv = sinhVienRepository.findByUser(actor)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy hồ sơ sinh viên"));
         return baoCaoChuyenCanTheoSinhVien(sv.getId(), hocKyId);
     }
 
     private AttendanceDtos.BaoCaoChuyenCanSinhVienDto tinhBaoCaoSinhVien(
-            SinhVien sv, LopHocPhan lop, int tongBuoi, List<DiemDanh> records) {
+            Student sv, CourseClass lop, int tongBuoi, List<AttendanceRecord> records) {
         int coMat = 0;
         int vang = 0;
         int muon = 0;
         int coPhep = 0;
 
-        for (DiemDanh r : records) {
+        for (AttendanceRecord r : records) {
             if (r.getTrangThai() == null) continue;
             switch (r.getTrangThai()) {
                 case CO_MAT -> coMat++;
@@ -593,8 +593,8 @@ public class AttendanceService {
         );
     }
 
-    private LopHocPhan kiemTraQuyenGiangVienVoiLop(Long lopHocPhanId, User actor) {
-        LopHocPhan lop = lopHocPhanRepository.findById(lopHocPhanId)
+    private CourseClass kiemTraQuyenGiangVienVoiLop(Long lopHocPhanId, User actor) {
+        CourseClass lop = lopHocPhanRepository.findById(lopHocPhanId)
                 .orElseThrow(() -> ApiException.notFound("Lớp học phần không tồn tại"));
 
         if (actor.getRole() == Role.QUAN_TRI) {
@@ -602,7 +602,7 @@ public class AttendanceService {
         }
 
         if (actor.getRole() == Role.GIANG_VIEN) {
-            GiangVien gv = giangVienRepository.findByUser(actor)
+            Lecturer gv = giangVienRepository.findByUser(actor)
                     .orElseThrow(() -> ApiException.notFound("Không tìm thấy hồ sơ giảng viên"));
             if (lop.getGiangVien() == null || !lop.getGiangVien().getId().equals(gv.getId())) {
                 throw ApiException.forbidden("Bạn không phụ trách lớp học phần này");
@@ -613,12 +613,12 @@ public class AttendanceService {
         throw ApiException.forbidden("Bạn không có quyền thực hiện thao tác này");
     }
 
-    private void kiemTraQuyenDocLop(LopHocPhan lop, User actor) {
+    private void kiemTraQuyenDocLop(CourseClass lop, User actor) {
         if (actor.getRole() == Role.QUAN_TRI) {
             return;
         }
         if (actor.getRole() == Role.GIANG_VIEN) {
-            GiangVien gv = giangVienRepository.findByUser(actor)
+            Lecturer gv = giangVienRepository.findByUser(actor)
                     .orElseThrow(() -> ApiException.notFound("Không tìm thấy hồ sơ giảng viên"));
             if (lop.getGiangVien() == null || !lop.getGiangVien().getId().equals(gv.getId())) {
                 throw ApiException.forbidden("Bạn không phụ trách lớp học phần này");
@@ -626,11 +626,11 @@ public class AttendanceService {
             return;
         }
         if (actor.getRole() == Role.SINH_VIEN) {
-            SinhVien sv = sinhVienRepository.findByUser(actor)
+            Student sv = sinhVienRepository.findByUser(actor)
                     .orElseThrow(() -> ApiException.notFound("Không tìm thấy hồ sơ sinh viên"));
             boolean enrolled = dangKyHocPhanRepository
                     .findBySinhVienIdAndLopHocPhanId(sv.getId(), lop.getId())
-                    .filter(dk -> dk.getTrangThai() == TrangThaiDangKy.DA_DANG_KY)
+                    .filter(dk -> dk.getTrangThai() == RegistrationStatus.DA_DANG_KY)
                     .isPresent();
             if (!enrolled) {
                 throw ApiException.forbidden("Bạn không tham gia lớp học phần này");
@@ -640,15 +640,15 @@ public class AttendanceService {
         throw ApiException.forbidden("Không có quyền truy cập");
     }
 
-    private AttendanceDtos.BuoiHocDto mapBuoiHocToDto(BuoiHoc buoi) {
-        LopHocPhan lop = buoi.getLopHocPhan();
-        List<DiemDanh> records = diemDanhRepository.findByBuoiHocIdOrderBySinhVienMaAsc(buoi.getId());
+    private AttendanceDtos.BuoiHocDto mapBuoiHocToDto(ClassSession buoi) {
+        CourseClass lop = buoi.getLopHocPhan();
+        List<AttendanceRecord> records = diemDanhRepository.findByBuoiHocIdOrderBySinhVienMaAsc(buoi.getId());
 
         int coMat = 0;
         int vang = 0;
         int muon = 0;
         int coPhep = 0;
-        for (DiemDanh r : records) {
+        for (AttendanceRecord r : records) {
             if (r.getTrangThai() == null) continue;
             switch (r.getTrangThai()) {
                 case CO_MAT -> coMat++;

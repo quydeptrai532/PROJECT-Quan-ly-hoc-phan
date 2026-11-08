@@ -1,7 +1,7 @@
 package com.edu.registration.dto;
 
-import com.edu.registration.entity.LoaiNguongCanhBao;
-import com.edu.registration.entity.TrangThaiCanhBao;
+import com.edu.registration.entity.AlertThresholdType;
+import com.edu.registration.entity.AlertStatus;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
@@ -22,12 +22,12 @@ public final class AttendanceAlertDtos {
             String maSinhVien,
             String hoTenSinhVien,
             String lopHanhChinh,
-            LoaiNguongCanhBao loaiNguong,
+            AlertThresholdType loaiNguong,
             Double giaTriNguong,
             int soBuoiVang,
             int tongBuoiHopLe,
             double tyLeVang,
-            TrangThaiCanhBao trangThai,
+            AlertStatus trangThai,
             String thongDiep,
             LocalDateTime thoiGianTao,
             LocalDateTime thoiGianCapNhat

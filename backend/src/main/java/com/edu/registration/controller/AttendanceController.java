@@ -2,7 +2,7 @@ package com.edu.registration.controller;
 
 import com.edu.registration.dto.AttendanceAlertDtos;
 import com.edu.registration.dto.AttendanceDtos;
-import com.edu.registration.entity.TrangThaiCanhBao;
+import com.edu.registration.entity.AlertStatus;
 import com.edu.registration.service.AttendanceAlertService;
 import com.edu.registration.service.AttendanceService;
 import jakarta.validation.Valid;
@@ -134,7 +134,7 @@ public class AttendanceController {
     @GetMapping({"/giang-vien/canh-bao-diem-danh", "/admin/canh-bao-diem-danh"})
     @PreAuthorize("hasAnyRole('GIANG_VIEN', 'QUAN_TRI')")
     public ResponseEntity<List<AttendanceAlertDtos.CanhBaoDiemDanhDto>> danhSachCanhBaoGiangVien(
-            @RequestParam(value = "trangThai", required = false) TrangThaiCanhBao trangThai) {
+            @RequestParam(value = "trangThai", required = false) AlertStatus trangThai) {
         return ResponseEntity.ok(attendanceAlertService.danhSachCanhBaoCuaGiangVien(trangThai));
     }
 
@@ -159,7 +159,7 @@ public class AttendanceController {
     @GetMapping("/sinh-vien/me/canh-bao-diem-danh")
     @PreAuthorize("hasRole('SINH_VIEN')")
     public ResponseEntity<List<AttendanceAlertDtos.CanhBaoDiemDanhDto>> danhSachCanhBaoCuaToi(
-            @RequestParam(value = "trangThai", required = false) TrangThaiCanhBao trangThai) {
+            @RequestParam(value = "trangThai", required = false) AlertStatus trangThai) {
         return ResponseEntity.ok(attendanceAlertService.danhSachCanhBaoCuaSinhVien(trangThai));
     }
 }

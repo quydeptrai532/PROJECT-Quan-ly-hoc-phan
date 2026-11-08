@@ -1,20 +1,20 @@
 package com.edu.registration.service;
 
 import com.edu.registration.dto.CatalogDtos;
-import com.edu.registration.entity.HocKy;
-import com.edu.registration.entity.Khoa;
-import com.edu.registration.entity.LopHanhChinh;
-import com.edu.registration.entity.MonHoc;
-import com.edu.registration.entity.MonTienQuyet;
-import com.edu.registration.entity.Nganh;
+import com.edu.registration.entity.Semester;
+import com.edu.registration.entity.Faculty;
+import com.edu.registration.entity.AdministrativeClass;
+import com.edu.registration.entity.Subject;
+import com.edu.registration.entity.PrerequisiteSubject;
+import com.edu.registration.entity.Major;
 import com.edu.registration.exception.ApiException;
-import com.edu.registration.repository.HocKyRepository;
-import com.edu.registration.repository.KhoaRepository;
-import com.edu.registration.repository.LopHanhChinhRepository;
-import com.edu.registration.repository.LopHocPhanRepository;
-import com.edu.registration.repository.MonHocRepository;
-import com.edu.registration.repository.MonTienQuyetRepository;
-import com.edu.registration.repository.NganhRepository;
+import com.edu.registration.repository.SemesterRepository;
+import com.edu.registration.repository.FacultyRepository;
+import com.edu.registration.repository.AdministrativeClassRepository;
+import com.edu.registration.repository.CourseClassRepository;
+import com.edu.registration.repository.SubjectRepository;
+import com.edu.registration.repository.PrerequisiteSubjectRepository;
+import com.edu.registration.repository.MajorRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,20 +25,20 @@ import java.util.Map;
 @Transactional
 public class CatalogService {
 
-    private final KhoaRepository khoaRepository;
-    private final NganhRepository nganhRepository;
-    private final LopHanhChinhRepository lopHanhChinhRepository;
-    private final MonHocRepository monHocRepository;
-    private final MonTienQuyetRepository monTienQuyetRepository;
-    private final HocKyRepository hocKyRepository;
-    private final LopHocPhanRepository lopHocPhanRepository;
+    private final FacultyRepository khoaRepository;
+    private final MajorRepository nganhRepository;
+    private final AdministrativeClassRepository lopHanhChinhRepository;
+    private final SubjectRepository monHocRepository;
+    private final PrerequisiteSubjectRepository monTienQuyetRepository;
+    private final SemesterRepository hocKyRepository;
+    private final CourseClassRepository lopHocPhanRepository;
     private final DtoMapper mapper;
     private final AuditLogService auditLogService;
 
-    public CatalogService(KhoaRepository khoaRepository, NganhRepository nganhRepository,
-                          LopHanhChinhRepository lopHanhChinhRepository, MonHocRepository monHocRepository,
-                          MonTienQuyetRepository monTienQuyetRepository, HocKyRepository hocKyRepository,
-                          LopHocPhanRepository lopHocPhanRepository, DtoMapper mapper,
+    public CatalogService(FacultyRepository khoaRepository, MajorRepository nganhRepository,
+                          AdministrativeClassRepository lopHanhChinhRepository, SubjectRepository monHocRepository,
+                          PrerequisiteSubjectRepository monTienQuyetRepository, SemesterRepository hocKyRepository,
+                          CourseClassRepository lopHocPhanRepository, DtoMapper mapper,
                           AuditLogService auditLogService) {
         this.khoaRepository = khoaRepository;
         this.nganhRepository = nganhRepository;
@@ -61,14 +61,14 @@ public class CatalogService {
         if (khoaRepository.existsByMa(ma)) {
             throw ApiException.conflict("Mã khoa đã tồn tại");
         }
-        Khoa khoa = new Khoa();
+        Faculty khoa = new Faculty();
         khoa.setMa(ma);
         khoa.setTen(request.ten().trim());
         return mapper.khoa(khoaRepository.save(khoa));
     }
 
     public CatalogDtos.KhoaDto suaKhoa(Long id, CatalogDtos.KhoaRequest request) {
-        Khoa khoa = khoaRepository.findById(id)
+        Faculty khoa = khoaRepository.findById(id)
                 .orElseThrow(() -> ApiException.notFound("Khoa không tồn tại"));
         String ma = request.ma().trim();
         if (!khoa.getMa().equalsIgnoreCase(ma) && khoaRepository.existsByMa(ma)) {
@@ -94,7 +94,7 @@ public class CatalogService {
         if (nganhRepository.existsByMa(ma)) {
             throw ApiException.conflict("Mã ngành đã tồn tại");
         }
-        Nganh nganh = new Nganh();
+        Major nganh = new Major();
         nganh.setMa(ma);
         nganh.setTen(request.ten().trim());
         nganh.setKhoa(layKhoa(request.khoaId()));
@@ -102,7 +102,7 @@ public class CatalogService {
     }
 
     public CatalogDtos.NganhDto suaNganh(Long id, CatalogDtos.NganhRequest request) {
-        Nganh nganh = nganhRepository.findById(id)
+        Major nganh = nganhRepository.findById(id)
                 .orElseThrow(() -> ApiException.notFound("Ngành không tồn tại"));
         String ma = request.ma().trim();
         if (!nganh.getMa().equalsIgnoreCase(ma) && nganhRepository.existsByMa(ma)) {
@@ -129,7 +129,7 @@ public class CatalogService {
         if (lopHanhChinhRepository.existsByMa(ma)) {
             throw ApiException.conflict("Mã lớp hành chính đã tồn tại");
         }
-        LopHanhChinh lop = new LopHanhChinh();
+        AdministrativeClass lop = new AdministrativeClass();
         lop.setMa(ma);
         lop.setTen(request.ten().trim());
         lop.setNganh(layNganh(request.nganhId()));
@@ -137,7 +137,7 @@ public class CatalogService {
     }
 
     public CatalogDtos.LopHanhChinhDto suaLopHanhChinh(Long id, CatalogDtos.LopHanhChinhRequest request) {
-        LopHanhChinh lop = lopHanhChinhRepository.findById(id)
+        AdministrativeClass lop = lopHanhChinhRepository.findById(id)
                 .orElseThrow(() -> ApiException.notFound("Lớp hành chính không tồn tại"));
         String ma = request.ma().trim();
         if (!lop.getMa().equalsIgnoreCase(ma) && lopHanhChinhRepository.existsByMa(ma)) {
@@ -165,12 +165,12 @@ public class CatalogService {
             if (monHocRepository.existsByMa(ma)) {
                 throw ApiException.conflict("Mã môn học đã tồn tại");
             }
-            MonHoc monHoc = new MonHoc();
+            Subject monHoc = new Subject();
             monHoc.setMa(ma);
             monHoc.setTen(request.ten().trim());
             monHoc.setSoTinChi(request.soTinChi());
             monHoc.setKhoa(layKhoa(request.khoaId()));
-            MonHoc saved = monHocRepository.save(monHoc);
+            Subject saved = monHocRepository.save(monHoc);
             audit.entityId(saved.getId());
             audit.changes(Map.of(), auditSnapshot(saved));
             return mapper.monHoc(saved);
@@ -179,7 +179,7 @@ public class CatalogService {
 
     public CatalogDtos.MonHocDto suaMonHoc(Long id, CatalogDtos.MonHocRequest request) {
         return auditLogService.execute("COURSE_UPDATED", "COURSE", id, audit -> {
-            MonHoc monHoc = monHocRepository.findById(id)
+            Subject monHoc = monHocRepository.findById(id)
                     .orElseThrow(() -> ApiException.notFound("Môn học không tồn tại"));
             Map<String, Object> before = auditSnapshot(monHoc);
             String ma = request.ma().trim();
@@ -197,7 +197,7 @@ public class CatalogService {
 
     public void xoaMonHoc(Long id) {
         auditLogService.execute("COURSE_DELETED", "COURSE", id, audit -> {
-            MonHoc monHoc = monHocRepository.findById(id)
+            Subject monHoc = monHocRepository.findById(id)
                     .orElseThrow(() -> ApiException.notFound("Môn học không tồn tại"));
             audit.changes(auditSnapshot(monHoc), Map.of("trangThai", "DELETED"));
             monHocRepository.delete(monHoc);
@@ -205,7 +205,7 @@ public class CatalogService {
         });
     }
 
-    private Map<String, Object> auditSnapshot(MonHoc monHoc) {
+    private Map<String, Object> auditSnapshot(Subject monHoc) {
         return Map.of("maMon", monHoc.getMa(), "tenMon", monHoc.getTen(), "soTinChi", monHoc.getSoTinChi(),
                 "khoaId", monHoc.getKhoa().getId());
     }
@@ -219,8 +219,8 @@ public class CatalogService {
 
     public CatalogDtos.MonTienQuyetDto themTienQuyet(Long monHocId, CatalogDtos.MonTienQuyetRequest request) {
         return auditLogService.execute("PREREQUISITE_ADDED", "COURSE_PREREQUISITE", monHocId, audit -> {
-            MonHoc monHoc = layMonHoc(monHocId);
-            MonHoc tienQuyet = layMonHoc(request.monTienQuyetId());
+            Subject monHoc = layMonHoc(monHocId);
+            Subject tienQuyet = layMonHoc(request.monTienQuyetId());
             if (monHoc.getId().equals(tienQuyet.getId())) {
                 throw ApiException.badRequest("Môn học không thể là tiên quyết của chính nó");
             }
@@ -230,7 +230,7 @@ public class CatalogService {
             if (monTienQuyetRepository.existsByMonHocIdAndMonTienQuyetId(tienQuyet.getId(), monHocId)) {
                 throw ApiException.badRequest("Tạo thành vòng lặp tiên quyết giữa hai môn học");
             }
-            MonTienQuyet lienKet = monTienQuyetRepository.save(new MonTienQuyet(monHoc, tienQuyet));
+            PrerequisiteSubject lienKet = monTienQuyetRepository.save(new PrerequisiteSubject(monHoc, tienQuyet));
             audit.entityId(lienKet.getId());
             audit.changes(Map.of(), Map.of("monHocId", monHocId, "monTienQuyetId", tienQuyet.getId()));
             return mapper.monTienQuyet(lienKet);
@@ -239,7 +239,7 @@ public class CatalogService {
 
     public void xoaTienQuyet(Long monHocId, Long lienKetId) {
         auditLogService.execute("PREREQUISITE_REMOVED", "COURSE_PREREQUISITE", lienKetId, audit -> {
-            MonTienQuyet lienKet = monTienQuyetRepository.findById(lienKetId)
+            PrerequisiteSubject lienKet = monTienQuyetRepository.findById(lienKetId)
                     .orElseThrow(() -> ApiException.notFound("Liên kết môn tiên quyết không tồn tại"));
             if (!lienKet.getMonHoc().getId().equals(monHocId)) {
                 throw ApiException.badRequest("Liên kết không thuộc môn học này");
@@ -262,9 +262,9 @@ public class CatalogService {
             if (hocKyRepository.existsByTenAndNamHoc(request.ten().trim(), request.namHoc().trim())) {
                 throw ApiException.conflict("Học kỳ đã tồn tại trong năm học này");
             }
-            HocKy hocKy = new HocKy();
+            Semester hocKy = new Semester();
             apDungHocKy(hocKy, request);
-            HocKy saved = hocKyRepository.save(hocKy);
+            Semester saved = hocKyRepository.save(hocKy);
             audit.entityId(saved.getId());
             audit.changes(Map.of(), auditSnapshot(saved));
             return mapper.hocKy(saved);
@@ -273,7 +273,7 @@ public class CatalogService {
 
     public CatalogDtos.HocKyDto suaHocKy(Long id, CatalogDtos.HocKyRequest request) {
         return auditLogService.execute("REGISTRATION_WINDOW_UPDATED", "SEMESTER", id, audit -> {
-            HocKy hocKy = hocKyRepository.findById(id)
+            Semester hocKy = hocKyRepository.findById(id)
                     .orElseThrow(() -> ApiException.notFound("Học kỳ không tồn tại"));
             Map<String, Object> before = auditSnapshot(hocKy);
             kiemTraHocKy(request);
@@ -285,7 +285,7 @@ public class CatalogService {
 
     public void xoaHocKy(Long id) {
         auditLogService.execute("REGISTRATION_WINDOW_DELETED", "SEMESTER", id, audit -> {
-            HocKy hocKy = hocKyRepository.findById(id)
+            Semester hocKy = hocKyRepository.findById(id)
                     .orElseThrow(() -> ApiException.notFound("Học kỳ không tồn tại"));
             audit.changes(auditSnapshot(hocKy), Map.of("trangThai", "DELETED"));
             if (lopHocPhanRepository.countByHocKyId(id) > 0) {
@@ -296,7 +296,7 @@ public class CatalogService {
         });
     }
 
-    private Map<String, Object> auditSnapshot(HocKy hocKy) {
+    private Map<String, Object> auditSnapshot(Semester hocKy) {
         return Map.of(
                 "tenHocKy", hocKy.getTen(),
                 "namHoc", hocKy.getNamHoc(),
@@ -318,7 +318,7 @@ public class CatalogService {
         }
     }
 
-    private void apDungHocKy(HocKy hocKy, CatalogDtos.HocKyRequest request) {
+    private void apDungHocKy(Semester hocKy, CatalogDtos.HocKyRequest request) {
         hocKy.setTen(request.ten().trim());
         hocKy.setNamHoc(request.namHoc().trim());
         hocKy.setNgayBatDau(request.ngayBatDau());
@@ -329,17 +329,17 @@ public class CatalogService {
         hocKy.setSoTinChiToiDa(request.soTinChiToiDa());
     }
 
-    private Khoa layKhoa(Long id) {
+    private Faculty layKhoa(Long id) {
         return khoaRepository.findById(id)
                 .orElseThrow(() -> ApiException.notFound("Khoa không tồn tại"));
     }
 
-    private Nganh layNganh(Long id) {
+    private Major layNganh(Long id) {
         return nganhRepository.findById(id)
                 .orElseThrow(() -> ApiException.notFound("Ngành không tồn tại"));
     }
 
-    private MonHoc layMonHoc(Long id) {
+    private Subject layMonHoc(Long id) {
         return monHocRepository.findById(id)
                 .orElseThrow(() -> ApiException.notFound("Môn học không tồn tại"));
     }

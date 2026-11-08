@@ -2,15 +2,15 @@ package com.edu.registration.service;
 
 import com.edu.registration.dto.LecturerDtos;
 import com.edu.registration.dto.StudentAcademicProfileDto;
-import com.edu.registration.entity.GiangVien;
-import com.edu.registration.entity.LopHocPhan;
-import com.edu.registration.entity.SinhVien;
-import com.edu.registration.entity.TrangThaiDangKy;
+import com.edu.registration.entity.Lecturer;
+import com.edu.registration.entity.CourseClass;
+import com.edu.registration.entity.Student;
+import com.edu.registration.entity.RegistrationStatus;
 import com.edu.registration.exception.ApiException;
-import com.edu.registration.repository.DangKyHocPhanRepository;
-import com.edu.registration.repository.GiangVienRepository;
-import com.edu.registration.repository.LopHocPhanRepository;
-import com.edu.registration.repository.SinhVienRepository;
+import com.edu.registration.repository.CourseRegistrationRepository;
+import com.edu.registration.repository.LecturerRepository;
+import com.edu.registration.repository.CourseClassRepository;
+import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.security.CurrentUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -26,21 +26,21 @@ public class StudentAcademicProfileService {
     private static final String NOT_ASSIGNED = "Chưa cập nhật";
 
     private final CurrentUser currentUser;
-    private final SinhVienRepository sinhVienRepository;
-    private final GiangVienRepository giangVienRepository;
-    private final LopHocPhanRepository lopHocPhanRepository;
-    private final DangKyHocPhanRepository dangKyHocPhanRepository;
+    private final StudentRepository sinhVienRepository;
+    private final LecturerRepository giangVienRepository;
+    private final CourseClassRepository lopHocPhanRepository;
+    private final CourseRegistrationRepository dangKyHocPhanRepository;
 
-    public StudentAcademicProfileService(CurrentUser currentUser, SinhVienRepository sinhVienRepository) {
+    public StudentAcademicProfileService(CurrentUser currentUser, StudentRepository sinhVienRepository) {
         this(currentUser, sinhVienRepository, null, null, null);
     }
 
     @Autowired
     public StudentAcademicProfileService(CurrentUser currentUser,
-                                         SinhVienRepository sinhVienRepository,
-                                         GiangVienRepository giangVienRepository,
-                                         LopHocPhanRepository lopHocPhanRepository,
-                                         DangKyHocPhanRepository dangKyHocPhanRepository) {
+                                         StudentRepository sinhVienRepository,
+                                         LecturerRepository giangVienRepository,
+                                         CourseClassRepository lopHocPhanRepository,
+                                         CourseRegistrationRepository dangKyHocPhanRepository) {
         this.currentUser = currentUser;
         this.sinhVienRepository = sinhVienRepository;
         this.giangVienRepository = giangVienRepository;
@@ -50,7 +50,7 @@ public class StudentAcademicProfileService {
 
     @Transactional(readOnly = true)
     public StudentAcademicProfileDto getMyProfile() {
-        SinhVien student = sinhVienRepository.findWithAcademicProfileByUserId(currentUser.get().getId())
+        Student student = sinhVienRepository.findWithAcademicProfileByUserId(currentUser.get().getId())
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy hồ sơ sinh viên"));
 
         return toAcademicProfileDto(student);
@@ -63,7 +63,7 @@ public class StudentAcademicProfileService {
      */
     @Transactional(readOnly = true)
     public LecturerDtos.StudentMinimalProfileDto getMinimalProfileForLecturer(Long studentId, Long lopHocPhanId) {
-        SinhVien student = xacThucQuyenXemSinhVien(studentId, lopHocPhanId);
+        Student student = xacThucQuyenXemSinhVien(studentId, lopHocPhanId);
         return toStudentMinimalProfileDto(student);
     }
 
@@ -72,7 +72,7 @@ public class StudentAcademicProfileService {
      */
     @Transactional(readOnly = true)
     public StudentAcademicProfileDto getProfileDtoForLecturer(Long studentId, Long lopHocPhanId) {
-        SinhVien student = xacThucQuyenXemSinhVien(studentId, lopHocPhanId);
+        Student student = xacThucQuyenXemSinhVien(studentId, lopHocPhanId);
         return toAcademicProfileDto(student);
     }
 
@@ -82,17 +82,17 @@ public class StudentAcademicProfileService {
      */
     @Transactional(readOnly = true)
     public List<LecturerDtos.StudentMinimalProfileDto> getAssignedStudentsForLecturer(Long lopHocPhanId, String keyword) {
-        GiangVien giangVien = giangVienHienTai();
+        Lecturer giangVien = giangVienHienTai();
         if (lopHocPhanId != null) {
-            LopHocPhan lop = lopHocPhanRepository.findById(lopHocPhanId)
+            CourseClass lop = lopHocPhanRepository.findById(lopHocPhanId)
                     .orElseThrow(() -> ApiException.notFound("Lớp học phần không tồn tại"));
             if (lop.getGiangVien() == null || !lop.getGiangVien().getId().equals(giangVien.getId())) {
                 throw ApiException.forbidden("Bạn không phụ trách lớp học phần này");
             }
         }
 
-        List<SinhVien> danhSach = dangKyHocPhanRepository.findAssignedStudentsOfLecturer(
-                giangVien.getId(), lopHocPhanId, TrangThaiDangKy.DA_DANG_KY);
+        List<Student> danhSach = dangKyHocPhanRepository.findAssignedStudentsOfLecturer(
+                giangVien.getId(), lopHocPhanId, RegistrationStatus.DA_DANG_KY);
 
         if (keyword != null && !keyword.isBlank()) {
             String kw = keyword.trim().toLowerCase(Locale.ROOT);
@@ -108,21 +108,21 @@ public class StudentAcademicProfileService {
                 .toList();
     }
 
-    private SinhVien xacThucQuyenXemSinhVien(Long studentId, Long lopHocPhanId) {
-        GiangVien giangVien = giangVienHienTai();
+    private Student xacThucQuyenXemSinhVien(Long studentId, Long lopHocPhanId) {
+        Lecturer giangVien = giangVienHienTai();
 
         if (lopHocPhanId != null) {
-            LopHocPhan lop = lopHocPhanRepository.findById(lopHocPhanId)
+            CourseClass lop = lopHocPhanRepository.findById(lopHocPhanId)
                     .orElseThrow(() -> ApiException.notFound("Lớp học phần không tồn tại"));
             if (lop.getGiangVien() == null || !lop.getGiangVien().getId().equals(giangVien.getId())) {
                 throw ApiException.forbidden("Bạn không phụ trách lớp học phần này");
             }
 
-            SinhVien student = sinhVienRepository.findWithAcademicProfileById(studentId)
+            Student student = sinhVienRepository.findWithAcademicProfileById(studentId)
                     .orElseThrow(() -> ApiException.notFound("Không tìm thấy hồ sơ sinh viên"));
 
             boolean enrolledInClass = dangKyHocPhanRepository.existsBySinhVienIdAndLopHocPhanIdAndGiangVienIdAndTrangThai(
-                    student.getId(), lop.getId(), giangVien.getId(), TrangThaiDangKy.DA_DANG_KY);
+                    student.getId(), lop.getId(), giangVien.getId(), RegistrationStatus.DA_DANG_KY);
             if (!enrolledInClass) {
                 throw ApiException.forbidden("Sinh viên không thuộc lớp học phần mà bạn phụ trách");
             }
@@ -130,11 +130,11 @@ public class StudentAcademicProfileService {
             return student;
         }
 
-        SinhVien student = sinhVienRepository.findWithAcademicProfileById(studentId)
+        Student student = sinhVienRepository.findWithAcademicProfileById(studentId)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy hồ sơ sinh viên"));
 
         boolean assignedToLecturer = dangKyHocPhanRepository.existsBySinhVienIdAndGiangVienIdAndTrangThai(
-                student.getId(), giangVien.getId(), TrangThaiDangKy.DA_DANG_KY);
+                student.getId(), giangVien.getId(), RegistrationStatus.DA_DANG_KY);
         if (!assignedToLecturer) {
             throw ApiException.forbidden("Bạn không có quyền xem thông tin sinh viên này do không phụ trách lớp của sinh viên");
         }
@@ -142,7 +142,7 @@ public class StudentAcademicProfileService {
         return student;
     }
 
-    private GiangVien giangVienHienTai() {
+    private Lecturer giangVienHienTai() {
         if (giangVienRepository == null) {
             throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Hệ thống chưa cấu hình kho dữ liệu giảng viên");
         }
@@ -150,7 +150,7 @@ public class StudentAcademicProfileService {
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy hồ sơ giảng viên"));
     }
 
-    public StudentAcademicProfileDto toAcademicProfileDto(SinhVien student) {
+    public StudentAcademicProfileDto toAcademicProfileDto(Student student) {
         return new StudentAcademicProfileDto(
                 student.getKhoa() != null ? student.getKhoa().getMa() : NOT_ASSIGNED,
                 student.getKhoa() != null ? student.getKhoa().getTen() : NOT_ASSIGNED,
@@ -164,7 +164,7 @@ public class StudentAcademicProfileService {
                 NOT_ASSIGNED);
     }
 
-    public LecturerDtos.StudentMinimalProfileDto toStudentMinimalProfileDto(SinhVien student) {
+    public LecturerDtos.StudentMinimalProfileDto toStudentMinimalProfileDto(Student student) {
         return new LecturerDtos.StudentMinimalProfileDto(
                 student.getId(),
                 student.getMa(),

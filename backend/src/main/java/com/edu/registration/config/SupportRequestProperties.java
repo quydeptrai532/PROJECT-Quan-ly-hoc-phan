@@ -1,7 +1,7 @@
 package com.edu.registration.config;
 
-import com.edu.registration.entity.LoaiYeuCauHoTro;
-import com.edu.registration.entity.TrangThaiYeuCauHoTro;
+import com.edu.registration.entity.SupportRequestType;
+import com.edu.registration.entity.SupportRequestStatus;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.util.Arrays;
@@ -21,20 +21,20 @@ public record SupportRequestProperties(
         Long maxFileSizeBytes,
         Integer maxFilesPerRequest,
         List<String> allowedExtensions,
-        List<LoaiYeuCauHoTro> allowedTypes,
-        List<TrangThaiYeuCauHoTro> allowedStatuses,
-        List<TrangThaiYeuCauHoTro> commentAllowedStatuses,
+        List<SupportRequestType> allowedTypes,
+        List<SupportRequestStatus> allowedStatuses,
+        List<SupportRequestStatus> commentAllowedStatuses,
         String slaNote
 ) {
     private static final String DEFAULT_STORAGE_DIR = "./data/support-attachments";
     private static final long DEFAULT_MAX_FILE_SIZE_BYTES = 5L * 1024 * 1024; // 5 MB
     private static final int DEFAULT_MAX_FILES_PER_REQUEST = 3;
     private static final List<String> DEFAULT_ALLOWED_EXTENSIONS = List.of("pdf", "png", "jpg", "jpeg");
-    private static final List<TrangThaiYeuCauHoTro> DEFAULT_COMMENT_ALLOWED_STATUSES = List.of(
-            TrangThaiYeuCauHoTro.MOI_TAO,
-            TrangThaiYeuCauHoTro.DANG_XU_LY,
-            TrangThaiYeuCauHoTro.CHO_PHAN_HOI_SINH_VIEN,
-            TrangThaiYeuCauHoTro.DA_GIAI_QUYET
+    private static final List<SupportRequestStatus> DEFAULT_COMMENT_ALLOWED_STATUSES = List.of(
+            SupportRequestStatus.MOI_TAO,
+            SupportRequestStatus.DANG_XU_LY,
+            SupportRequestStatus.CHO_PHAN_HOI_SINH_VIEN,
+            SupportRequestStatus.DA_GIAI_QUYET
     );
 
     public SupportRequestProperties {
@@ -51,10 +51,10 @@ public record SupportRequestProperties(
                         .distinct()
                         .toList();
         allowedTypes = (allowedTypes == null || allowedTypes.isEmpty())
-                ? Arrays.asList(LoaiYeuCauHoTro.values())
+                ? Arrays.asList(SupportRequestType.values())
                 : List.copyOf(allowedTypes);
         allowedStatuses = (allowedStatuses == null || allowedStatuses.isEmpty())
-                ? Arrays.asList(TrangThaiYeuCauHoTro.values())
+                ? Arrays.asList(SupportRequestStatus.values())
                 : List.copyOf(allowedStatuses);
         commentAllowedStatuses = (commentAllowedStatuses == null || commentAllowedStatuses.isEmpty())
                 ? DEFAULT_COMMENT_ALLOWED_STATUSES
