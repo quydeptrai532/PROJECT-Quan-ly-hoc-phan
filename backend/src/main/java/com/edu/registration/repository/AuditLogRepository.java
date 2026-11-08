@@ -8,8 +8,13 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
+
+    List<AuditLog> findAllByOccurredAtAfterOrderByOccurredAtAsc(
+            LocalDateTime occurredAt
+    );
 
     @Query("""
             select event from AuditLog event
@@ -20,6 +25,7 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
               and (:entityType is null or event.entityType = :entityType)
               and (:entityId is null or event.entityId = :entityId)
             """)
+
     Page<AuditLog> search(@Param("fromTime") LocalDateTime fromTime,
                           @Param("toTime") LocalDateTime toTime,
                           @Param("actor") String actor,
