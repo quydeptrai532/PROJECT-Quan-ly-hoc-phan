@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { CalendarCheck, ClipboardList, Layers, MapPin, Megaphone, Users } from "lucide-react";
 import ClassAnnouncementModal from "../../components/ClassAnnouncementModal";
+import GradeAnalyticsPanel from "../../components/GradeAnalyticsPanel";
 import { Alert, Badge, EmptyState, PageHeader, Spinner } from "../../components/ui";
 import { lichHoc } from "../../lib/format";
 import { useApi } from "../../lib/useApi";
@@ -109,6 +110,11 @@ export default function LecturerClassesPage() {
           ))}
         </div>
       )}
+
+      {/* Thống kê điểm và phân bố trong phạm vi lớp giảng viên phụ trách (QLSV-75 / TASK-LC-10) */}
+      <div className="mt-6">
+        <GradeAnalyticsPanel mode="lecturer" initialHocKyId={hocKyId} />
+      </div>
 
       {/* Modal gửi thông báo cho lớp (QLSV-68 / TASK-LC-03) */}
       <ClassAnnouncementModal

@@ -1,17 +1,38 @@
 package com.edu.registration.repository;
 
 import com.edu.registration.entity.CourseRegistration;
-import com.edu.registration.entity.Student;
 import com.edu.registration.entity.RegistrationStatus;
+import com.edu.registration.entity.Student;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 public interface CourseRegistrationRepository extends JpaRepository<CourseRegistration, Long> {
+
+    interface DiemTheoLopProjection {
+        Long getLopHocPhanId();
+        Double getDiemQuaTrinh();
+        Double getDiemCuoiKy();
+        Double getDiemTongKet();
+    }
+
+    @Query("""
+            select d.lopHocPhan.id as lopHocPhanId,
+                   g.diemQuaTrinh as diemQuaTrinh,
+                   g.diemCuoiKy as diemCuoiKy,
+                   g.diemTongKet as diemTongKet
+            from CourseRegistration d
+            left join Grade g on g.dangKy = d
+            where d.lopHocPhan.id in :lopHocPhanIds
+              and d.trangThai = :trangThai
+            """)
+    List<DiemTheoLopProjection> findDiemTheoDanhSachLop(@Param("lopHocPhanIds") Collection<Long> lopHocPhanIds,
+                                                        @Param("trangThai") RegistrationStatus trangThai);
 
     @EntityGraph(attributePaths = {"lopHocPhan", "lopHocPhan.monHoc", "lopHocPhan.hocKy",
             "lopHocPhan.giangVien", "sinhVien"})

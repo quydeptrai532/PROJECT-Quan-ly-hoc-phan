@@ -9,9 +9,9 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import java.time.LocalDate;
 
 public interface CourseClassRepository extends JpaRepository<CourseClass, Long> {
 
@@ -43,6 +43,22 @@ public interface CourseClassRepository extends JpaRepository<CourseClass, Long> 
 
     @EntityGraph(attributePaths = {"monHoc", "monHoc.khoa", "hocKy", "giangVien"})
     List<CourseClass> findByGiangVienIdOrderByMaAsc(Long giangVienId);
+
+    @EntityGraph(attributePaths = {"monHoc", "monHoc.khoa", "hocKy", "giangVien"})
+    @Query("""
+            select l from CourseClass l
+            where (:hocKyId is null or l.hocKy.id = :hocKyId)
+              and (:khoaId is null or l.monHoc.khoa.id = :khoaId)
+              and (:monHocId is null or l.monHoc.id = :monHocId)
+              and (:giangVienId is null or l.giangVien.id = :giangVienId)
+              and (:lopHocPhanId is null or l.id = :lopHocPhanId)
+            order by l.hocKy.ngayBatDau desc, l.ma asc
+            """)
+    List<CourseClass> findForGradeAnalytics(@Param("hocKyId") Long hocKyId,
+                                            @Param("khoaId") Long khoaId,
+                                            @Param("monHocId") Long monHocId,
+                                            @Param("giangVienId") Long giangVienId,
+                                            @Param("lopHocPhanId") Long lopHocPhanId);
 
     @EntityGraph(attributePaths = {"monHoc", "monHoc.khoa", "hocKy", "giangVien"})
     @Query("select l from CourseClass l where l.id = :id")

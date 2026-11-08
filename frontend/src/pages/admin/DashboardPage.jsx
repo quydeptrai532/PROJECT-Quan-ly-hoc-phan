@@ -22,6 +22,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import GradeAnalyticsPanel from "../../components/GradeAnalyticsPanel";
 import { Alert, Badge, PageHeader, Spinner, StatCard } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import { useApi } from "../../lib/useApi";
@@ -379,6 +380,15 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Thống kê điểm lớp học phần và phân bố điểm (QLSV-75 / TASK-LC-10) */}
+      <div className="mt-6">
+        <GradeAnalyticsPanel
+          mode="admin"
+          initialHocKyId={hocKyId}
+          initialKhoaId={khoaId}
+        />
       </div>
     </div>
   );
