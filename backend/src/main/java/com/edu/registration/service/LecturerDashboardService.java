@@ -132,12 +132,17 @@ public class LecturerDashboardService {
                         lop.getSoTiet(), gv.getHoTen()))
                 .toList();
 
+        int soBangDiemNhapHoacTraVe = demTrangThai.getOrDefault(GradeSheetStatus.NHAP, 0)
+                + demTrangThai.getOrDefault(GradeSheetStatus.TRA_VE, 0);
+        int soBangDiemDaCongBoHoacKhoa = demTrangThai.getOrDefault(GradeSheetStatus.DA_CONG_BO, 0)
+                + demTrangThai.getOrDefault(GradeSheetStatus.DA_KHOA, 0);
+
         LecturerDtos.TongQuanDto tongQuan = new LecturerDtos.TongQuanDto(
                 danhSachLop.size(), tongSinhVien, tongSucChua, lichDay.size(),
-                demTrangThai.getOrDefault(GradeSheetStatus.NHAP, 0),
+                soBangDiemNhapHoacTraVe,
                 demTrangThai.getOrDefault(GradeSheetStatus.CHO_DUYET, 0),
                 demTrangThai.getOrDefault(GradeSheetStatus.DA_DUYET, 0),
-                demTrangThai.getOrDefault(GradeSheetStatus.DA_CONG_BO, 0));
+                soBangDiemDaCongBoHoacKhoa);
 
         LecturerDtos.HocKyTomTatDto hocKyDto = new LecturerDtos.HocKyTomTatDto(hocKy.getId(), hocKy.getTen(),
                 hocKy.getNamHoc(), hocKy.getNgayBatDau(), hocKy.getNgayKetThuc());
@@ -162,12 +167,18 @@ public class LecturerDashboardService {
                         "Bảng điểm nháp đã đủ điểm, chưa gửi duyệt",
                         "Đã nhập đủ điểm " + soDangHoc + "/" + soDangHoc + " sinh viên đang học.", lienKet);
             }
+            case TRA_VE -> new LecturerDtos.CongViecDto("TRA_VE", lop.getId(), lop.getMa(), tenMon,
+                    "Bảng điểm bị trả về chỉnh sửa",
+                    lop.getLyDoTraVeBangDiem() != null && !lop.getLyDoTraVeBangDiem().isBlank()
+                            ? "Lý do trả về: " + lop.getLyDoTraVeBangDiem()
+                            : "Vui lòng kiểm tra điểm và gửi duyệt lại.",
+                    lienKet);
             case CHO_DUYET -> new LecturerDtos.CongViecDto("CHO_DUYET", lop.getId(), lop.getMa(), tenMon,
                     "Bảng điểm đang chờ duyệt", "Bảng điểm đã được gửi duyệt và chưa được phê duyệt.", lienKet);
             case DA_DUYET -> new LecturerDtos.CongViecDto("CHO_CONG_BO", lop.getId(), lop.getMa(), tenMon,
                     "Bảng điểm đã duyệt, chưa công bố", "Sinh viên chưa xem được điểm cho đến khi bảng điểm được công bố.",
                     lienKet);
-            case DA_CONG_BO -> null;
+            case DA_CONG_BO, DA_KHOA -> null;
         };
     }
 

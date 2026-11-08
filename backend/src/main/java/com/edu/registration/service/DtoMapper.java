@@ -60,7 +60,16 @@ public class DtoMapper {
                 lop.getThu(), lop.getTietBatDau(), lop.getSoTiet(), lop.getSiSoToiDa(),
                 lop.getSiSoHienTai(), lop.getConLai(),
                 lop.getTrangThaiBangDiemHieuLuc().name(), lop.getPhienBanCongBo(),
-                lop.getGuiDuyetBangDiemLuc(), lop.getDuyetBangDiemLuc(), lop.getCongBoBangDiemLuc());
+                lop.getGuiDuyetBangDiemLuc(),
+                lop.getTraVeBangDiemLuc(),
+                lop.getLyDoTraVeBangDiem(),
+                lop.getDuyetBangDiemLuc(),
+                lop.getCongBoBangDiemLuc(),
+                lop.getKhoaBangDiemLuc(),
+                lop.getMoKhoaBangDiemLuc(),
+                lop.getLyDoMoKhoaBangDiem(),
+                lop.isChoPhepSuaDiem(),
+                lop.isBangDiemDaKhoa());
     }
 
     public RegistrationDtos.DangKyDto dangKy(CourseRegistration dangKy, Grade diem) {

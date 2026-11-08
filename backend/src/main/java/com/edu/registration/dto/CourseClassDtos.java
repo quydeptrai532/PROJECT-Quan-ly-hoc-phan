@@ -20,8 +20,34 @@ public final class CourseClassDtos {
                                 int siSoToiDa, int siSoHienTai, int conLai,
                                 String trangThaiBangDiem, int phienBanCongBo,
                                 LocalDateTime guiDuyetBangDiemLuc,
+                                LocalDateTime traVeBangDiemLuc,
+                                String lyDoTraVeBangDiem,
                                 LocalDateTime duyetBangDiemLuc,
-                                LocalDateTime congBoBangDiemLuc) {
+                                LocalDateTime congBoBangDiemLuc,
+                                LocalDateTime khoaBangDiemLuc,
+                                LocalDateTime moKhoaBangDiemLuc,
+                                String lyDoMoKhoaBangDiem,
+                                boolean choPhepSuaDiem,
+                                boolean daKhoaBangDiem) {
+
+        public LopHocPhanDto(Long id, String ma, Long monHocId, String maMon, String tenMon, int soTinChi,
+                             Long hocKyId, String tenHocKy, Long giangVienId, String tenGiangVien,
+                             String phong, int thu, int tietBatDau, int soTiet,
+                             int siSoToiDa, int siSoHienTai, int conLai,
+                             String trangThaiBangDiem, int phienBanCongBo,
+                             LocalDateTime guiDuyetBangDiemLuc,
+                             LocalDateTime duyetBangDiemLuc,
+                             LocalDateTime congBoBangDiemLuc) {
+            this(id, ma, monHocId, maMon, tenMon, soTinChi, hocKyId, tenHocKy, giangVienId, tenGiangVien,
+                    phong, thu, tietBatDau, soTiet, siSoToiDa, siSoHienTai, conLai,
+                    trangThaiBangDiem, phienBanCongBo,
+                    guiDuyetBangDiemLuc, null, null,
+                    duyetBangDiemLuc, congBoBangDiemLuc,
+                    null, null, null,
+                    "NHAP".equals(trangThaiBangDiem) || "TRA_VE".equals(trangThaiBangDiem),
+                    "DA_CONG_BO".equals(trangThaiBangDiem) || "DA_KHOA".equals(trangThaiBangDiem));
+        }
+
         public LopHocPhanDto(Long id, String ma, Long monHocId, String maMon, String tenMon, int soTinChi,
                              Long hocKyId, String tenHocKy, Long giangVienId, String tenGiangVien,
                              String phong, int thu, int tietBatDau, int soTiet,
