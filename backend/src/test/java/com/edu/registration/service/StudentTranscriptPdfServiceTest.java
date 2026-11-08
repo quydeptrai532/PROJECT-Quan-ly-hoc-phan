@@ -2,22 +2,22 @@ package com.edu.registration.service;
 
 import com.edu.registration.dto.RegistrationDtos;
 import com.edu.registration.dto.StudentAcademicProfileDto;
-import com.edu.registration.entity.DangKyHocPhan;
-import com.edu.registration.entity.Diem;
-import com.edu.registration.entity.GiangVien;
-import com.edu.registration.entity.HocKy;
-import com.edu.registration.entity.LopHocPhan;
-import com.edu.registration.entity.MonHoc;
-import com.edu.registration.entity.SinhVien;
-import com.edu.registration.entity.TrangThaiDangKy;
+import com.edu.registration.entity.CourseRegistration;
+import com.edu.registration.entity.Grade;
+import com.edu.registration.entity.Lecturer;
+import com.edu.registration.entity.Semester;
+import com.edu.registration.entity.CourseClass;
+import com.edu.registration.entity.Subject;
+import com.edu.registration.entity.Student;
+import com.edu.registration.entity.RegistrationStatus;
 import com.edu.registration.entity.User;
 import com.edu.registration.exception.ApiException;
-import com.edu.registration.repository.DangKyHocPhanRepository;
-import com.edu.registration.repository.DiemRepository;
-import com.edu.registration.repository.GiangVienRepository;
-import com.edu.registration.repository.HocKyRepository;
-import com.edu.registration.repository.LopHocPhanRepository;
-import com.edu.registration.repository.SinhVienRepository;
+import com.edu.registration.repository.CourseRegistrationRepository;
+import com.edu.registration.repository.GradeRepository;
+import com.edu.registration.repository.LecturerRepository;
+import com.edu.registration.repository.SemesterRepository;
+import com.edu.registration.repository.CourseClassRepository;
+import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.security.CurrentUser;
 import com.lowagie.text.pdf.PdfReader;
 import com.lowagie.text.pdf.parser.PdfTextExtractor;
@@ -50,31 +50,31 @@ import static org.mockito.Mockito.when;
 class StudentTranscriptPdfServiceTest {
 
     @Mock
-    private DangKyHocPhanRepository dangKyHocPhanRepository;
+    private CourseRegistrationRepository dangKyHocPhanRepository;
     @Mock
-    private DiemRepository diemRepository;
+    private GradeRepository diemRepository;
     @Mock
-    private LopHocPhanRepository lopHocPhanRepository;
+    private CourseClassRepository lopHocPhanRepository;
     @Mock
-    private SinhVienRepository sinhVienRepository;
+    private StudentRepository sinhVienRepository;
     @Mock
-    private GiangVienRepository giangVienRepository;
+    private LecturerRepository giangVienRepository;
     @Mock
-    private HocKyRepository hocKyRepository;
+    private SemesterRepository hocKyRepository;
     @Mock
     private CurrentUser currentUser;
     @Mock
     private StudentAcademicProfileService studentAcademicProfileService;
 
-    private DiemService diemService;
+    private GradeService diemService;
     private Clock fixedClock;
     private User user;
-    private SinhVien sinhVien;
-    private GiangVien giangVien;
+    private Student sinhVien;
+    private Lecturer giangVien;
 
     @BeforeEach
     void setUp() {
-        diemService = new DiemService(dangKyHocPhanRepository, diemRepository, lopHocPhanRepository,
+        diemService = new GradeService(dangKyHocPhanRepository, diemRepository, lopHocPhanRepository,
                 sinhVienRepository, giangVienRepository, hocKyRepository, currentUser, new DtoMapper());
         fixedClock = Clock.fixed(Instant.parse("2026-11-05T00:00:00Z"), ZoneId.of("Asia/Ho_Chi_Minh"));
 
@@ -82,14 +82,14 @@ class StudentTranscriptPdfServiceTest {
         user.setId(10L);
         user.setUsername("sv01");
 
-        sinhVien = new SinhVien();
+        sinhVien = new Student();
         sinhVien.setId(1L);
         sinhVien.setUser(user);
         sinhVien.setMa("SV001");
         sinhVien.setHoTen("Trần Minh Anh");
         sinhVien.setEmail("anh.tm@student.edu.vn");
 
-        giangVien = new GiangVien();
+        giangVien = new Lecturer();
         giangVien.setId(7L);
         giangVien.setMa("GV01");
         giangVien.setHoTen("TS. Nguyễn Văn An");
@@ -108,29 +108,29 @@ class StudentTranscriptPdfServiceTest {
     void xuatBangDiemPdfChiChuaDiemDaCongBoVaKhopGpaTiengViet() throws Exception {
         dangNhapSinhVien();
 
-        HocKy hk1 = taoHocKy(1L, "Học kỳ 1", "2025-2026", LocalDate.of(2025, 9, 1));
-        HocKy hk2 = taoHocKy(2L, "Học kỳ 2", "2025-2026", LocalDate.of(2026, 2, 1));
-        HocKy hk3 = taoHocKy(3L, "Học kỳ 1", "2026-2027", LocalDate.of(2026, 9, 1));
+        Semester hk1 = taoHocKy(1L, "Học kỳ 1", "2025-2026", LocalDate.of(2025, 9, 1));
+        Semester hk2 = taoHocKy(2L, "Học kỳ 2", "2025-2026", LocalDate.of(2026, 2, 1));
+        Semester hk3 = taoHocKy(3L, "Học kỳ 1", "2026-2027", LocalDate.of(2026, 9, 1));
 
-        MonHoc int101 = taoMon(11L, "INT101", "Lập trình cơ bản", 3);
-        MonHoc mat101 = taoMon(12L, "MAT101", "Toán rời rạc", 3);
-        MonHoc eco101 = taoMon(13L, "ECO101", "Kinh tế vi mô", 3);
+        Subject int101 = taoMon(11L, "INT101", "Lập trình cơ bản", 3);
+        Subject mat101 = taoMon(12L, "MAT101", "Toán rời rạc", 3);
+        Subject eco101 = taoMon(13L, "ECO101", "Kinh tế vi mô", 3);
 
-        LopHocPhan lopLan1 = taoLop(201L, "INT101.01-HK1", int101, hk1);
-        LopHocPhan lopLan2 = taoLop(202L, "INT101.01-HK2", int101, hk2);
-        LopHocPhan lopNhapChuaCongBo = taoLop(203L, "MAT101.01-HK3", mat101, hk3);
-        LopHocPhan lopChuaCoDiem = taoLop(204L, "ECO101.01-HK3", eco101, hk3);
+        CourseClass lopLan1 = taoLop(201L, "INT101.01-HK1", int101, hk1);
+        CourseClass lopLan2 = taoLop(202L, "INT101.01-HK2", int101, hk2);
+        CourseClass lopNhapChuaCongBo = taoLop(203L, "MAT101.01-HK3", mat101, hk3);
+        CourseClass lopChuaCoDiem = taoLop(204L, "ECO101.01-HK3", eco101, hk3);
 
-        DangKyHocPhan dkLan1 = taoDangKy(401L, lopLan1, LocalDateTime.of(2025, 8, 20, 8, 0));
-        DangKyHocPhan dkLan2 = taoDangKy(402L, lopLan2, LocalDateTime.of(2026, 1, 20, 8, 0));
-        DangKyHocPhan dkNhap = taoDangKy(403L, lopNhapChuaCongBo, LocalDateTime.of(2026, 8, 20, 8, 0));
-        DangKyHocPhan dkChuaDiem = taoDangKy(404L, lopChuaCoDiem, LocalDateTime.of(2026, 8, 21, 8, 0));
+        CourseRegistration dkLan1 = taoDangKy(401L, lopLan1, LocalDateTime.of(2025, 8, 20, 8, 0));
+        CourseRegistration dkLan2 = taoDangKy(402L, lopLan2, LocalDateTime.of(2026, 1, 20, 8, 0));
+        CourseRegistration dkNhap = taoDangKy(403L, lopNhapChuaCongBo, LocalDateTime.of(2026, 8, 20, 8, 0));
+        CourseRegistration dkChuaDiem = taoDangKy(404L, lopChuaCoDiem, LocalDateTime.of(2026, 8, 21, 8, 0));
 
-        Diem diemTruot = taoDiem(dkLan1, 4.0, 4.0, 4.0);
-        Diem diemDat = taoDiem(dkLan2, 7.5, 8.0, 7.8);
-        Diem diemNhap = taoDiem(dkNhap, 9.5, null, null);
+        Grade diemTruot = taoDiem(dkLan1, 4.0, 4.0, 4.0);
+        Grade diemDat = taoDiem(dkLan2, 7.5, 8.0, 7.8);
+        Grade diemNhap = taoDiem(dkNhap, 9.5, null, null);
 
-        when(dangKyHocPhanRepository.findAllActiveOfStudent(1L, TrangThaiDangKy.DA_DANG_KY))
+        when(dangKyHocPhanRepository.findAllActiveOfStudent(1L, RegistrationStatus.DA_DANG_KY))
                 .thenReturn(List.of(dkChuaDiem, dkNhap, dkLan2, dkLan1));
         when(diemRepository.findByDangKyIdIn(any()))
                 .thenReturn(List.of(diemTruot, diemDat, diemNhap));
@@ -187,21 +187,21 @@ class StudentTranscriptPdfServiceTest {
     void xuatBangDiemPdfHienThiDonViPhatHanhKhiDaCauHinhVaNgatTrangNhieuMon() throws Exception {
         dangNhapSinhVien();
 
-        HocKy hk1 = taoHocKy(1L, "Học kỳ 1", "2025-2026", LocalDate.of(2025, 9, 1));
-        List<DangKyHocPhan> danhSachDangKy = new ArrayList<>();
-        List<Diem> danhSachDiem = new ArrayList<>();
+        Semester hk1 = taoHocKy(1L, "Học kỳ 1", "2025-2026", LocalDate.of(2025, 9, 1));
+        List<CourseRegistration> danhSachDangKy = new ArrayList<>();
+        List<Grade> danhSachDiem = new ArrayList<>();
 
         for (int i = 1; i <= 38; i++) {
-            MonHoc mon = taoMon((long) i, String.format("INT%03d", i),
+            Subject mon = taoMon((long) i, String.format("INT%03d", i),
                     "Chuyên đề công nghệ phần mềm nâng cao số " + i, 3);
-            LopHocPhan lop = taoLop((long) (100 + i), String.format("INT%03d.01", i), mon, hk1);
-            DangKyHocPhan dk = taoDangKy((long) (500 + i), lop, LocalDateTime.of(2025, 8, 15, 8, 0).plusMinutes(i));
-            Diem diem = taoDiem(dk, 8.0, 8.5, 8.3);
+            CourseClass lop = taoLop((long) (100 + i), String.format("INT%03d.01", i), mon, hk1);
+            CourseRegistration dk = taoDangKy((long) (500 + i), lop, LocalDateTime.of(2025, 8, 15, 8, 0).plusMinutes(i));
+            Grade diem = taoDiem(dk, 8.0, 8.5, 8.3);
             danhSachDangKy.add(dk);
             danhSachDiem.add(diem);
         }
 
-        when(dangKyHocPhanRepository.findAllActiveOfStudent(1L, TrangThaiDangKy.DA_DANG_KY))
+        when(dangKyHocPhanRepository.findAllActiveOfStudent(1L, RegistrationStatus.DA_DANG_KY))
                 .thenReturn(danhSachDangKy);
         when(diemRepository.findByDangKyIdIn(any())).thenReturn(danhSachDiem);
 
@@ -233,13 +233,13 @@ class StudentTranscriptPdfServiceTest {
                 "CNTT", "Công nghệ thông tin", "CNPM", "Kỹ thuật phần mềm",
                 "Chưa cập nhật", "CNPM01", "Kỹ thuật phần mềm 01", "Chưa cập nhật", "Chưa cập nhật", "Chưa cập nhật"));
 
-        HocKy hk1 = taoHocKy(1L, "Học kỳ 1", "2026-2027", LocalDate.of(2026, 9, 1));
-        MonHoc mon = taoMon(11L, "INT101", "Lập trình cơ bản", 3);
-        LopHocPhan lop = taoLop(201L, "INT101.01", mon, hk1);
-        DangKyHocPhan dk = taoDangKy(401L, lop, LocalDateTime.of(2026, 8, 20, 8, 0));
-        Diem diemNhap = taoDiem(dk, 8.0, null, null);
+        Semester hk1 = taoHocKy(1L, "Học kỳ 1", "2026-2027", LocalDate.of(2026, 9, 1));
+        Subject mon = taoMon(11L, "INT101", "Lập trình cơ bản", 3);
+        CourseClass lop = taoLop(201L, "INT101.01", mon, hk1);
+        CourseRegistration dk = taoDangKy(401L, lop, LocalDateTime.of(2026, 8, 20, 8, 0));
+        Grade diemNhap = taoDiem(dk, 8.0, null, null);
 
-        when(dangKyHocPhanRepository.findAllActiveOfStudent(1L, TrangThaiDangKy.DA_DANG_KY))
+        when(dangKyHocPhanRepository.findAllActiveOfStudent(1L, RegistrationStatus.DA_DANG_KY))
                 .thenReturn(List.of(dk));
         when(diemRepository.findByDangKyIdIn(any())).thenReturn(List.of(diemNhap));
 
@@ -257,7 +257,7 @@ class StudentTranscriptPdfServiceTest {
         userSv2.setId(20L);
         userSv2.setUsername("sv02");
 
-        SinhVien sv2 = new SinhVien();
+        Student sv2 = new Student();
         sv2.setId(2L);
         sv2.setUser(userSv2);
         sv2.setMa("SV002");
@@ -272,18 +272,18 @@ class StudentTranscriptPdfServiceTest {
                 "Chưa cập nhật", "CNPM01", "Kỹ thuật phần mềm 01", "Chưa cập nhật", "Chưa cập nhật", "Chưa cập nhật"));
         when(hocKyRepository.existsById(2L)).thenReturn(true);
 
-        HocKy hk2 = taoHocKy(2L, "Học kỳ 2", "2025-2026", LocalDate.of(2026, 2, 1));
-        MonHoc int101 = taoMon(11L, "INT101", "Lập trình cơ bản", 3);
-        LopHocPhan lop = taoLop(202L, "INT101.01-HK2", int101, hk2);
-        DangKyHocPhan dkSv2 = new DangKyHocPhan();
+        Semester hk2 = taoHocKy(2L, "Học kỳ 2", "2025-2026", LocalDate.of(2026, 2, 1));
+        Subject int101 = taoMon(11L, "INT101", "Lập trình cơ bản", 3);
+        CourseClass lop = taoLop(202L, "INT101.01-HK2", int101, hk2);
+        CourseRegistration dkSv2 = new CourseRegistration();
         dkSv2.setId(501L);
         dkSv2.setSinhVien(sv2);
         dkSv2.setLopHocPhan(lop);
         dkSv2.setThoiGianDangKy(LocalDateTime.of(2026, 1, 20, 8, 0));
-        dkSv2.setTrangThai(TrangThaiDangKy.DA_DANG_KY);
-        Diem diemSv2 = taoDiem(dkSv2, 7.0, 8.0, 7.6);
+        dkSv2.setTrangThai(RegistrationStatus.DA_DANG_KY);
+        Grade diemSv2 = taoDiem(dkSv2, 7.0, 8.0, 7.6);
 
-        when(dangKyHocPhanRepository.findAllActiveOfStudent(2L, TrangThaiDangKy.DA_DANG_KY))
+        when(dangKyHocPhanRepository.findAllActiveOfStudent(2L, RegistrationStatus.DA_DANG_KY))
                 .thenReturn(List.of(dkSv2));
         when(diemRepository.findByDangKyIdIn(any())).thenReturn(List.of(diemSv2));
 
@@ -302,8 +302,8 @@ class StudentTranscriptPdfServiceTest {
         }
     }
 
-    private HocKy taoHocKy(Long id, String ten, String namHoc, LocalDate ngayBatDau) {
-        HocKy hocKy = new HocKy();
+    private Semester taoHocKy(Long id, String ten, String namHoc, LocalDate ngayBatDau) {
+        Semester hocKy = new Semester();
         hocKy.setId(id);
         hocKy.setTen(ten);
         hocKy.setNamHoc(namHoc);
@@ -311,8 +311,8 @@ class StudentTranscriptPdfServiceTest {
         return hocKy;
     }
 
-    private MonHoc taoMon(Long id, String ma, String ten, int soTinChi) {
-        MonHoc mon = new MonHoc();
+    private Subject taoMon(Long id, String ma, String ten, int soTinChi) {
+        Subject mon = new Subject();
         mon.setId(id);
         mon.setMa(ma);
         mon.setTen(ten);
@@ -320,8 +320,8 @@ class StudentTranscriptPdfServiceTest {
         return mon;
     }
 
-    private LopHocPhan taoLop(Long id, String ma, MonHoc mon, HocKy hocKy) {
-        LopHocPhan lop = new LopHocPhan();
+    private CourseClass taoLop(Long id, String ma, Subject mon, Semester hocKy) {
+        CourseClass lop = new CourseClass();
         lop.setId(id);
         lop.setMa(ma);
         lop.setMonHoc(mon);
@@ -330,18 +330,18 @@ class StudentTranscriptPdfServiceTest {
         return lop;
     }
 
-    private DangKyHocPhan taoDangKy(Long id, LopHocPhan lop, LocalDateTime thoiGian) {
-        DangKyHocPhan dk = new DangKyHocPhan();
+    private CourseRegistration taoDangKy(Long id, CourseClass lop, LocalDateTime thoiGian) {
+        CourseRegistration dk = new CourseRegistration();
         dk.setId(id);
         dk.setSinhVien(sinhVien);
         dk.setLopHocPhan(lop);
         dk.setThoiGianDangKy(thoiGian);
-        dk.setTrangThai(TrangThaiDangKy.DA_DANG_KY);
+        dk.setTrangThai(RegistrationStatus.DA_DANG_KY);
         return dk;
     }
 
-    private Diem taoDiem(DangKyHocPhan dk, Double qt, Double ck, Double tk) {
-        Diem diem = new Diem();
+    private Grade taoDiem(CourseRegistration dk, Double qt, Double ck, Double tk) {
+        Grade diem = new Grade();
         diem.setDangKy(dk);
         diem.setDiemQuaTrinh(qt);
         diem.setDiemCuoiKy(ck);

@@ -3,11 +3,11 @@ package com.edu.registration.service;
 import com.edu.registration.dto.AttendanceAlertDtos;
 import com.edu.registration.dto.AttendanceDtos;
 import com.edu.registration.entity.AuditLog;
-import com.edu.registration.entity.TrangThaiCanhBao;
-import com.edu.registration.entity.TrangThaiDiemDanh;
+import com.edu.registration.entity.AlertStatus;
+import com.edu.registration.entity.AttendanceStatus;
 import com.edu.registration.repository.AuditLogRepository;
-import com.edu.registration.repository.CanhBaoDiemDanhRepository;
-import com.edu.registration.repository.ThongBaoRepository;
+import com.edu.registration.repository.AttendanceAlertRepository;
+import com.edu.registration.repository.NotificationRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -45,10 +45,10 @@ class AttendanceAlertIntegrationTest {
     private ObjectMapper objectMapper;
 
     @Autowired
-    private CanhBaoDiemDanhRepository canhBaoDiemDanhRepository;
+    private AttendanceAlertRepository canhBaoDiemDanhRepository;
 
     @Autowired
-    private ThongBaoRepository thongBaoRepository;
+    private NotificationRepository thongBaoRepository;
 
     @Autowired
     private AuditLogRepository auditLogRepository;
@@ -154,7 +154,7 @@ class AttendanceAlertIntegrationTest {
                         .header("Authorization", "Bearer " + tokenGv01)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new AttendanceDtos.LuuDiemDanhRequest(
-                                List.of(new AttendanceDtos.DiemDanhRecordRequest(svId, TrangThaiDiemDanh.VANG, "Vắng buổi 1")),
+                                List.of(new AttendanceDtos.DiemDanhRecordRequest(svId, AttendanceStatus.VANG, "Vắng buổi 1")),
                                 false))))
                 .andExpect(status().isOk());
 
@@ -186,7 +186,7 @@ class AttendanceAlertIntegrationTest {
                         .header("Authorization", "Bearer " + tokenGv01)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new AttendanceDtos.LuuDiemDanhRequest(
-                                List.of(new AttendanceDtos.DiemDanhRecordRequest(svId, TrangThaiDiemDanh.VANG, "Vắng buổi 1")),
+                                List.of(new AttendanceDtos.DiemDanhRecordRequest(svId, AttendanceStatus.VANG, "Vắng buổi 1")),
                                 false))))
                 .andExpect(status().isOk());
         assertEquals(alertRowCountBefore, canhBaoDiemDanhRepository.count(), "Alert rows must not duplicate on idempotent save");
@@ -205,7 +205,7 @@ class AttendanceAlertIntegrationTest {
                         .header("Authorization", "Bearer " + tokenGv01)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new AttendanceDtos.LuuDiemDanhRequest(
-                                List.of(new AttendanceDtos.DiemDanhRecordRequest(svId, TrangThaiDiemDanh.VANG, "Vắng buổi 2")),
+                                List.of(new AttendanceDtos.DiemDanhRecordRequest(svId, AttendanceStatus.VANG, "Vắng buổi 2")),
                                 false))))
                 .andExpect(status().isOk());
 
@@ -232,7 +232,7 @@ class AttendanceAlertIntegrationTest {
                         .header("Authorization", "Bearer " + tokenGv01)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new AttendanceDtos.LuuDiemDanhRequest(
-                                List.of(new AttendanceDtos.DiemDanhRecordRequest(svId, TrangThaiDiemDanh.CO_MAT, "Đã đi học bù")),
+                                List.of(new AttendanceDtos.DiemDanhRecordRequest(svId, AttendanceStatus.CO_MAT, "Đã đi học bù")),
                                 false))))
                 .andExpect(status().isOk());
 

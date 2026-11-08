@@ -1,31 +1,31 @@
 package com.edu.registration.config;
 
-import com.edu.registration.entity.DangKyHocPhan;
-import com.edu.registration.entity.Diem;
-import com.edu.registration.entity.GiangVien;
-import com.edu.registration.entity.HocKy;
-import com.edu.registration.entity.Khoa;
-import com.edu.registration.entity.LopHanhChinh;
-import com.edu.registration.entity.LopHocPhan;
-import com.edu.registration.entity.MonHoc;
-import com.edu.registration.entity.MonTienQuyet;
-import com.edu.registration.entity.Nganh;
+import com.edu.registration.entity.CourseRegistration;
+import com.edu.registration.entity.Grade;
+import com.edu.registration.entity.Lecturer;
+import com.edu.registration.entity.Semester;
+import com.edu.registration.entity.Faculty;
+import com.edu.registration.entity.AdministrativeClass;
+import com.edu.registration.entity.CourseClass;
+import com.edu.registration.entity.Subject;
+import com.edu.registration.entity.PrerequisiteSubject;
+import com.edu.registration.entity.Major;
 import com.edu.registration.entity.Role;
-import com.edu.registration.entity.SinhVien;
-import com.edu.registration.entity.TrangThaiBangDiem;
-import com.edu.registration.entity.TrangThaiDangKy;
+import com.edu.registration.entity.Student;
+import com.edu.registration.entity.GradeSheetStatus;
+import com.edu.registration.entity.RegistrationStatus;
 import com.edu.registration.entity.User;
-import com.edu.registration.repository.DangKyHocPhanRepository;
-import com.edu.registration.repository.DiemRepository;
-import com.edu.registration.repository.GiangVienRepository;
-import com.edu.registration.repository.HocKyRepository;
-import com.edu.registration.repository.KhoaRepository;
-import com.edu.registration.repository.LopHanhChinhRepository;
-import com.edu.registration.repository.LopHocPhanRepository;
-import com.edu.registration.repository.MonHocRepository;
-import com.edu.registration.repository.MonTienQuyetRepository;
-import com.edu.registration.repository.NganhRepository;
-import com.edu.registration.repository.SinhVienRepository;
+import com.edu.registration.repository.CourseRegistrationRepository;
+import com.edu.registration.repository.GradeRepository;
+import com.edu.registration.repository.LecturerRepository;
+import com.edu.registration.repository.SemesterRepository;
+import com.edu.registration.repository.FacultyRepository;
+import com.edu.registration.repository.AdministrativeClassRepository;
+import com.edu.registration.repository.CourseClassRepository;
+import com.edu.registration.repository.SubjectRepository;
+import com.edu.registration.repository.PrerequisiteSubjectRepository;
+import com.edu.registration.repository.MajorRepository;
+import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,17 +53,17 @@ public class DataSeeder implements CommandLineRunner {
     private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);
 
     private final UserRepository userRepository;
-    private final KhoaRepository khoaRepository;
-    private final NganhRepository nganhRepository;
-    private final LopHanhChinhRepository lopHanhChinhRepository;
-    private final MonHocRepository monHocRepository;
-    private final MonTienQuyetRepository monTienQuyetRepository;
-    private final HocKyRepository hocKyRepository;
-    private final GiangVienRepository giangVienRepository;
-    private final SinhVienRepository sinhVienRepository;
-    private final LopHocPhanRepository lopHocPhanRepository;
-    private final DangKyHocPhanRepository dangKyHocPhanRepository;
-    private final DiemRepository diemRepository;
+    private final FacultyRepository khoaRepository;
+    private final MajorRepository nganhRepository;
+    private final AdministrativeClassRepository lopHanhChinhRepository;
+    private final SubjectRepository monHocRepository;
+    private final PrerequisiteSubjectRepository monTienQuyetRepository;
+    private final SemesterRepository hocKyRepository;
+    private final LecturerRepository giangVienRepository;
+    private final StudentRepository sinhVienRepository;
+    private final CourseClassRepository lopHocPhanRepository;
+    private final CourseRegistrationRepository dangKyHocPhanRepository;
+    private final GradeRepository diemRepository;
     private final PasswordEncoder passwordEncoder;
 
     private static final String[] LAST_NAMES = {
@@ -98,12 +98,12 @@ public class DataSeeder implements CommandLineRunner {
             "PGS.TS.", "TS.", "ThS.", "TS.", "ThS.", "PGS.TS.", "TS.", "ThS."
     };
 
-    public DataSeeder(UserRepository userRepository, KhoaRepository khoaRepository,
-                      NganhRepository nganhRepository, LopHanhChinhRepository lopHanhChinhRepository,
-                      MonHocRepository monHocRepository, MonTienQuyetRepository monTienQuyetRepository,
-                      HocKyRepository hocKyRepository, GiangVienRepository giangVienRepository,
-                      SinhVienRepository sinhVienRepository, LopHocPhanRepository lopHocPhanRepository,
-                      DangKyHocPhanRepository dangKyHocPhanRepository, DiemRepository diemRepository,
+    public DataSeeder(UserRepository userRepository, FacultyRepository khoaRepository,
+                      MajorRepository nganhRepository, AdministrativeClassRepository lopHanhChinhRepository,
+                      SubjectRepository monHocRepository, PrerequisiteSubjectRepository monTienQuyetRepository,
+                      SemesterRepository hocKyRepository, LecturerRepository giangVienRepository,
+                      StudentRepository sinhVienRepository, CourseClassRepository lopHocPhanRepository,
+                      CourseRegistrationRepository dangKyHocPhanRepository, GradeRepository diemRepository,
                       PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.khoaRepository = khoaRepository;
@@ -147,40 +147,40 @@ public class DataSeeder implements CommandLineRunner {
         String encodedDefaultPassword = passwordEncoder.encode("123456");
         String encodedAdminPassword = passwordEncoder.encode("admin123");
 
-        // 1. Tạo 4 Khoa
-        Khoa cntt = taoKhoa("CNTT", "Công nghệ thông tin");
-        Khoa kt = taoKhoa("KT", "Kinh tế & Quản lý");
-        Khoa dt = taoKhoa("DT", "Điện tử - Viễn thông");
-        Khoa nn = taoKhoa("NN", "Ngoại ngữ ứng dụng");
+        // 1. Tạo 4 Faculty
+        Faculty cntt = taoKhoa("CNTT", "Công nghệ thông tin");
+        Faculty kt = taoKhoa("KT", "Kinh tế & Quản lý");
+        Faculty dt = taoKhoa("DT", "Điện tử - Viễn thông");
+        Faculty nn = taoKhoa("NN", "Ngoại ngữ ứng dụng");
 
         // 2. Tạo 8 Ngành
-        Nganh cnpm = taoNganh("CNPM", "Kỹ thuật phần mềm", cntt);
-        Nganh httt = taoNganh("HTTT", "Hệ thống thông tin", cntt);
-        Nganh khmt = taoNganh("KHMT", "Khoa học máy tính", cntt);
-        Nganh attt = taoNganh("ATTT", "An toàn thông tin", cntt);
-        Nganh qtkd = taoNganh("QTKD", "Quản trị kinh doanh", kt);
-        Nganh tcnh = taoNganh("TCNH", "Tài chính - Ngân hàng", kt);
-        Nganh dtvt = taoNganh("DTVT", "Kỹ thuật Điện tử Viễn thông", dt);
-        Nganh nna = taoNganh("NNA", "Ngôn ngữ Anh thương mại", nn);
+        Major cnpm = taoNganh("CNPM", "Kỹ thuật phần mềm", cntt);
+        Major httt = taoNganh("HTTT", "Hệ thống thông tin", cntt);
+        Major khmt = taoNganh("KHMT", "Khoa học máy tính", cntt);
+        Major attt = taoNganh("ATTT", "An toàn thông tin", cntt);
+        Major qtkd = taoNganh("QTKD", "Quản trị kinh doanh", kt);
+        Major tcnh = taoNganh("TCNH", "Tài chính - Ngân hàng", kt);
+        Major dtvt = taoNganh("DTVT", "Kỹ thuật Điện tử Viễn thông", dt);
+        Major nna = taoNganh("NNA", "Ngôn ngữ Anh thương mại", nn);
 
         // 3. Tạo 10 Lớp hành chính
-        LopHanhChinh cnpm01 = taoLop("CNPM01", "Kỹ thuật phần mềm 01", cnpm);
-        LopHanhChinh cnpm02 = taoLop("CNPM02", "Kỹ thuật phần mềm 02", cnpm);
-        LopHanhChinh httt01 = taoLop("HTTT01", "Hệ thống thông tin 01", httt);
-        LopHanhChinh httt02 = taoLop("HTTT02", "Hệ thống thông tin 02", httt);
-        LopHanhChinh khmt01 = taoLop("KHMT01", "Khoa học máy tính 01", khmt);
-        LopHanhChinh attt01 = taoLop("ATTT01", "An toàn thông tin 01", attt);
-        LopHanhChinh qtkd01 = taoLop("QTKD01", "Quản trị kinh doanh 01", qtkd);
-        LopHanhChinh tcnh01 = taoLop("TCNH01", "Tài chính - Ngân hàng 01", tcnh);
-        LopHanhChinh dtvt01 = taoLop("DTVT01", "Điện tử Viễn thông 01", dtvt);
-        LopHanhChinh nna01 = taoLop("NNA01", "Ngôn ngữ Anh 01", nna);
+        AdministrativeClass cnpm01 = taoLop("CNPM01", "Kỹ thuật phần mềm 01", cnpm);
+        AdministrativeClass cnpm02 = taoLop("CNPM02", "Kỹ thuật phần mềm 02", cnpm);
+        AdministrativeClass httt01 = taoLop("HTTT01", "Hệ thống thông tin 01", httt);
+        AdministrativeClass httt02 = taoLop("HTTT02", "Hệ thống thông tin 02", httt);
+        AdministrativeClass khmt01 = taoLop("KHMT01", "Khoa học máy tính 01", khmt);
+        AdministrativeClass attt01 = taoLop("ATTT01", "An toàn thông tin 01", attt);
+        AdministrativeClass qtkd01 = taoLop("QTKD01", "Quản trị kinh doanh 01", qtkd);
+        AdministrativeClass tcnh01 = taoLop("TCNH01", "Tài chính - Ngân hàng 01", tcnh);
+        AdministrativeClass dtvt01 = taoLop("DTVT01", "Điện tử Viễn thông 01", dtvt);
+        AdministrativeClass nna01 = taoLop("NNA01", "Ngôn ngữ Anh 01", nna);
 
-        LopHanhChinh[] danhSachLopHanhChinh = {
+        AdministrativeClass[] danhSachLopHanhChinh = {
                 cnpm01, cnpm02, httt01, httt02, khmt01, attt01, qtkd01, tcnh01, dtvt01, nna01
         };
 
         // 4. Tạo 50 Môn học chia đều 8 kỳ
-        Map<String, MonHoc> monMap = new HashMap<>();
+        Map<String, Subject> monMap = new HashMap<>();
 
         // Kỳ 1 (6 môn)
         monMap.put("INT101", taoMon("INT101", "Lập trình cơ bản", 3, cntt));
@@ -281,13 +281,13 @@ public class DataSeeder implements CommandLineRunner {
 
         // 5. Tạo Học kỳ
         LocalDate homNay = LocalDate.now();
-        HocKy hocKyCu2 = taoHocKy("Học kỳ 1", "2025-2026",
+        Semester hocKyCu2 = taoHocKy("Học kỳ 1", "2025-2026",
                 homNay.minusMonths(14), homNay.minusMonths(9),
                 homNay.minusMonths(15), homNay.minusMonths(14).plusDays(20), 12, 24);
-        HocKy hocKyCu = taoHocKy("Học kỳ 2", "2025-2026",
+        Semester hocKyCu = taoHocKy("Học kỳ 2", "2025-2026",
                 homNay.minusMonths(8), homNay.minusMonths(4),
                 homNay.minusMonths(9), homNay.minusMonths(8).plusDays(20), 12, 24);
-        HocKy hocKyHienTai = taoHocKy("Học kỳ 1", "2026-2027",
+        Semester hocKyHienTai = taoHocKy("Học kỳ 1", "2026-2027",
                 homNay.minusDays(14), homNay.plusDays(90),
                 homNay.minusDays(5), homNay.plusDays(20), 12, 24);
         taoHocKy("Học kỳ 2", "2024-2025",
@@ -302,8 +302,8 @@ public class DataSeeder implements CommandLineRunner {
         taoUserWithHash("admin", encodedAdminPassword, Role.QUAN_TRI);
 
         // 7. Tạo 50 Giảng viên với tên người thật và học hàm TS, ThS, PGS.TS
-        List<GiangVien> giangVienList = new ArrayList<>();
-        Khoa[] khoaArr = {cntt, kt, dt, nn};
+        List<Lecturer> giangVienList = new ArrayList<>();
+        Faculty[] khoaArr = {cntt, kt, dt, nn};
 
         // Giữ 3 giảng viên cố định tương thích test
         giangVienList.add(taoGiangVienWithHash("gv01", "GV01", "TS. Nguyễn Văn An", "an.nv@university.edu.vn", "0911009871", cntt, encodedDefaultPassword));
@@ -323,17 +323,17 @@ public class DataSeeder implements CommandLineRunner {
             String cleanHoDem = stripAccents(ho.substring(0, 1) + dem.substring(0, 1)).toLowerCase();
             String email = cleanTen + "." + cleanHoDem + i + "@university.edu.vn";
             String sdt = generatePhone(i);
-            Khoa assignedKhoa = khoaArr[(i - 1) % khoaArr.length];
+            Faculty assignedKhoa = khoaArr[(i - 1) % khoaArr.length];
 
             giangVienList.add(taoGiangVienWithHash(username, ma, hoTen, email, sdt, assignedKhoa, encodedDefaultPassword));
         }
 
-        GiangVien gv01 = giangVienList.get(0);
-        GiangVien gv02 = giangVienList.get(1);
-        GiangVien gv03 = giangVienList.get(2);
+        Lecturer gv01 = giangVienList.get(0);
+        Lecturer gv02 = giangVienList.get(1);
+        Lecturer gv03 = giangVienList.get(2);
 
         // 8. Tạo 500 Sinh viên với tên người thật
-        List<SinhVien> sinhVienList = new ArrayList<>();
+        List<Student> sinhVienList = new ArrayList<>();
 
         // Giữ 5 sinh viên cố định tương thích test
         sinhVienList.add(taoSinhVienWithHash("sv01", "SV001", "Trần Minh Anh", "anh.tm@student.edu.vn", "0901987100", cntt, cnpm, cnpm01, encodedDefaultPassword));
@@ -355,53 +355,53 @@ public class DataSeeder implements CommandLineRunner {
             String email = cleanTen + "." + cleanHoDem + i + "@student.edu.vn";
             String sdt = generatePhone(i + 100);
 
-            LopHanhChinh assignedLop = danhSachLopHanhChinh[(i - 1) % danhSachLopHanhChinh.length];
-            Nganh assignedNganh = assignedLop.getNganh();
-            Khoa assignedKhoa = assignedNganh.getKhoa();
+            AdministrativeClass assignedLop = danhSachLopHanhChinh[(i - 1) % danhSachLopHanhChinh.length];
+            Major assignedNganh = assignedLop.getNganh();
+            Faculty assignedKhoa = assignedNganh.getKhoa();
 
             sinhVienList.add(taoSinhVienWithHash(username, ma, hoTen, email, sdt, assignedKhoa, assignedNganh, assignedLop, encodedDefaultPassword));
         }
 
-        SinhVien sv01 = sinhVienList.get(0);
-        SinhVien sv02 = sinhVienList.get(1);
-        SinhVien sv03 = sinhVienList.get(2);
-        SinhVien sv04 = sinhVienList.get(3);
-        SinhVien sv05 = sinhVienList.get(4);
+        Student sv01 = sinhVienList.get(0);
+        Student sv02 = sinhVienList.get(1);
+        Student sv03 = sinhVienList.get(2);
+        Student sv04 = sinhVienList.get(3);
+        Student sv05 = sinhVienList.get(4);
 
         // 9. Tạo các Lớp học phần
         // Lớp quá khứ
-        LopHocPhan lopMatCu = taoLopHocPhan("MAT101.01-HK1", monMap.get("MAT101"), hocKyCu2, gv02, "A105", 4, 7, 3, 60);
-        LopHocPhan lopEcoCu = taoLopHocPhan("ECO101.01-HK1", monMap.get("ECO101"), hocKyCu2, gv03, "C301", 3, 4, 3, 60);
-        LopHocPhan lopCu = taoLopHocPhan("INT101.01-HK2", monMap.get("INT101"), hocKyCu, gv01, "A101", 2, 1, 3, 60);
-        LopHocPhan lopMat102Cu = taoLopHocPhan("MAT102.01-HK1", monMap.get("MAT102"), hocKyCu2, giangVienList.get(3), "A102", 5, 1, 3, 60);
-        LopHocPhan lopPhi101Cu = taoLopHocPhan("PHI101.01-HK1", monMap.get("PHI101"), hocKyCu2, giangVienList.get(4), "C302", 6, 4, 3, 60);
-        LopHocPhan lopEng101Cu = taoLopHocPhan("ENG101.01-HK1", monMap.get("ENG101"), hocKyCu2, giangVienList.get(5), "B201", 3, 7, 2, 60);
-        LopHocPhan lopGen101Cu = taoLopHocPhan("GEN101.01-HK1", monMap.get("GEN101"), hocKyCu2, giangVienList.get(6), "C303", 7, 1, 2, 60);
+        CourseClass lopMatCu = taoLopHocPhan("MAT101.01-HK1", monMap.get("MAT101"), hocKyCu2, gv02, "A105", 4, 7, 3, 60);
+        CourseClass lopEcoCu = taoLopHocPhan("ECO101.01-HK1", monMap.get("ECO101"), hocKyCu2, gv03, "C301", 3, 4, 3, 60);
+        CourseClass lopCu = taoLopHocPhan("INT101.01-HK2", monMap.get("INT101"), hocKyCu, gv01, "A101", 2, 1, 3, 60);
+        CourseClass lopMat102Cu = taoLopHocPhan("MAT102.01-HK1", monMap.get("MAT102"), hocKyCu2, giangVienList.get(3), "A102", 5, 1, 3, 60);
+        CourseClass lopPhi101Cu = taoLopHocPhan("PHI101.01-HK1", monMap.get("PHI101"), hocKyCu2, giangVienList.get(4), "C302", 6, 4, 3, 60);
+        CourseClass lopEng101Cu = taoLopHocPhan("ENG101.01-HK1", monMap.get("ENG101"), hocKyCu2, giangVienList.get(5), "B201", 3, 7, 2, 60);
+        CourseClass lopGen101Cu = taoLopHocPhan("GEN101.01-HK1", monMap.get("GEN101"), hocKyCu2, giangVienList.get(6), "C303", 7, 1, 2, 60);
 
-        LopHocPhan lopInt201Cu = taoLopHocPhan("INT201.01-HK2", monMap.get("INT201"), hocKyCu, giangVienList.get(7), "A102", 3, 1, 3, 60);
-        LopHocPhan lopInt102Cu = taoLopHocPhan("INT102.01-HK2", monMap.get("INT102"), hocKyCu, giangVienList.get(8), "A103", 4, 1, 3, 60);
-        LopHocPhan lopMat103Cu = taoLopHocPhan("MAT103.01-HK2", monMap.get("MAT103"), hocKyCu, giangVienList.get(9), "A104", 5, 4, 3, 60);
-        LopHocPhan lopPhy101Cu = taoLopHocPhan("PHY101.01-HK2", monMap.get("PHY101"), hocKyCu, giangVienList.get(10), "D401", 6, 1, 3, 60);
-        LopHocPhan lopPhi102Cu = taoLopHocPhan("PHI102.01-HK2", monMap.get("PHI102"), hocKyCu, giangVienList.get(11), "C301", 2, 7, 2, 60);
-        LopHocPhan lopEng102Cu = taoLopHocPhan("ENG102.01-HK2", monMap.get("ENG102"), hocKyCu, giangVienList.get(12), "B202", 4, 7, 2, 60);
+        CourseClass lopInt201Cu = taoLopHocPhan("INT201.01-HK2", monMap.get("INT201"), hocKyCu, giangVienList.get(7), "A102", 3, 1, 3, 60);
+        CourseClass lopInt102Cu = taoLopHocPhan("INT102.01-HK2", monMap.get("INT102"), hocKyCu, giangVienList.get(8), "A103", 4, 1, 3, 60);
+        CourseClass lopMat103Cu = taoLopHocPhan("MAT103.01-HK2", monMap.get("MAT103"), hocKyCu, giangVienList.get(9), "A104", 5, 4, 3, 60);
+        CourseClass lopPhy101Cu = taoLopHocPhan("PHY101.01-HK2", monMap.get("PHY101"), hocKyCu, giangVienList.get(10), "D401", 6, 1, 3, 60);
+        CourseClass lopPhi102Cu = taoLopHocPhan("PHI102.01-HK2", monMap.get("PHI102"), hocKyCu, giangVienList.get(11), "C301", 2, 7, 2, 60);
+        CourseClass lopEng102Cu = taoLopHocPhan("ENG102.01-HK2", monMap.get("ENG102"), hocKyCu, giangVienList.get(12), "B202", 4, 7, 2, 60);
 
-        LopHocPhan[] pastClasses = {
+        CourseClass[] pastClasses = {
                 lopMatCu, lopEcoCu, lopCu, lopMat102Cu, lopPhi101Cu, lopEng101Cu, lopGen101Cu,
                 lopInt201Cu, lopInt102Cu, lopMat103Cu, lopPhy101Cu, lopPhi102Cu, lopEng102Cu
         };
 
         // Lớp học phần kỳ hiện tại
-        LopHocPhan int20101 = taoLopHocPhan("INT201.01", monMap.get("INT201"), hocKyHienTai, gv01, "A101", 2, 1, 3, 60);
-        LopHocPhan int20102 = taoLopHocPhan("INT201.02", monMap.get("INT201"), hocKyHienTai, gv02, "A102", 4, 4, 3, 60);
+        CourseClass int20101 = taoLopHocPhan("INT201.01", monMap.get("INT201"), hocKyHienTai, gv01, "A101", 2, 1, 3, 60);
+        CourseClass int20102 = taoLopHocPhan("INT201.02", monMap.get("INT201"), hocKyHienTai, gv02, "A102", 4, 4, 3, 60);
         taoLopHocPhan("INT301.01", monMap.get("INT301"), hocKyHienTai, gv01, "B201", 3, 1, 3, 60);
         taoLopHocPhan("INT302.01", monMap.get("INT302"), hocKyHienTai, gv02, "A103", 5, 1, 3, 60);
-        LopHocPhan int30301 = taoLopHocPhan("INT303.01", monMap.get("INT303"), hocKyHienTai, gv01, "B202", 6, 4, 3, 60);
+        CourseClass int30301 = taoLopHocPhan("INT303.01", monMap.get("INT303"), hocKyHienTai, gv01, "B202", 6, 4, 3, 60);
         taoLopHocPhan("INT304.01", monMap.get("INT304"), hocKyHienTai, gv02, "A104", 7, 1, 3, 60);
-        LopHocPhan ecoLop = taoLopHocPhan("ECO101.01", monMap.get("ECO101"), hocKyHienTai, gv03, "C301", 3, 4, 3, 60);
-        LopHocPhan matLop = taoLopHocPhan("MAT101.01", monMap.get("MAT101"), hocKyHienTai, gv02, "A105", 4, 7, 3, 60);
+        CourseClass ecoLop = taoLopHocPhan("ECO101.01", monMap.get("ECO101"), hocKyHienTai, gv03, "C301", 3, 4, 3, 60);
+        CourseClass matLop = taoLopHocPhan("MAT101.01", monMap.get("MAT101"), hocKyHienTai, gv02, "A105", 4, 7, 3, 60);
 
         // Mở thêm các lớp cho các giảng viên khác phụ trách
-        List<LopHocPhan> currentClasses = new ArrayList<>();
+        List<CourseClass> currentClasses = new ArrayList<>();
         currentClasses.add(int20101);
         currentClasses.add(int20102);
         currentClasses.add(int30301);
@@ -409,14 +409,14 @@ public class DataSeeder implements CommandLineRunner {
         currentClasses.add(matLop);
 
         for (int i = 13; i < 50; i++) {
-            GiangVien gv = giangVienList.get(i);
+            Lecturer gv = giangVienList.get(i);
             String[] subjectCodes = {"INT202", "INT203", "MAT201", "SEC301", "INT401", "INT403", "CLD301", "INT404", "INT408"};
             String subCode = subjectCodes[i % subjectCodes.length];
-            MonHoc mon = monMap.get(subCode);
+            Subject mon = monMap.get(subCode);
             if (mon != null) {
                 String maLop = mon.getMa() + "." + String.format("%02d", (i % 3) + 1);
                 if (!lopHocPhanRepository.existsByMa(maLop)) {
-                    LopHocPhan lhp = taoLopHocPhan(maLop, mon, hocKyHienTai, gv, "P" + (100 + i), (i % 6) + 2, ((i % 3) * 3) + 1, 3, 60);
+                    CourseClass lhp = taoLopHocPhan(maLop, mon, hocKyHienTai, gv, "P" + (100 + i), (i % 6) + 2, ((i % 3) * 3) + 1, 3, 60);
                     currentClasses.add(lhp);
                 }
             }
@@ -453,7 +453,7 @@ public class DataSeeder implements CommandLineRunner {
 
         // sv06..sv20 giữ nguyên tương thích test
         for (int i = 6; i <= 20; i++) {
-            SinhVien sv = sinhVienList.get(i - 1);
+            Student sv = sinhVienList.get(i - 1);
             dangKyVoiDiem(sv, lopCu, 6.5 + (i % 3), 7.0 + (i % 2));
             dangKyHienTai(sv, i % 2 == 0 ? int20102 : int20101);
             dangKyHienTai(sv, int30301);
@@ -463,7 +463,7 @@ public class DataSeeder implements CommandLineRunner {
 
         // sv21..sv500: Phân bố GPA đầy đủ từ Xuất sắc, Giỏi, Khá, Trung bình đến Yếu / Học lại
         // Chỉ đăng ký vào các lớp chung khác, tránh làm thay đổi sĩ số các lớp test (int30301, int20101, int20102)
-        List<LopHocPhan> generalCurrentClasses = new ArrayList<>();
+        List<CourseClass> generalCurrentClasses = new ArrayList<>();
         for (int j = 5; j < currentClasses.size(); j++) {
             generalCurrentClasses.add(currentClasses.get(j));
         }
@@ -473,7 +473,7 @@ public class DataSeeder implements CommandLineRunner {
         }
 
         for (int i = 21; i <= 500; i++) {
-            SinhVien sv = sinhVienList.get(i - 1);
+            Student sv = sinhVienList.get(i - 1);
             int tier = i % 100;
             double baseScore;
 
@@ -495,8 +495,8 @@ public class DataSeeder implements CommandLineRunner {
             }
 
             // Gán 2 lớp quá khứ có điểm
-            LopHocPhan lopPast1 = pastClasses[i % 7];
-            LopHocPhan lopPast2 = pastClasses[7 + (i % 6)];
+            CourseClass lopPast1 = pastClasses[i % 7];
+            CourseClass lopPast2 = pastClasses[7 + (i % 6)];
 
             double qt1 = Math.min(10.0, Math.max(1.0, Math.round((baseScore + ((i % 5) - 2) * 0.4) * 10.0) / 10.0));
             double ck1 = Math.min(10.0, Math.max(1.0, Math.round((baseScore + ((i % 7) - 3) * 0.3) * 10.0) / 10.0));
@@ -507,10 +507,10 @@ public class DataSeeder implements CommandLineRunner {
             dangKyVoiDiem(sv, lopPast2, qt2, ck2);
 
             // Đăng ký học kỳ hiện tại vào các lớp mở rộng
-            LopHocPhan curLop1 = generalCurrentClasses.get(i % generalCurrentClasses.size());
+            CourseClass curLop1 = generalCurrentClasses.get(i % generalCurrentClasses.size());
             dangKyHienTai(sv, curLop1);
             if (generalCurrentClasses.size() > 1 && i % 3 == 0) {
-                LopHocPhan curLop2 = generalCurrentClasses.get((i + 3) % generalCurrentClasses.size());
+                CourseClass curLop2 = generalCurrentClasses.get((i + 3) % generalCurrentClasses.size());
                 if (!curLop2.getId().equals(curLop1.getId()) && !curLop2.getMonHoc().getId().equals(curLop1.getMonHoc().getId())) {
                     dangKyHienTai(sv, curLop2);
                 }
@@ -529,31 +529,31 @@ public class DataSeeder implements CommandLineRunner {
         return userRepository.save(user);
     }
 
-    private Khoa taoKhoa(String ma, String ten) {
-        Khoa khoa = new Khoa();
+    private Faculty taoKhoa(String ma, String ten) {
+        Faculty khoa = new Faculty();
         khoa.setMa(ma);
         khoa.setTen(ten);
         return khoaRepository.save(khoa);
     }
 
-    private Nganh taoNganh(String ma, String ten, Khoa khoa) {
-        Nganh nganh = new Nganh();
+    private Major taoNganh(String ma, String ten, Faculty khoa) {
+        Major nganh = new Major();
         nganh.setMa(ma);
         nganh.setTen(ten);
         nganh.setKhoa(khoa);
         return nganhRepository.save(nganh);
     }
 
-    private LopHanhChinh taoLop(String ma, String ten, Nganh nganh) {
-        LopHanhChinh lop = new LopHanhChinh();
+    private AdministrativeClass taoLop(String ma, String ten, Major nganh) {
+        AdministrativeClass lop = new AdministrativeClass();
         lop.setMa(ma);
         lop.setTen(ten);
         lop.setNganh(nganh);
         return lopHanhChinhRepository.save(lop);
     }
 
-    private MonHoc taoMon(String ma, String ten, int soTinChi, Khoa khoa) {
-        MonHoc monHoc = new MonHoc();
+    private Subject taoMon(String ma, String ten, int soTinChi, Faculty khoa) {
+        Subject monHoc = new Subject();
         monHoc.setMa(ma);
         monHoc.setTen(ten);
         monHoc.setSoTinChi(soTinChi);
@@ -561,15 +561,15 @@ public class DataSeeder implements CommandLineRunner {
         return monHocRepository.save(monHoc);
     }
 
-    private void taoTienQuyet(MonHoc monHoc, MonHoc tienQuyet) {
+    private void taoTienQuyet(Subject monHoc, Subject tienQuyet) {
         if (monHoc != null && tienQuyet != null) {
-            monTienQuyetRepository.save(new MonTienQuyet(monHoc, tienQuyet));
+            monTienQuyetRepository.save(new PrerequisiteSubject(monHoc, tienQuyet));
         }
     }
 
-    private HocKy taoHocKy(String ten, String namHoc, LocalDate batDau, LocalDate ketThuc,
+    private Semester taoHocKy(String ten, String namHoc, LocalDate batDau, LocalDate ketThuc,
                            LocalDate dangKyTu, LocalDate dangKyDen, int min, int max) {
-        HocKy hocKy = new HocKy();
+        Semester hocKy = new Semester();
         hocKy.setTen(ten);
         hocKy.setNamHoc(namHoc);
         hocKy.setNgayBatDau(batDau);
@@ -581,9 +581,9 @@ public class DataSeeder implements CommandLineRunner {
         return hocKyRepository.save(hocKy);
     }
 
-    private GiangVien taoGiangVienWithHash(String username, String ma, String hoTen, String email, String sdt, Khoa khoa, String encodedPassword) {
+    private Lecturer taoGiangVienWithHash(String username, String ma, String hoTen, String email, String sdt, Faculty khoa, String encodedPassword) {
         User user = taoUserWithHash(username, encodedPassword, Role.GIANG_VIEN);
-        GiangVien giangVien = new GiangVien();
+        Lecturer giangVien = new Lecturer();
         giangVien.setUser(user);
         giangVien.setMa(ma);
         giangVien.setHoTen(hoTen);
@@ -593,10 +593,10 @@ public class DataSeeder implements CommandLineRunner {
         return giangVienRepository.save(giangVien);
     }
 
-    private SinhVien taoSinhVienWithHash(String username, String ma, String hoTen, String email, String sdt,
-                                         Khoa khoa, Nganh nganh, LopHanhChinh lop, String encodedPassword) {
+    private Student taoSinhVienWithHash(String username, String ma, String hoTen, String email, String sdt,
+                                         Faculty khoa, Major nganh, AdministrativeClass lop, String encodedPassword) {
         User user = taoUserWithHash(username, encodedPassword, Role.SINH_VIEN);
-        SinhVien sinhVien = new SinhVien();
+        Student sinhVien = new Student();
         sinhVien.setUser(user);
         sinhVien.setMa(ma);
         sinhVien.setHoTen(hoTen);
@@ -608,9 +608,9 @@ public class DataSeeder implements CommandLineRunner {
         return sinhVienRepository.save(sinhVien);
     }
 
-    private LopHocPhan taoLopHocPhan(String ma, MonHoc monHoc, HocKy hocKy, GiangVien giangVien,
+    private CourseClass taoLopHocPhan(String ma, Subject monHoc, Semester hocKy, Lecturer giangVien,
                                      String phong, int thu, int tietBatDau, int soTiet, int siSoToiDa) {
-        LopHocPhan lop = new LopHocPhan();
+        CourseClass lop = new CourseClass();
         lop.setMa(ma);
         lop.setMonHoc(monHoc);
         lop.setHocKy(hocKy);
@@ -621,36 +621,36 @@ public class DataSeeder implements CommandLineRunner {
         lop.setSoTiet(soTiet);
         lop.setSiSoToiDa(siSoToiDa);
         lop.setSiSoHienTai(0);
-        lop.setTrangThaiBangDiem(TrangThaiBangDiem.NHAP);
+        lop.setTrangThaiBangDiem(GradeSheetStatus.NHAP);
         return lopHocPhanRepository.save(lop);
     }
 
-    private void dangKyVoiDiem(SinhVien sinhVien, LopHocPhan lop, double quaTrinh, double cuoiKy) {
-        DangKyHocPhan dangKy = dangKyHienTai(sinhVien, lop);
+    private void dangKyVoiDiem(Student sinhVien, CourseClass lop, double quaTrinh, double cuoiKy) {
+        CourseRegistration dangKy = dangKyHienTai(sinhVien, lop);
         if (dangKy == null) return;
-        Diem diem = new Diem();
+        Grade diem = new Grade();
         diem.setDangKy(dangKy);
         diem.setDiemQuaTrinh(quaTrinh);
         diem.setDiemCuoiKy(cuoiKy);
         diem.setDiemTongKet(Math.round((0.4 * quaTrinh + 0.6 * cuoiKy) * 10.0) / 10.0);
         diemRepository.save(diem);
-        if (lop.getTrangThaiBangDiem() != TrangThaiBangDiem.DA_CONG_BO) {
-            lop.setTrangThaiBangDiem(TrangThaiBangDiem.DA_CONG_BO);
+        if (lop.getTrangThaiBangDiem() != GradeSheetStatus.DA_CONG_BO) {
+            lop.setTrangThaiBangDiem(GradeSheetStatus.DA_CONG_BO);
             lop.setDuyetBangDiemLuc(LocalDateTime.now().minusDays(30));
             lop.setCongBoBangDiemLuc(LocalDateTime.now().minusDays(25));
             lopHocPhanRepository.save(lop);
         }
     }
 
-    private DangKyHocPhan dangKyHienTai(SinhVien sinhVien, LopHocPhan lop) {
+    private CourseRegistration dangKyHienTai(Student sinhVien, CourseClass lop) {
         if (dangKyHocPhanRepository.findBySinhVienIdAndLopHocPhanId(sinhVien.getId(), lop.getId()).isPresent()) {
             return null;
         }
-        DangKyHocPhan dangKy = new DangKyHocPhan();
+        CourseRegistration dangKy = new CourseRegistration();
         dangKy.setSinhVien(sinhVien);
         dangKy.setLopHocPhan(lop);
         dangKy.setThoiGianDangKy(LocalDateTime.now());
-        dangKy.setTrangThai(TrangThaiDangKy.DA_DANG_KY);
+        dangKy.setTrangThai(RegistrationStatus.DA_DANG_KY);
         lop.setSiSoHienTai(lop.getSiSoHienTai() + 1);
         if (lop.getSiSoHienTai() > lop.getSiSoToiDa()) {
             lop.setSiSoToiDa(lop.getSiSoHienTai() + 10);
