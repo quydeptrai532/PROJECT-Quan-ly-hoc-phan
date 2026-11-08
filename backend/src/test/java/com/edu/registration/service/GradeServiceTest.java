@@ -1,23 +1,25 @@
 package com.edu.registration.service;
 
 import com.edu.registration.dto.RegistrationDtos;
-import com.edu.registration.dto.ValidationErrorDetail;
+import com.edu.registration.entity.CourseClass;
 import com.edu.registration.entity.CourseRegistration;
 import com.edu.registration.entity.Grade;
-import com.edu.registration.entity.Lecturer;
-import com.edu.registration.entity.Semester;
-import com.edu.registration.entity.CourseClass;
-import com.edu.registration.entity.Subject;
-import com.edu.registration.entity.Student;
+import com.edu.registration.entity.GradeSheetStateHistory;
 import com.edu.registration.entity.GradeSheetStatus;
+import com.edu.registration.entity.Lecturer;
 import com.edu.registration.entity.RegistrationStatus;
+import com.edu.registration.entity.Role;
+import com.edu.registration.entity.Semester;
+import com.edu.registration.entity.Student;
+import com.edu.registration.entity.Subject;
 import com.edu.registration.entity.User;
 import com.edu.registration.exception.ApiException;
+import com.edu.registration.repository.CourseClassRepository;
 import com.edu.registration.repository.CourseRegistrationRepository;
 import com.edu.registration.repository.GradeRepository;
+import com.edu.registration.repository.GradeSheetStateHistoryRepository;
 import com.edu.registration.repository.LecturerRepository;
 import com.edu.registration.repository.SemesterRepository;
-import com.edu.registration.repository.CourseClassRepository;
 import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.security.CurrentUser;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,6 +28,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -33,12 +36,14 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -60,6 +65,8 @@ class GradeServiceTest {
     @Mock
     private SemesterRepository hocKyRepository;
     @Mock
+    private GradeSheetStateHistoryRepository lichSuTrangThaiRepository;
+    @Mock
     private CurrentUser currentUser;
     @Mock
     private DtoMapper mapper;
@@ -69,6 +76,7 @@ class GradeServiceTest {
     private GradeService diemService;
 
     private User user;
+    private User adminUser;
     private Lecturer giangVien;
     private Student sinhVien;
     private CourseClass lopHocPhan;
@@ -76,13 +84,29 @@ class GradeServiceTest {
 
     @BeforeEach
     void setUp() {
-        diemService = new GradeService(dangKyHocPhanRepository, diemRepository, lopHocPhanRepository,
-                sinhVienRepository, giangVienRepository, hocKyRepository, currentUser, mapper,
-                null, thongBaoService);
+        diemService = new GradeService(
+                dangKyHocPhanRepository,
+                diemRepository,
+                lopHocPhanRepository,
+                sinhVienRepository,
+                giangVienRepository,
+                hocKyRepository,
+                currentUser,
+                mapper,
+                null,
+                thongBaoService,
+                lichSuTrangThaiRepository
+        );
 
         user = new User();
         user.setId(1L);
         user.setUsername("gv01");
+        user.setRole(Role.GIANG_VIEN);
+
+        adminUser = new User();
+        adminUser.setId(99L);
+        adminUser.setUsername("admin");
+        adminUser.setRole(Role.QUAN_TRI);
 
         giangVien = new Lecturer();
         giangVien.setId(7L);
@@ -122,13 +146,17 @@ class GradeServiceTest {
     }
 
     private void dangNhapVoiGiangVien() {
-        when(currentUser.get()).thenReturn(user);
-        when(giangVienRepository.findByUser(user)).thenReturn(Optional.of(giangVien));
+        lenient().when(currentUser.get()).thenReturn(user);
+        lenient().when(giangVienRepository.findByUser(user)).thenReturn(Optional.of(giangVien));
+    }
+
+    private void dangNhapVoiQuanTri() {
+        lenient().when(currentUser.get()).thenReturn(adminUser);
     }
 
     private void dangNhapVoiSinhVien() {
-        when(currentUser.get()).thenReturn(user);
-        when(sinhVienRepository.findByUser(user)).thenReturn(Optional.of(sinhVien));
+        lenient().when(currentUser.get()).thenReturn(user);
+        lenient().when(sinhVienRepository.findByUser(user)).thenReturn(Optional.of(sinhVien));
     }
 
     @Test
@@ -149,16 +177,17 @@ class GradeServiceTest {
 
     @Test
     void khongTheCongBoKhiBangDiemConNhapHoacChoDuyetVaChiThongBaoKhiDaDuyetSangDaCongBo() {
-        dangNhapVoiGiangVien();
         lopHocPhan.setTrangThaiBangDiem(GradeSheetStatus.NHAP);
         when(lopHocPhanRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(lopHocPhan));
 
-        // 1. Cannot publish while in NHAP
+        // 1. Admin cannot publish while in NHAP
+        dangNhapVoiQuanTri();
         ApiException draftEx = assertThrows(ApiException.class, () -> diemService.congBoBangDiem(100L));
         assertTrue(draftEx.getMessage().contains("cần được phê duyệt trước khi công bố"));
         verify(thongBaoService, never()).gradesPublished(any(), any(), anyInt(), any());
 
-        // 2. Submit for approval -> CHO_DUYET (no notification)
+        // 2. Lecturer submits for approval -> CHO_DUYET (no notification)
+        dangNhapVoiGiangVien();
         Grade diem = new Grade();
         diem.setDangKy(dangKy);
         diem.setDiemQuaTrinh(8.0);
@@ -170,23 +199,140 @@ class GradeServiceTest {
 
         RegistrationDtos.TrangThaiBangDiemDto submitted = diemService.guiDuyetBangDiem(100L);
         assertEquals("CHO_DUYET", submitted.trangThaiBangDiem());
+        assertFalse(submitted.choPhepSuaDiem());
         verify(thongBaoService, never()).gradesPublished(any(), any(), anyInt(), any());
 
-        // 3. Cannot publish while in CHO_DUYET
+        // 3. Admin cannot publish while in CHO_DUYET
+        dangNhapVoiQuanTri();
         ApiException pendingEx = assertThrows(ApiException.class, () -> diemService.congBoBangDiem(100L));
         assertTrue(pendingEx.getMessage().contains("cần được phê duyệt trước khi công bố"));
         verify(thongBaoService, never()).gradesPublished(any(), any(), anyInt(), any());
 
-        // 4. Approve -> DA_DUYET (still no notification)
+        // 4. Admin approves -> DA_DUYET (still no notification)
         RegistrationDtos.TrangThaiBangDiemDto approved = diemService.pheDuyetBangDiem(100L);
         assertEquals("DA_DUYET", approved.trangThaiBangDiem());
         verify(thongBaoService, never()).gradesPublished(any(), any(), anyInt(), any());
 
-        // 5. Publish after approval -> DA_CONG_BO (emits notification with version 1)
+        // 5. Admin publishes after approval -> DA_CONG_BO (emits notification with version 1)
         RegistrationDtos.TrangThaiBangDiemDto published = diemService.congBoBangDiem(100L);
         assertEquals("DA_CONG_BO", published.trangThaiBangDiem());
         assertEquals(1, published.phienBanCongBo());
+        assertTrue(published.daCongBo());
         verify(thongBaoService, times(1)).gradesPublished(eq(lopHocPhan), eq(List.of(dangKy)), eq(1), any());
+    }
+
+    @Test
+    void luongTraVeChinhSuaSuaDiemGuiDuyetLaiKhoaVaMoKhoaCoLyDoBatBuoc() {
+        when(lopHocPhanRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(lopHocPhan));
+        Grade diem = new Grade();
+        diem.setId(500L);
+        diem.setDangKy(dangKy);
+        diem.setDiemQuaTrinh(7.0);
+        diem.setDiemCuoiKy(8.0);
+        diem.setDiemTongKet(7.6);
+        when(dangKyHocPhanRepository.findByLopHocPhan(100L, RegistrationStatus.DA_DANG_KY))
+                .thenReturn(List.of(dangKy));
+        when(diemRepository.findByDangKyIdIn(List.of(300L))).thenReturn(List.of(diem));
+        when(dangKyHocPhanRepository.findById(300L)).thenReturn(Optional.of(dangKy));
+        when(diemRepository.findByDangKyId(300L)).thenReturn(Optional.of(diem));
+        when(diemRepository.save(any(Grade.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // 1. Giảng viên gửi duyệt từ NHAP -> CHO_DUYET
+        dangNhapVoiGiangVien();
+        RegistrationDtos.TrangThaiBangDiemDto s1 = diemService.guiDuyetBangDiem(100L);
+        assertEquals("CHO_DUYET", s1.trangThaiBangDiem());
+        assertEquals(1L, s1.nguoiGuiDuyetId());
+
+        // Khi đang CHO_DUYET, giảng viên không được sửa điểm
+        ApiException editWhilePending = assertThrows(ApiException.class, () ->
+                diemService.nhapDiem(300L, new RegistrationDtos.NhapDiemRequest(8.5, 9.0)));
+        assertEquals(HttpStatus.CONFLICT, editWhilePending.getStatus());
+
+        // 2. Phòng Đào tạo (QUAN_TRI) trả về không có lý do -> 400 Bad Request
+        dangNhapVoiQuanTri();
+        ApiException missingReason = assertThrows(ApiException.class, () ->
+                diemService.traVeBangDiem(100L, "   "));
+        assertEquals(HttpStatus.BAD_REQUEST, missingReason.getStatus());
+
+        // Trả về có lý do hợp lệ -> TRA_VE
+        RegistrationDtos.TrangThaiBangDiemDto s2 = diemService.traVeBangDiem(
+                100L, "Cần đối chiếu lại điểm quá trình SV001");
+        assertEquals("TRA_VE", s2.trangThaiBangDiem());
+        assertEquals("Cần đối chiếu lại điểm quá trình SV001", s2.lyDoTraVe());
+        assertEquals(99L, s2.nguoiTraVeId());
+        assertTrue(s2.choPhepSuaDiem());
+
+        // 3. Giảng viên sửa điểm ở trạng thái TRA_VE và gửi duyệt lại -> CHO_DUYET
+        dangNhapVoiGiangVien();
+        diemService.nhapDiem(300L, new RegistrationDtos.NhapDiemRequest(8.5, 9.0));
+        assertEquals(GradeSheetStatus.TRA_VE, lopHocPhan.getTrangThaiBangDiem());
+        assertEquals(8.8, diem.getDiemTongKet());
+
+        RegistrationDtos.TrangThaiBangDiemDto s3 = diemService.guiDuyetBangDiem(100L);
+        assertEquals("CHO_DUYET", s3.trangThaiBangDiem());
+
+        // 4. Phòng Đào tạo duyệt -> công bố -> khóa bảng điểm (DA_KHOA)
+        dangNhapVoiQuanTri();
+        diemService.pheDuyetBangDiem(100L);
+        diemService.congBoBangDiem(100L);
+        RegistrationDtos.TrangThaiBangDiemDto sLocked = diemService.khoaBangDiem(
+                100L, "Chốt sổ điểm cuối học kỳ");
+        assertEquals("DA_KHOA", sLocked.trangThaiBangDiem());
+        assertTrue(sLocked.daCongBo());
+        assertTrue(sLocked.daKhoa());
+        assertFalse(sLocked.choPhepSuaDiem());
+
+        // Sau khi khóa: mọi thao tác sửa điểm hoặc gửi duyệt/công bố lại đều bị chặn
+        dangNhapVoiGiangVien();
+        ApiException editLocked = assertThrows(ApiException.class, () ->
+                diemService.nhapDiem(300L, new RegistrationDtos.NhapDiemRequest(9.0, 9.0)));
+        assertEquals(HttpStatus.CONFLICT, editLocked.getStatus());
+        assertTrue(editLocked.getMessage().contains("đã bị khóa"));
+
+        // 5. Mở khóa bắt buộc có lý do và quyền QUAN_TRI
+        ApiException lecturerUnlock = assertThrows(ApiException.class, () ->
+                diemService.moKhoaBangDiem(100L, "Tự mở khóa"));
+        assertEquals(HttpStatus.FORBIDDEN, lecturerUnlock.getStatus());
+
+        dangNhapVoiQuanTri();
+        ApiException emptyUnlockReason = assertThrows(ApiException.class, () ->
+                diemService.moKhoaBangDiem(100L, ""));
+        assertEquals(HttpStatus.BAD_REQUEST, emptyUnlockReason.getStatus());
+
+        RegistrationDtos.TrangThaiBangDiemDto sUnlocked = diemService.moKhoaBangDiem(
+                100L, "Phúc khảo điểm cuối kỳ theo quyết định số 12/QĐ-ĐàoTạo");
+        assertEquals("TRA_VE", sUnlocked.trangThaiBangDiem());
+        assertEquals("Phúc khảo điểm cuối kỳ theo quyết định số 12/QĐ-ĐàoTạo", sUnlocked.lyDoMoKhoa());
+        assertTrue(sUnlocked.choPhepSuaDiem());
+        assertFalse(sUnlocked.daKhoa());
+
+        // Kiểm tra tất cả các lần chuyển trạng thái đều lưu lịch sử vào lichSuTrangThaiRepository
+        verify(lichSuTrangThaiRepository, times(7)).save(any(GradeSheetStateHistory.class));
+    }
+
+    @Test
+    void chanChuyenTrangThaiTraiPhepTheoVaiTroOBackend() {
+        when(lopHocPhanRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(lopHocPhan));
+
+        // 1. Quản trị viên không được phép gọi guiDuyetBangDiem (chỉ giảng viên phụ trách mới được gửi duyệt)
+        dangNhapVoiQuanTri();
+        ApiException adminSubmit = assertThrows(ApiException.class, () -> diemService.guiDuyetBangDiem(100L));
+        assertEquals(HttpStatus.FORBIDDEN, adminSubmit.getStatus());
+
+        // 2. Giảng viên không được phép gọi pheDuyetBangDiem, traVeBangDiem, congBoBangDiem, khoaBangDiem, moKhoaBangDiem
+        lopHocPhan.setTrangThaiBangDiem(GradeSheetStatus.CHO_DUYET);
+        dangNhapVoiGiangVien();
+
+        assertEquals(HttpStatus.FORBIDDEN,
+                assertThrows(ApiException.class, () -> diemService.pheDuyetBangDiem(100L)).getStatus());
+        assertEquals(HttpStatus.FORBIDDEN,
+                assertThrows(ApiException.class, () -> diemService.traVeBangDiem(100L, "Lý do")).getStatus());
+        assertEquals(HttpStatus.FORBIDDEN,
+                assertThrows(ApiException.class, () -> diemService.congBoBangDiem(100L)).getStatus());
+        assertEquals(HttpStatus.FORBIDDEN,
+                assertThrows(ApiException.class, () -> diemService.khoaBangDiem(100L, null)).getStatus());
+        assertEquals(HttpStatus.FORBIDDEN,
+                assertThrows(ApiException.class, () -> diemService.moKhoaBangDiem(100L, "Lý do")).getStatus());
     }
 
     @Test
@@ -242,6 +388,7 @@ class GradeServiceTest {
 
         CourseClass lopLan1 = taoLop(201L, "INT101.01-HK1", int101, hk1);
         CourseClass lopLan2 = taoLop(202L, "INT101.01-HK2", int101, hk2);
+        lopLan2.setTrangThaiBangDiem(GradeSheetStatus.DA_KHOA); // Đã khóa vẫn hiển thị điểm cho sinh viên
         CourseClass lopChuaCongBo = taoLop(203L, "MAT101.01-HK3", mat101, hk3);
         lopChuaCongBo.setTrangThaiBangDiem(GradeSheetStatus.CHO_DUYET);
 
@@ -384,14 +531,20 @@ class GradeServiceTest {
     }
 
     @Test
-    void nhapDiemTuChoiKhiBangDiemDaCongBo() {
+    void nhapDiemTuChoiKhiBangDiemDaCongBoHoacDaKhoa() {
         dangNhapVoiGiangVien();
-        lopHocPhan.setTrangThaiBangDiem(GradeSheetStatus.DA_CONG_BO);
         when(dangKyHocPhanRepository.findById(300L)).thenReturn(Optional.of(dangKy));
 
-        ApiException ex = assertThrows(ApiException.class, () ->
+        lopHocPhan.setTrangThaiBangDiem(GradeSheetStatus.DA_CONG_BO);
+        ApiException ex1 = assertThrows(ApiException.class, () ->
                 diemService.nhapDiem(300L, new RegistrationDtos.NhapDiemRequest(8.0, 9.0)));
-        assertTrue(ex.getMessage().contains("đã được công bố"));
+        assertTrue(ex1.getMessage().contains("đã được công bố"));
+
+        lopHocPhan.setTrangThaiBangDiem(GradeSheetStatus.DA_KHOA);
+        ApiException ex2 = assertThrows(ApiException.class, () ->
+                diemService.nhapDiem(300L, new RegistrationDtos.NhapDiemRequest(8.0, 9.0)));
+        assertTrue(ex2.getMessage().contains("đã bị khóa"));
+
         verify(diemRepository, never()).save(any());
     }
 

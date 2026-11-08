@@ -183,9 +183,7 @@ public class GradeImportService {
         Lecturer giangVien = gradeService.kiemTraQuyenSuaDiem(lop);
         User actor = currentUser.get();
 
-        if (lop.getTrangThaiBangDiem() == GradeSheetStatus.DA_CONG_BO) {
-            throw ApiException.conflict("Bảng điểm lớp học phần đã được công bố, không thể import trực tiếp. Vui lòng thu hồi công bố trước khi điều chỉnh");
-        }
+        gradeService.kiemTraBangDiemChoPhepSua(lop);
 
         validateUploadMetadata(file);
         String sanitizedFilename = sanitizeOriginalFilename(file.getOriginalFilename());
@@ -438,9 +436,7 @@ public class GradeImportService {
         Lecturer giangVien = gradeService.kiemTraQuyenSuaDiem(lop);
         User actor = currentUser.get();
 
-        if (lop.getTrangThaiBangDiem() == GradeSheetStatus.DA_CONG_BO) {
-            throw ApiException.conflict("Bảng điểm lớp học phần đã được công bố, không thể import trực tiếp. Vui lòng thu hồi công bố trước khi điều chỉnh");
-        }
+        gradeService.kiemTraBangDiemChoPhepSua(lop);
 
         String token = request.previewToken().trim();
         PreviewSession session = previewSessions.get(token);
@@ -580,10 +576,8 @@ public class GradeImportService {
 
             diemRepository.saveAll(toSave);
 
-            if (lop.getTrangThaiBangDiem() != GradeSheetStatus.NHAP) {
+            if (lop.getTrangThaiBangDiem() == null) {
                 lop.setTrangThaiBangDiem(GradeSheetStatus.NHAP);
-                lop.setDuyetBangDiemLuc(null);
-                lop.setNguoiDuyetBangDiemId(null);
                 lopHocPhanRepository.save(lop);
             }
 

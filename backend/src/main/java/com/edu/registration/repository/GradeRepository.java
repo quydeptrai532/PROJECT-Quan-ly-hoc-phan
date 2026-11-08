@@ -29,7 +29,8 @@ public interface GradeRepository extends JpaRepository<Grade, Long> {
             select d from Grade d
             where d.dangKy.sinhVien.user.id = :userId
               and d.dangKy.trangThai = com.edu.registration.entity.RegistrationStatus.DA_DANG_KY
-              and d.dangKy.lopHocPhan.trangThaiBangDiem = com.edu.registration.entity.GradeSheetStatus.DA_CONG_BO
+              and (d.dangKy.lopHocPhan.trangThaiBangDiem = com.edu.registration.entity.GradeSheetStatus.DA_CONG_BO
+                   or d.dangKy.lopHocPhan.trangThaiBangDiem = com.edu.registration.entity.GradeSheetStatus.DA_KHOA)
               and d.dangKy.lopHocPhan.congBoBangDiemLuc is not null
               and d.diemTongKet is not null
             order by d.dangKy.lopHocPhan.congBoBangDiemLuc asc, d.id asc
@@ -41,7 +42,8 @@ public interface GradeRepository extends JpaRepository<Grade, Long> {
             where d.dangKy.sinhVien.id = :sinhVienId
               and d.diemTongKet >= :diemDat
               and (d.dangKy.lopHocPhan.trangThaiBangDiem is null
-                   or d.dangKy.lopHocPhan.trangThaiBangDiem = com.edu.registration.entity.GradeSheetStatus.DA_CONG_BO)
+                   or d.dangKy.lopHocPhan.trangThaiBangDiem = com.edu.registration.entity.GradeSheetStatus.DA_CONG_BO
+                   or d.dangKy.lopHocPhan.trangThaiBangDiem = com.edu.registration.entity.GradeSheetStatus.DA_KHOA)
             """)
     List<Long> findMonDaDat(@Param("sinhVienId") Long sinhVienId, @Param("diemDat") double diemDat);
 }

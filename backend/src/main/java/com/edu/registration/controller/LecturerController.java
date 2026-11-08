@@ -152,6 +152,7 @@ public class LecturerController {
     // --------------------------------------------------
 
     @GetMapping("/giang-vien/lop-hoc-phan/{id}/sinh-vien")
+    @PreAuthorize("hasAnyRole('GIANG_VIEN', 'QUAN_TRI')")
     public List<RegistrationDtos.DiemDto> danhSachSinhVien(
             @PathVariable Long id,
             @RequestParam(required = false) String tuKhoa,
@@ -260,7 +261,7 @@ public class LecturerController {
         return gradeImportService.xacNhanImport(id, request);
     }
 
-    // ---------------------------------------------------------
+    // --- Grade Sheet Approval & Locking Workflow (QLSV-74 / TASK-LC-09) ---
 
     @GetMapping({"/giang-vien/lop-hoc-phan/{id}/trang-thai-bang-diem", "/diem/lop-hoc-phan/{id}/trang-thai"})
     @PreAuthorize("hasAnyRole('GIANG_VIEN', 'QUAN_TRI')")
@@ -268,10 +269,24 @@ public class LecturerController {
         return diemService.chiTietTrangThaiBangDiem(id);
     }
 
+    @GetMapping({"/giang-vien/lop-hoc-phan/{id}/lich-su-bang-diem", "/diem/lop-hoc-phan/{id}/lich-su-trang-thai"})
+    @PreAuthorize("hasAnyRole('GIANG_VIEN', 'QUAN_TRI')")
+    public List<RegistrationDtos.LichSuTrangThaiBangDiemDto> lichSuTrangThaiBangDiem(@PathVariable Long id) {
+        return diemService.lichSuTrangThaiBangDiem(id);
+    }
+
     @PostMapping({"/giang-vien/lop-hoc-phan/{id}/gui-duyet-diem", "/diem/lop-hoc-phan/{id}/gui-duyet"})
     @PreAuthorize("hasAnyRole('GIANG_VIEN', 'QUAN_TRI')")
     public RegistrationDtos.TrangThaiBangDiemDto guiDuyetBangDiem(@PathVariable Long id) {
         return diemService.guiDuyetBangDiem(id);
+    }
+
+    @PostMapping({"/giang-vien/lop-hoc-phan/{id}/tra-ve-diem", "/diem/lop-hoc-phan/{id}/tra-ve"})
+    @PreAuthorize("hasAnyRole('GIANG_VIEN', 'QUAN_TRI')")
+    public RegistrationDtos.TrangThaiBangDiemDto traVeBangDiem(
+            @PathVariable Long id,
+            @RequestBody(required = false) RegistrationDtos.TraVeBangDiemRequest request) {
+        return diemService.traVeBangDiem(id, request != null ? request.lyDo() : null);
     }
 
     @PostMapping({"/giang-vien/lop-hoc-phan/{id}/phe-duyet-diem", "/diem/lop-hoc-phan/{id}/phe-duyet"})
@@ -286,9 +301,22 @@ public class LecturerController {
         return diemService.congBoBangDiem(id);
     }
 
-    @PostMapping({"/giang-vien/lop-hoc-phan/{id}/thu-hoi-cong-bo-diem", "/diem/lop-hoc-phan/{id}/thu-hoi-cong-bo"})
+    @PostMapping({"/giang-vien/lop-hoc-phan/{id}/khoa-diem", "/diem/lop-hoc-phan/{id}/khoa"})
     @PreAuthorize("hasAnyRole('GIANG_VIEN', 'QUAN_TRI')")
-    public RegistrationDtos.TrangThaiBangDiemDto thuHoiCongBoBangDiem(@PathVariable Long id) {
-        return diemService.thuHoiCongBoBangDiem(id);
+    public RegistrationDtos.TrangThaiBangDiemDto khoaBangDiem(
+            @PathVariable Long id,
+            @RequestBody(required = false) RegistrationDtos.KhoaBangDiemRequest request) {
+        return diemService.khoaBangDiem(id, request != null ? request.lyDo() : null);
+    }
+
+    @PostMapping({"/giang-vien/lop-hoc-phan/{id}/mo-khoa-diem",
+                  "/giang-vien/lop-hoc-phan/{id}/thu-hoi-cong-bo-diem",
+                  "/diem/lop-hoc-phan/{id}/mo-khoa",
+                  "/diem/lop-hoc-phan/{id}/thu-hoi-cong-bo"})
+    @PreAuthorize("hasAnyRole('GIANG_VIEN', 'QUAN_TRI')")
+    public RegistrationDtos.TrangThaiBangDiemDto moKhoaBangDiem(
+            @PathVariable Long id,
+            @RequestBody(required = false) RegistrationDtos.MoKhoaBangDiemRequest request) {
+        return diemService.moKhoaBangDiem(id, request != null ? request.lyDo() : null);
     }
 }

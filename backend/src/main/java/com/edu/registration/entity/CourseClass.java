@@ -67,8 +67,23 @@ public class CourseClass {
     @Column(name = "phien_ban_cong_bo", nullable = false)
     private int phienBanCongBo = 1;
 
+    @Column(name = "phien_ban_bang_diem")
+    private Integer phienBanBangDiem = 0;
+
     @Column(name = "gui_duyet_bang_diem_luc")
     private LocalDateTime guiDuyetBangDiemLuc;
+
+    @Column(name = "nguoi_gui_duyet_bang_diem_id")
+    private Long nguoiGuiDuyetBangDiemId;
+
+    @Column(name = "tra_ve_bang_diem_luc")
+    private LocalDateTime traVeBangDiemLuc;
+
+    @Column(name = "nguoi_tra_ve_bang_diem_id")
+    private Long nguoiTraVeBangDiemId;
+
+    @Column(name = "ly_do_tra_ve_bang_diem", length = 500)
+    private String lyDoTraVeBangDiem;
 
     @Column(name = "duyet_bang_diem_luc")
     private LocalDateTime duyetBangDiemLuc;
@@ -82,6 +97,21 @@ public class CourseClass {
     @Column(name = "nguoi_cong_bo_bang_diem_id")
     private Long nguoiCongBoBangDiemId;
 
+    @Column(name = "khoa_bang_diem_luc")
+    private LocalDateTime khoaBangDiemLuc;
+
+    @Column(name = "nguoi_khoa_bang_diem_id")
+    private Long nguoiKhoaBangDiemId;
+
+    @Column(name = "mo_khoa_bang_diem_luc")
+    private LocalDateTime moKhoaBangDiemLuc;
+
+    @Column(name = "nguoi_mo_khoa_bang_diem_id")
+    private Long nguoiMoKhoaBangDiemId;
+
+    @Column(name = "ly_do_mo_khoa_bang_diem", length = 500)
+    private String lyDoMoKhoaBangDiem;
+
     @Column(name = "nguong_so_buoi_vang")
     private Integer nguongSoBuoiVang;
 
@@ -92,8 +122,37 @@ public class CourseClass {
         return trangThaiBangDiem != null ? trangThaiBangDiem : GradeSheetStatus.NHAP;
     }
 
+    /**
+     * Sinh viên chỉ được xem điểm khi bảng điểm đã công bố (DA_CONG_BO hoặc DA_KHOA đã công bố).
+     * Giữ tương thích ngược cho dữ liệu cũ/test khi trangThaiBangDiem == null.
+     */
     public boolean isBangDiemDaCongBo() {
-        return trangThaiBangDiem == null || trangThaiBangDiem == GradeSheetStatus.DA_CONG_BO;
+        return trangThaiBangDiem == null
+                || trangThaiBangDiem == GradeSheetStatus.DA_CONG_BO
+                || trangThaiBangDiem == GradeSheetStatus.DA_KHOA;
+    }
+
+    /**
+     * Bảng điểm chỉ cho phép nhập/sửa/import điểm khi đang ở trạng thái NHAP hoặc TRA_VE.
+     * Khi ở CHO_DUYET, DA_DUYET, DA_CONG_BO hoặc DA_KHOA đều bị khóa chỉnh sửa.
+     */
+    public boolean isChoPhepSuaDiem() {
+        return getTrangThaiBangDiemHieuLuc().isChoPhepSuaDiem();
+    }
+
+    /**
+     * Bảng điểm đã khóa hoàn toàn ở bước cuối (DA_CONG_BO hoặc DA_KHOA).
+     */
+    public boolean isBangDiemDaKhoa() {
+        return getTrangThaiBangDiemHieuLuc().isDaKhoa();
+    }
+
+    public int getPhienBanBangDiemHieuLuc() {
+        return phienBanBangDiem != null ? phienBanBangDiem : 0;
+    }
+
+    public void tangPhienBanBangDiem() {
+        this.phienBanBangDiem = getPhienBanBangDiemHieuLuc() + 1;
     }
 
     public int getTietKetThuc() {
@@ -215,12 +274,52 @@ public class CourseClass {
         this.phienBanCongBo = phienBanCongBo;
     }
 
+    public Integer getPhienBanBangDiem() {
+        return phienBanBangDiem;
+    }
+
+    public void setPhienBanBangDiem(Integer phienBanBangDiem) {
+        this.phienBanBangDiem = phienBanBangDiem;
+    }
+
     public LocalDateTime getGuiDuyetBangDiemLuc() {
         return guiDuyetBangDiemLuc;
     }
 
     public void setGuiDuyetBangDiemLuc(LocalDateTime guiDuyetBangDiemLuc) {
         this.guiDuyetBangDiemLuc = guiDuyetBangDiemLuc;
+    }
+
+    public Long getNguoiGuiDuyetBangDiemId() {
+        return nguoiGuiDuyetBangDiemId;
+    }
+
+    public void setNguoiGuiDuyetBangDiemId(Long nguoiGuiDuyetBangDiemId) {
+        this.nguoiGuiDuyetBangDiemId = nguoiGuiDuyetBangDiemId;
+    }
+
+    public LocalDateTime getTraVeBangDiemLuc() {
+        return traVeBangDiemLuc;
+    }
+
+    public void setTraVeBangDiemLuc(LocalDateTime traVeBangDiemLuc) {
+        this.traVeBangDiemLuc = traVeBangDiemLuc;
+    }
+
+    public Long getNguoiTraVeBangDiemId() {
+        return nguoiTraVeBangDiemId;
+    }
+
+    public void setNguoiTraVeBangDiemId(Long nguoiTraVeBangDiemId) {
+        this.nguoiTraVeBangDiemId = nguoiTraVeBangDiemId;
+    }
+
+    public String getLyDoTraVeBangDiem() {
+        return lyDoTraVeBangDiem;
+    }
+
+    public void setLyDoTraVeBangDiem(String lyDoTraVeBangDiem) {
+        this.lyDoTraVeBangDiem = lyDoTraVeBangDiem;
     }
 
     public LocalDateTime getDuyetBangDiemLuc() {
@@ -253,6 +352,46 @@ public class CourseClass {
 
     public void setNguoiCongBoBangDiemId(Long nguoiCongBoBangDiemId) {
         this.nguoiCongBoBangDiemId = nguoiCongBoBangDiemId;
+    }
+
+    public LocalDateTime getKhoaBangDiemLuc() {
+        return khoaBangDiemLuc;
+    }
+
+    public void setKhoaBangDiemLuc(LocalDateTime khoaBangDiemLuc) {
+        this.khoaBangDiemLuc = khoaBangDiemLuc;
+    }
+
+    public Long getNguoiKhoaBangDiemId() {
+        return nguoiKhoaBangDiemId;
+    }
+
+    public void setNguoiKhoaBangDiemId(Long nguoiKhoaBangDiemId) {
+        this.nguoiKhoaBangDiemId = nguoiKhoaBangDiemId;
+    }
+
+    public LocalDateTime getMoKhoaBangDiemLuc() {
+        return moKhoaBangDiemLuc;
+    }
+
+    public void setMoKhoaBangDiemLuc(LocalDateTime moKhoaBangDiemLuc) {
+        this.moKhoaBangDiemLuc = moKhoaBangDiemLuc;
+    }
+
+    public Long getNguoiMoKhoaBangDiemId() {
+        return nguoiMoKhoaBangDiemId;
+    }
+
+    public void setNguoiMoKhoaBangDiemId(Long nguoiMoKhoaBangDiemId) {
+        this.nguoiMoKhoaBangDiemId = nguoiMoKhoaBangDiemId;
+    }
+
+    public String getLyDoMoKhoaBangDiem() {
+        return lyDoMoKhoaBangDiem;
+    }
+
+    public void setLyDoMoKhoaBangDiem(String lyDoMoKhoaBangDiem) {
+        this.lyDoMoKhoaBangDiem = lyDoMoKhoaBangDiem;
     }
 
     public Integer getNguongSoBuoiVang() {

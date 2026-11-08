@@ -50,7 +50,6 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -334,11 +333,6 @@ class GradeImportServiceTest {
                 .thenReturn(List.of(dk1, dk2));
         when(diemRepository.findByDangKyIdIn(any())).thenReturn(List.of());
 
-        // Dòng 1: Header (maSinhVien=A, hoTen=B, diemQuaTrinh=C, diemCuoiKy=D)
-        // Dòng 2: SV001 hợp lệ (8.0, 9.0)
-        // Dòng 3: SV001 bị trùng mã SV + điểm quá trình > 10 (11.5)
-        // Dòng 4: SV999 không thuộc lớp + điểm cuối kỳ quá 2 chữ số thập phân (8.125)
-        // Dòng 5: SV002 có công thức ở cột điểm quá trình (FORMULA:8+1) và chữ không phải số ở điểm cuối kỳ ("abc")
         Map<String, List<List<Object>>> sheetData = Map.of(
                 "BangDiem", List.of(
                         List.of("maSinhVien", "hoTen", "diemQuaTrinh", "diemCuoiKy"),
@@ -364,11 +358,9 @@ class GradeImportServiceTest {
         assertFalse(preview.coTheXacNhan());
         assertEquals(6, preview.errors().size());
 
-        // Kiểm tra dữ liệu preview tuyệt đối chưa ghi vào bảng điểm
         verify(diemRepository, never()).save(any());
         verify(diemRepository, never()).saveAll(any());
 
-        // Kiểm tra lỗi dòng 3 cột A (trùng mã SV) và cột C (điểm > 10)
         ValidationErrorDetail errRow3ColA = preview.errors().get(0);
         assertEquals("BangDiem", errRow3ColA.sheet());
         assertEquals(3, errRow3ColA.dong());
@@ -383,7 +375,6 @@ class GradeImportServiceTest {
         assertEquals("C", errRow3ColC.cotExcel());
         assertEquals("Điểm phải từ 0 đến 10", errRow3ColC.message());
 
-        // Kiểm tra lỗi dòng 4 cột A (không thuộc lớp) và cột D (> 2 chữ số thập phân từ QLSV-72)
         ValidationErrorDetail errRow4ColA = preview.errors().get(2);
         assertEquals(4, errRow4ColA.dong());
         assertEquals("A", errRow4ColA.cotExcel());
@@ -395,7 +386,6 @@ class GradeImportServiceTest {
         assertEquals("D", errRow4ColD.cotExcel());
         assertEquals("Điểm chỉ được có tối đa 2 chữ số thập phân", errRow4ColD.message());
 
-        // Kiểm tra lỗi dòng 5 cột C (chứa công thức) và cột D (sai định dạng số)
         ValidationErrorDetail errRow5ColC = preview.errors().get(4);
         assertEquals(5, errRow5ColC.dong());
         assertEquals("C", errRow5ColC.cotExcel());
@@ -406,7 +396,6 @@ class GradeImportServiceTest {
         assertEquals("D", errRow5ColD.cotExcel());
         assertEquals("Điểm không đúng định dạng số", errRow5ColD.message());
 
-        // Nếu cố tình gọi confirm trên phiên preview có lỗi -> bị chặn theo ALL_OR_NOTHING, không lưu dòng nào
         ApiException confirmEx = assertThrows(ApiException.class, () ->
                 gradeImportService.xacNhanImport(500L,
                         new GradeImportDtos.ConfirmImportRequest(preview.previewToken(), preview.fileSha256())));
@@ -423,7 +412,6 @@ class GradeImportServiceTest {
         when(dangKyHocPhanRepository.findByLopHocPhan(500L, RegistrationStatus.DA_DANG_KY))
                 .thenReturn(List.of(dk1, dk2));
 
-        // Ban đầu SV001 đã có điểm, SV002 chưa có điểm
         Grade existingSv1Grade = new Grade();
         existingSv1Grade.setId(9001L);
         existingSv1Grade.setDangKy(dk1);
@@ -452,8 +440,8 @@ class GradeImportServiceTest {
         assertEquals(2, preview.tongSoDong());
         assertEquals(2, preview.soDongHopLe());
         assertEquals(0, preview.soDongLoi());
-        assertEquals(1, preview.soTaoMoiDuKien());  // SV002 tạo mới
-        assertEquals(1, preview.soCapNhatDuKien()); // SV001 cập nhật
+        assertEquals(1, preview.soTaoMoiDuKien());
+        assertEquals(1, preview.soCapNhatDuKien());
         verify(diemRepository, never()).saveAll(any());
 
         // 2. Confirm
@@ -473,10 +461,8 @@ class GradeImportServiceTest {
         List<Grade> savedGrades = saveCaptor.getValue();
         assertEquals(2, savedGrades.size());
 
-        // SV001 vẫn giữ nguyên entity id=9001L (không tạo bản ghi trùng) và điểm tổng kết = 0.4*8 + 0.6*9 = 8.6
         assertEquals(9001L, savedGrades.get(0).getId());
         assertEquals(8.6, savedGrades.get(0).getDiemTongKet());
-        // SV002 tạo mới và điểm tổng kết = 0.4*7.5 + 0.6*8.5 = 8.1
         assertEquals(8.1, savedGrades.get(1).getDiemTongKet());
 
         // 3. Không cho phép dùng lại cùng previewToken lần 2
@@ -485,7 +471,8 @@ class GradeImportServiceTest {
                         500L, new GradeImportDtos.ConfirmImportRequest(preview.previewToken(), preview.fileSha256())));
         assertEquals(HttpStatus.BAD_REQUEST, replayEx.getStatus());
 
-        // 4. Upload lại cùng file lần 2: cả 2 sinh viên đều là CAP_NHAT (soTaoMoi = 0, soCapNhat = 2)
+        // 4. Upload lại cùng file lần 2 ở trạng thái TRA_VE vẫn cho phép import và giữ nguyên TRA_VE
+        lop.setTrangThaiBangDiem(GradeSheetStatus.TRA_VE);
         Grade savedSv2Grade = savedGrades.get(1);
         savedSv2Grade.setId(9002L);
         when(diemRepository.findByDangKyIdIn(any())).thenReturn(List.of(existingSv1Grade, savedSv2Grade));
@@ -498,6 +485,34 @@ class GradeImportServiceTest {
                 500L, new GradeImportDtos.ConfirmImportRequest(preview2.previewToken(), preview2.fileSha256()));
         assertEquals(0, result2.soTaoMoi());
         assertEquals(2, result2.soCapNhat());
+        assertEquals(GradeSheetStatus.TRA_VE, lop.getTrangThaiBangDiem());
+    }
+
+    @Test
+    void chanImportKhiBangDiemDangChoDuyetDaDuyetDaCongBoHoacDaKhoa() {
+        loginAs(userGv1, gv1);
+        when(lopHocPhanRepository.findWithDetailsById(500L)).thenReturn(Optional.of(lop));
+
+        Map<String, List<List<Object>>> sheetData = Map.of(
+                "BangDiem", List.of(
+                        List.of("maSinhVien", "diemQuaTrinh", "diemCuoiKy"),
+                        List.of("SV001", 8.0, 9.0)
+                )
+        );
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "diem.xlsx", XlsxWorkbookSupport.XLSX_MEDIA_TYPE,
+                XlsxWorkbookSupport.createWorkbookBytes(sheetData));
+
+        for (GradeSheetStatus blockedStatus : List.of(
+                GradeSheetStatus.CHO_DUYET,
+                GradeSheetStatus.DA_DUYET,
+                GradeSheetStatus.DA_CONG_BO,
+                GradeSheetStatus.DA_KHOA)) {
+            lop.setTrangThaiBangDiem(blockedStatus);
+            ApiException ex = assertThrows(ApiException.class,
+                    () -> gradeImportService.xemTruocImport(500L, file));
+            assertEquals(HttpStatus.CONFLICT, ex.getStatus());
+        }
     }
 
     @Test
