@@ -71,3 +71,16 @@ app:
     # Ngưỡng tỷ lệ vắng (%) cấu hình tập trung (mặc định để trống)
     nguong-ty-le-vang: ${ATTENDANCE_NGUONG_TY_LE_VANG:}
     ghi-chu-nguong: ${ATTENDANCE_GHI_CHU_NGUONG:Quy chế ngưỡng số buổi vắng và tỷ lệ vắng để kích hoạt cảnh báo chuyên cần chưa được Chủ dự án chốt chính thức. Hệ thống chỉ kích hoạt cảnh báo khi có ngưỡng xác nhận cho môn/lớp hoặc tập trung.}
+  grade-import:
+    # QLSV-73 (TASK-LC-08): Cấu hình giới hạn tệp và chính sách import điểm từ Excel (.xlsx)
+    temp-dir: ${GRADE_IMPORT_TEMP_DIR:./data/temp-grade-imports}
+    max-file-size-bytes: ${GRADE_IMPORT_MAX_FILE_SIZE_BYTES:2097152}
+    max-rows: ${GRADE_IMPORT_MAX_ROWS:500}
+    max-sheets: ${GRADE_IMPORT_MAX_SHEETS:1}
+    parse-timeout-ms: ${GRADE_IMPORT_PARSE_TIMEOUT_MS:5000}
+    preview-ttl-seconds: ${GRADE_IMPORT_PREVIEW_TTL_SECONDS:900}
+    max-zip-entry-size-bytes: ${GRADE_IMPORT_MAX_ZIP_ENTRY_SIZE_BYTES:10485760}
+    max-zip-entries: ${GRADE_IMPORT_MAX_ZIP_ENTRIES:50}
+    transaction-policy: ${GRADE_IMPORT_TRANSACTION_POLICY:ALL_OR_NOTHING}
+    update-policy: ${GRADE_IMPORT_UPDATE_POLICY:OVERWRITE_EXISTING}
+    policy-note: ${GRADE_IMPORT_POLICY_NOTE:Mẫu Excel chính thức gồm các cột maSinhVien, hoTen, diemQuaTrinh, diemCuoiKy trên 1 sheet BangDiem. Chính sách giao dịch mặc định là ALL_OR_NOTHING (chỉ ghi khi toàn bộ tệp hợp lệ) và chính sách cập nhật là OVERWRITE_EXISTING (ghi đè điểm nháp hiện có, không tạo bản ghi trùng). Các quyết định này đang áp dụng theo cấu hình mặc định và chờ Chủ dự án xác nhận chính thức.}

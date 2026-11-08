@@ -641,20 +641,33 @@ public class GradeService {
                 coNhieuLanHoc);
     }
 
-    private CourseClass layLopDeCapNhatBangDiem(Long lopHocPhanId) {
+    CourseClass layLopDeCapNhatBangDiem(Long lopHocPhanId) {
         return lopHocPhanRepository.findByIdForUpdate(lopHocPhanId)
                 .or(() -> lopHocPhanRepository.findWithDetailsById(lopHocPhanId))
                 .orElseThrow(() -> ApiException.notFound("Lớp học phần không tồn tại"));
     }
 
+    public static Double tinhDiemTongKet(Double diemQuaTrinh, Double diemCuoiKy) {
+        if (diemQuaTrinh == null || diemCuoiKy == null) {
+            return null;
+        }
+        return Math.round((0.4 * diemQuaTrinh + 0.6 * diemCuoiKy) * 10.0) / 10.0;
+    }
+
     public static void validateDiem(Double diem, String tenCot, Long dangKyId, Long sinhVienId,
+                                    String maSinhVien, Integer dong, List<ValidationErrorDetail> errors) {
+        validateDiem(diem, null, tenCot, null, tenCot, null, dangKyId, sinhVienId, maSinhVien, dong, errors);
+    }
+
+    public static void validateDiem(Double diem, String sheet, String tenCot, String cotExcel,
+                                    String field, String giaTriNhap, Long dangKyId, Long sinhVienId,
                                     String maSinhVien, Integer dong, List<ValidationErrorDetail> errors) {
         if (diem == null) {
             return;
         }
         if (Double.isNaN(diem) || Double.isInfinite(diem) || diem < 0.0 || diem > 10.0) {
             errors.add(new ValidationErrorDetail(
-                    dangKyId, sinhVienId, maSinhVien, dong, tenCot, tenCot,
+                    dangKyId, sinhVienId, maSinhVien, sheet, dong, tenCot, cotExcel, field, giaTriNhap,
                     "Điểm phải từ 0 đến 10"
             ));
             return;
@@ -662,13 +675,13 @@ public class GradeService {
         BigDecimal bd = BigDecimal.valueOf(diem);
         if (bd.stripTrailingZeros().scale() > 2) {
             errors.add(new ValidationErrorDetail(
-                    dangKyId, sinhVienId, maSinhVien, dong, tenCot, tenCot,
+                    dangKyId, sinhVienId, maSinhVien, sheet, dong, tenCot, cotExcel, field, giaTriNhap,
                     "Điểm chỉ được có tối đa 2 chữ số thập phân"
             ));
         }
     }
 
-    private Lecturer kiemTraQuyenSuaDiem(CourseClass lop) {
+    Lecturer kiemTraQuyenSuaDiem(CourseClass lop) {
         User actor = currentUser.get();
         if (actor != null && actor.getRole() != null && actor.getRole() != Role.GIANG_VIEN) {
             throw ApiException.forbidden("Chỉ giảng viên phụ trách lớp mới có quyền sửa điểm");
@@ -873,7 +886,7 @@ public class GradeService {
         return 0.0;
     }
 
-    private Map<Long, Grade> layDiemTheoDangKy(List<CourseRegistration> danhSach) {
+    Map<Long, Grade> layDiemTheoDangKy(List<CourseRegistration> danhSach) {
         if (danhSach.isEmpty()) {
             return Map.of();
         }

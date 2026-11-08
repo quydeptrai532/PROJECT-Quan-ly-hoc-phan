@@ -166,6 +166,10 @@ Dữ liệu mẫu gồm 2 khoa, 3 ngành, 3 lớp hành chính, 8 môn học (c�
 | GET | `/api/giang-vien/sinh-vien?lopHocPhanId=&tuKhoa=` | Tìm kiếm sinh viên trong phạm vi lớp giảng viên phụ trách |
 | GET | `/api/giang-vien/sinh-vien/{studentId}` | Hồ sơ học tập tối thiểu sinh viên được phân công |
 | PUT | `/api/diem/{dangKyId}` | Nhập/cập nhật điểm nháp |
+| PUT | `/api/giang-vien/lop-hoc-phan/{id}/diem` | Cập nhật điểm hàng loạt cho lớp phụ trách (ALL_OR_NOTHING) |
+| GET | `/api/giang-vien/lop-hoc-phan/{id}/diem/template-xlsx` | Tải tệp mẫu Excel `.xlsx` chứa danh sách sinh viên và các cột điểm chuẩn (`maSinhVien`, `hoTen`, `diemQuaTrinh`, `diemCuoiKy`) |
+| POST | `/api/giang-vien/lop-hoc-phan/{id}/diem/import-xlsx/preview` | Tải lên tệp `.xlsx`, kiểm tra bảo mật/validation và xem trước kết quả trước khi ghi |
+| POST | `/api/giang-vien/lop-hoc-phan/{id}/diem/import-xlsx/confirm` | Xác nhận ghi dữ liệu điểm từ phiên preview hợp lệ vào bảng điểm (`ALL_OR_NOTHING`, chi tiết tại [docs/GRADE_IMPORT_XLSX.md](docs/GRADE_IMPORT_XLSX.md)) |
 | POST | `/api/giang-vien/lop-hoc-phan/{id}/gui-duyet-diem`, `/phe-duyet-diem`, `/cong-bo-diem`, `/thu-hoi-cong-bo-diem` | Gửi duyệt, phê duyệt, công bố hoặc thu hồi công bố bảng điểm lớp học phần |
 | CRUD | `/api/admin/khoa`, `/nganh`, `/lop-hanh-chinh`, `/mon-hoc`, `/hoc-ky` | Quản trị danh mục |
 | GET/POST/DELETE | `/api/admin/mon-hoc/{id}/tien-quyet` | Cấu hình môn tiên quyết |
@@ -289,6 +293,11 @@ npm run build      # code-split React, Recharts, icons; xuất dist/
 | `SUPPORT_MAX_FILES_PER_REQUEST` | `3` | Số tệp tối đa trên mỗi phiếu hỗ trợ (cấu hình tạm thời cần chủ dự án xác nhận) |
 | `SUPPORT_ALLOWED_EXTENSIONS` | `pdf,png,jpg,jpeg` | Phần mở rộng tệp cho phép (kiểm tra đối chiếu magic bytes nội dung thực tế) |
 | `SUPPORT_SLA_NOTE` | *(trống)* | Ghi chú SLA nếu có quyết định chính thức (mặc định để trống, không tuyên bố SLA chính thức) |
+| `GRADE_IMPORT_MAX_FILE_SIZE_BYTES` | `2097152` | Dung lượng tối đa tệp `.xlsx` import điểm (2 MB) |
+| `GRADE_IMPORT_MAX_ROWS` | `500` | Số dòng dữ liệu sinh viên tối đa trong tệp `.xlsx` import điểm |
+| `GRADE_IMPORT_MAX_SHEETS` | `1` | Số sheet tối đa trong workbook `.xlsx` import điểm |
+| `GRADE_IMPORT_PARSE_TIMEOUT_MS` | `5000` | Thời gian xử lý phân tích tệp `.xlsx` tối đa (5 giây) |
+| `GRADE_IMPORT_PREVIEW_TTL_SECONDS` | `900` | Thời hạn hiệu lực của phiên preview import điểm (15 phút) |
 
 ## Ghi chú
 
