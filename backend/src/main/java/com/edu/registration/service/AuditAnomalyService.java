@@ -413,8 +413,8 @@ public class AuditAnomalyService {
                             note == null ? null : note.trim());
 
                     audit.changes(
-                            Map.of("status", before),
-                            Map.of("status", "RESOLVED")
+                            Map.of("trangThaiCanhBao", before),
+                            Map.of("trangThaiCanhBao", "RESOLVED")
                     );
 
                     return dto(alerts.save(alert));
@@ -460,16 +460,35 @@ public class AuditAnomalyService {
                     "Mức độ cảnh báo không hợp lệ");
         }
 
-        rule.setEnabled(request.enabled());
-        rule.setThreshold(request.threshold());
-        rule.setWindowMinutes(request.windowMinutes());
-        rule.setSeverity(request.severity());
+        return auditLogService.execute(
+                "AUDIT_ALERT_RULE_UPDATED",
+                "AUDIT_ALERT_RULE",
+                code,
+                audit -> {
 
-        if (request.name() != null && !request.name().isBlank()) {
-            rule.setName(request.name().trim());
-        }
+                    audit.changes(
+                            Map.of("kichHoat", rule.isEnabled(),
+                                    "nguong", rule.getThreshold(),
+                                    "cuaSoPhut", rule.getWindowMinutes(),
+                                    "mucDo", rule.getSeverity()),
+                            Map.of("kichHoat", request.enabled(),
+                                    "nguong", request.threshold(),
+                                    "cuaSoPhut", request.windowMinutes(),
+                                    "mucDo", request.severity())
+                    );
 
-        return ruleDto(rules.save(rule));
+                    rule.setEnabled(request.enabled());
+                    rule.setThreshold(request.threshold());
+                    rule.setWindowMinutes(request.windowMinutes());
+                    rule.setSeverity(request.severity());
+
+                    if (request.name() != null && !request.name().isBlank()) {
+                        rule.setName(request.name().trim());
+                    }
+
+                    return ruleDto(rules.save(rule));
+                }
+        );
     }
 
     private AuditAlertDtos.RuleDto ruleDto(

@@ -31,28 +31,35 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final CurrentUser currentUser;
+    private final AuditLogService auditLogService;
 
     public AuthService(UserRepository userRepository, SinhVienRepository sinhVienRepository,
                        GiangVienRepository giangVienRepository, PasswordEncoder passwordEncoder,
-                       JwtService jwtService, CurrentUser currentUser) {
+                       JwtService jwtService, CurrentUser currentUser,
+                       AuditLogService auditLogService) {
         this.userRepository = userRepository;
         this.sinhVienRepository = sinhVienRepository;
         this.giangVienRepository = giangVienRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.currentUser = currentUser;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional(readOnly = true)
     public AuthDtos.LoginResponse login(AuthDtos.LoginRequest request) {
-        User user = userRepository.findByUsername(request.username().trim())
-                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED,
-                        "Tên đăng nhập hoặc mật khẩu không đúng"));
+        User user = userRepository.findByUsername(request.username().trim()).orElse(null);
+        if (user == null) {
+            auditLogService.recordLoginFailure(null, request.username(), "UNKNOWN_USER");
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "Tên đăng nhập hoặc mật khẩu không đúng");
+        }
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
+            auditLogService.recordLoginFailure(user, user.getUsername(), "BAD_CREDENTIALS");
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Tên đăng nhập hoặc mật khẩu không đúng");
         }
         if (!user.isTrangThai()) {
+            auditLogService.recordLoginFailure(user, user.getUsername(), "ACCOUNT_LOCKED");
             throw new ApiException(HttpStatus.FORBIDDEN, "Tài khoản đã bị khóa, vui lòng liên hệ phòng đào tạo");
         }
 
