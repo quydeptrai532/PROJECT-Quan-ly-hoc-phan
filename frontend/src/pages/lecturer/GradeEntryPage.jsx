@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Calculator, CheckCircle2, ClipboardList, Eye, Megaphone, RotateCcw, Save, Search, Send, Users } from "lucide-react";
+import { ArrowLeft, Calculator, CheckCircle2, ClipboardList, Eye, FileSpreadsheet, Megaphone, RotateCcw, Save, Search, Send, Upload, Users } from "lucide-react";
 import api, { getErrorMessage } from "../../api/client";
 import ExportStudentsButton from "../../components/ExportStudentsButton";
 import ClassAnnouncementModal from "../../components/ClassAnnouncementModal";
+import GradeExcelImportModal from "../../components/GradeExcelImportModal";
 import { Alert, Badge, EmptyState, Modal, PageHeader, Spinner } from "../../components/ui";
 import { formatDiem, lichHoc } from "../../lib/format";
 import { useApi } from "../../lib/useApi";
@@ -29,6 +30,7 @@ export default function GradeEntryPage() {
         data: sinhVienList,
         loading: loadingSv,
         error: svError,
+        reload: reloadSv,
     } = useApi(`/giang-vien/lop-hoc-phan/${id}/sinh-vien`);
 
     const [rows, setRows] = useState([]);
@@ -43,6 +45,8 @@ export default function GradeEntryPage() {
     // Student academic profile modal state (QLSV-67 / TASK-LC-02)
     const [profileModalOpen, setProfileModalOpen] = useState(false);
     const [announcementModalOpen, setAnnouncementModalOpen] = useState(false);
+    const [importModalOpen, setImportModalOpen] = useState(false);
+    const [templateDownloading, setTemplateDownloading] = useState(false);
     const [profileLoading, setProfileLoading] = useState(false);
     const [profileError, setProfileError] = useState("");
     const [studentProfile, setStudentProfile] = useState(null);
@@ -286,6 +290,35 @@ export default function GradeEntryPage() {
         }
     };
 
+    const taiTemplateExcel = async () => {
+        if (!lop?.id) return;
+        setTemplateDownloading(true);
+        setError("");
+        setMessage("");
+        try {
+            const response = await api.get(`/giang-vien/lop-hoc-phan/${lop.id}/diem/template-xlsx`, {
+                responseType: "blob",
+            });
+            const url = window.URL.createObjectURL(
+                new Blob([response.data], {
+                    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                })
+            );
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `mau-nhap-diem-${lop.ma || lop.id}.xlsx`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+            setMessage(`Đã tải xuống tệp mẫu Excel (.xlsx) cho lớp ${lop.ma}`);
+        } catch (err) {
+            setError(getErrorMessage(err));
+        } finally {
+            setTemplateDownloading(false);
+        }
+    };
+
     return (
         <div>
             <Link
@@ -307,6 +340,29 @@ export default function GradeEntryPage() {
                     lop && (
                         <div className="flex flex-wrap items-center gap-2">
                             <Badge tone={statusMeta.tone}>{statusMeta.label}</Badge>
+                            <button
+                                type="button"
+                                className="btn-secondary text-xs"
+                                onClick={taiTemplateExcel}
+                                disabled={templateDownloading || loadingSv}
+                                title="Tải tệp mẫu Excel (.xlsx) chứa danh sách sinh viên và cột điểm hợp lệ"
+                            >
+                                <FileSpreadsheet size={14} />
+                                {templateDownloading ? "Đang tải mẫu..." : "Tải mẫu .xlsx"}
+                            </button>
+                            <button
+                                type="button"
+                                className="btn-primary text-xs"
+                                onClick={() => setImportModalOpen(true)}
+                                disabled={daCongBo || loadingSv}
+                                title={
+                                    daCongBo
+                                        ? "Bảng điểm đã công bố, cần thu hồi công bố trước khi import"
+                                        : "Import điểm từ tệp Excel (.xlsx) có xem trước và kiểm tra lỗi"
+                                }
+                            >
+                                <Upload size={14} /> Import điểm (.xlsx)
+                            </button>
                             <button
                                 type="button"
                                 className="btn-secondary text-xs"
@@ -635,6 +691,22 @@ export default function GradeEntryPage() {
                 open={announcementModalOpen}
                 onClose={() => setAnnouncementModalOpen(false)}
                 lop={lop}
+            />
+            {/* Modal Import điểm từ Excel .xlsx (QLSV-73 / TASK-LC-08) */}
+            <GradeExcelImportModal
+                open={importModalOpen}
+                onClose={() => setImportModalOpen(false)}
+                lop={lop}
+                disabled={daCongBo}
+                onImportSuccess={async (res) => {
+                    setEdits({});
+                    setFieldErrors({});
+                    setError("");
+                    setMessage(
+                        `Đã import điểm thành công từ tệp ${res.tenTep}: tạo mới ${res.soTaoMoi}, cập nhật ${res.soCapNhat}, thất bại ${res.soThatBai}.`
+                    );
+                    await Promise.all([reloadSv(), reloadLop()]);
+                }}
             />
         </div>
     );

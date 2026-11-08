@@ -1,16 +1,19 @@
 package com.edu.registration.controller;
 
-import com.edu.registration.dto.LecturerDtos;
 import com.edu.registration.dto.CourseClassDtos;
+import com.edu.registration.dto.GradeImportDtos;
+import com.edu.registration.dto.LecturerDtos;
 import com.edu.registration.dto.RegistrationDtos;
 import com.edu.registration.dto.StudentAcademicProfileDto;
+import com.edu.registration.service.ClassAbsenceNoticeService;
+import com.edu.registration.service.ClassStudentExportService;
+import com.edu.registration.service.CourseClassAnnouncementService;
+import com.edu.registration.service.CourseClassService;
+import com.edu.registration.service.GradeImportService;
 import com.edu.registration.service.GradeService;
 import com.edu.registration.service.LecturerDashboardService;
-import com.edu.registration.service.CourseClassService;
-import com.edu.registration.service.ClassStudentExportService;
 import com.edu.registration.service.StudentAcademicProfileService;
-import com.edu.registration.service.CourseClassAnnouncementService;
-import com.edu.registration.service.ClassAbsenceNoticeService;
+import com.edu.registration.util.XlsxWorkbookSupport;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.CacheControl;
@@ -30,6 +33,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -46,12 +50,13 @@ public class LecturerController {
     private final LecturerDashboardService giangVienDashboardService;
     private final StudentAcademicProfileService studentAcademicProfileService;
     private final CourseClassAnnouncementService thongBaoLopHocPhanService;
+    private final GradeImportService gradeImportService;
 
     public LecturerController(CourseClassService lopHocPhanService, GradeService diemService,
                                ClassAbsenceNoticeService thongBaoNghiService, ClassStudentExportService lopSinhVienExportService,
                                LecturerDashboardService giangVienDashboardService) {
         this(lopHocPhanService, diemService, thongBaoNghiService, lopSinhVienExportService,
-                giangVienDashboardService, null, null);
+                giangVienDashboardService, null, null, null);
     }
 
     public LecturerController(CourseClassService lopHocPhanService, GradeService diemService,
@@ -59,7 +64,16 @@ public class LecturerController {
                                LecturerDashboardService giangVienDashboardService,
                                StudentAcademicProfileService studentAcademicProfileService) {
         this(lopHocPhanService, diemService, thongBaoNghiService, lopSinhVienExportService,
-                giangVienDashboardService, studentAcademicProfileService, null);
+                giangVienDashboardService, studentAcademicProfileService, null, null);
+    }
+
+    public LecturerController(CourseClassService lopHocPhanService, GradeService diemService,
+                               ClassAbsenceNoticeService thongBaoNghiService, ClassStudentExportService lopSinhVienExportService,
+                               LecturerDashboardService giangVienDashboardService,
+                               StudentAcademicProfileService studentAcademicProfileService,
+                               CourseClassAnnouncementService thongBaoLopHocPhanService) {
+        this(lopHocPhanService, diemService, thongBaoNghiService, lopSinhVienExportService,
+                giangVienDashboardService, studentAcademicProfileService, thongBaoLopHocPhanService, null);
     }
 
     @Autowired
@@ -67,7 +81,8 @@ public class LecturerController {
                                ClassAbsenceNoticeService thongBaoNghiService, ClassStudentExportService lopSinhVienExportService,
                                LecturerDashboardService giangVienDashboardService,
                                StudentAcademicProfileService studentAcademicProfileService,
-                               CourseClassAnnouncementService thongBaoLopHocPhanService) {
+                               CourseClassAnnouncementService thongBaoLopHocPhanService,
+                               GradeImportService gradeImportService) {
         this.lopHocPhanService = lopHocPhanService;
         this.diemService = diemService;
         this.thongBaoNghiService = thongBaoNghiService;
@@ -75,6 +90,7 @@ public class LecturerController {
         this.giangVienDashboardService = giangVienDashboardService;
         this.studentAcademicProfileService = studentAcademicProfileService;
         this.thongBaoLopHocPhanService = thongBaoLopHocPhanService;
+        this.gradeImportService = gradeImportService;
     }
 
     @GetMapping("/giang-vien/me/ho-so")
@@ -203,6 +219,48 @@ public class LecturerController {
             @Valid @RequestBody RegistrationDtos.CapNhatDiemHangLoatRequest request) {
         return diemService.capNhatDiemHangLoat(id, request);
     }
+
+    // --- Grade Excel (.xlsx) Import (QLSV-73 / TASK-LC-08) ---
+
+    @GetMapping({"/giang-vien/lop-hoc-phan/{id}/diem/import-xlsx/cau-hinh",
+                 "/diem/lop-hoc-phan/{id}/import-xlsx/cau-hinh"})
+    public GradeImportDtos.GradeImportConfigDto cauHinhImportDiemXlsx(@PathVariable Long id) {
+        return gradeImportService.layCauHinhImport(id);
+    }
+
+    @GetMapping({"/giang-vien/lop-hoc-phan/{id}/diem/template-xlsx",
+                 "/giang-vien/lop-hoc-phan/{id}/diem/template",
+                 "/diem/lop-hoc-phan/{id}/template-xlsx"})
+    public ResponseEntity<byte[]> taiTemplateDiemXlsx(@PathVariable Long id) {
+        GradeImportService.XlsxFile tep = gradeImportService.xuatTemplateXlsx(id);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType(XlsxWorkbookSupport.XLSX_MEDIA_TYPE));
+        headers.setContentDisposition(ContentDisposition.attachment()
+                .filename(tep.tenTep(), StandardCharsets.UTF_8).build());
+        headers.setCacheControl(CacheControl.noStore());
+        return new ResponseEntity<>(tep.noiDung(), headers, HttpStatus.OK);
+    }
+
+    @PostMapping(
+            value = {"/giang-vien/lop-hoc-phan/{id}/diem/import-xlsx/preview",
+                     "/diem/lop-hoc-phan/{id}/import-xlsx/preview"},
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    public GradeImportDtos.PreviewResponse xemTruocImportDiemXlsx(
+            @PathVariable Long id,
+            @RequestParam(value = "file", required = false) MultipartFile file) {
+        return gradeImportService.xemTruocImport(id, file);
+    }
+
+    @PostMapping({"/giang-vien/lop-hoc-phan/{id}/diem/import-xlsx/confirm",
+                  "/diem/lop-hoc-phan/{id}/import-xlsx/confirm"})
+    public GradeImportDtos.ConfirmImportResponse xacNhanImportDiemXlsx(
+            @PathVariable Long id,
+            @Valid @RequestBody GradeImportDtos.ConfirmImportRequest request) {
+        return gradeImportService.xacNhanImport(id, request);
+    }
+
+    // ---------------------------------------------------------
 
     @GetMapping({"/giang-vien/lop-hoc-phan/{id}/trang-thai-bang-diem", "/diem/lop-hoc-phan/{id}/trang-thai"})
     @PreAuthorize("hasAnyRole('GIANG_VIEN', 'QUAN_TRI')")
