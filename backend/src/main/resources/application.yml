@@ -7,7 +7,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/quan_ly_dao_tao?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Ho_Chi_Minh&characterEncoding=UTF-8}
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:root}
+    password: ${DB_PASSWORD:123456$}
     hikari:
       maximum-pool-size: ${DB_POOL_SIZE:20}
       minimum-idle: ${DB_POOL_MIN_IDLE:5}
@@ -89,3 +89,7 @@ app:
     missing-grade-policy: ${GRADE_ANALYTICS_MISSING_POLICY:EXCLUDE_FROM_DENOMINATOR}
     official-regulation: ${GRADE_ANALYTICS_OFFICIAL_REGULATION:false}
     policy-note: ${GRADE_ANALYTICS_POLICY_NOTE:Khoảng phân bố điểm ([0.0, 4.0), [4.0, 5.0), [5.0, 6.5), [6.5, 8.0), [8.0, 10.0]) và chính sách loại bản ghi chưa có điểm tổng kết công bố khỏi mẫu số tính điểm trung bình / tỷ lệ đạt-trượt (EXCLUDE_FROM_DENOMINATOR — không tự gán 0.0) đang áp dụng theo cấu hình tập trung dự kiến và chờ Chủ dự án chốt chính thức (không phải quy chế chính thức). Ngưỡng đạt lấy từ AcademicRules.DIEM_DAT = 5.0.}
+  room-policy:
+    hoat-dong: BAT_BUOC
+    trung-lich: BAT_BUOC
+    suc-chua: CANH_BAO
