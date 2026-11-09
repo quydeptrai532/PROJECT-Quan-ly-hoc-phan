@@ -37,6 +37,10 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
 
     boolean existsByMa(String ma);
 
+    boolean existsByMaIgnoreCase(String ma);
+
+    boolean existsByEmailIgnoreCase(String email);
+
     @EntityGraph(attributePaths = {"user", "khoa", "nganh", "lopHanhChinh"})
     List<Student> findAllByOrderByMaAsc();
 

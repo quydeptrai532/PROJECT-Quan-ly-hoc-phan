@@ -13,6 +13,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -51,9 +54,37 @@ public class AdminUserController {
         return userService.doiTrangThaiSinhVien(id, request.trangThai());
     }
 
+    @GetMapping("/sinh-vien/import/template")
+    public ResponseEntity<byte[]> mauImportSinhVien() {
+        byte[] csv = userService.getSinhVienTemplateCsv();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=mau-import-sinh-vien.csv")
+                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                .body(csv);
+    }
+
     @PostMapping("/sinh-vien/import")
     public UserDtos.ImportResultDto importSinhVien(@RequestPart("file") MultipartFile file) {
         return userService.importSinhVien(file);
+    }
+
+    @PostMapping("/sinh-vien/import/preview")
+    public UserDtos.UserImportPreviewResponse previewImportSinhVien(@RequestPart("file") MultipartFile file) {
+        return userService.previewImportSinhVien(file);
+    }
+
+    @PostMapping("/sinh-vien/import/confirm")
+    public UserDtos.ImportResultDto confirmImportSinhVien(@Valid @RequestBody UserDtos.UserConfirmImportRequest request) {
+        return userService.confirmImportSinhVien(request);
+    }
+
+    @PostMapping("/sinh-vien/import/export-errors")
+    public ResponseEntity<byte[]> xuatLoiImportSinhVien(@RequestBody List<UserDtos.UserImportRowDetailDto> danhSachLoi) {
+        byte[] csv = userService.exportErrorReport(danhSachLoi);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=loi-import-sinh-vien.csv")
+                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                .body(csv);
     }
 
     @GetMapping("/giang-vien")
@@ -76,5 +107,38 @@ public class AdminUserController {
     public UserDtos.GiangVienDto doiTrangThaiGiangVien(@PathVariable Long id,
                                                        @RequestBody UserDtos.TrangThaiRequest request) {
         return userService.doiTrangThaiGiangVien(id, request.trangThai());
+    }
+
+    @GetMapping("/giang-vien/import/template")
+    public ResponseEntity<byte[]> mauImportGiangVien() {
+        byte[] csv = userService.getGiangVienTemplateCsv();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=mau-import-giang-vien.csv")
+                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                .body(csv);
+    }
+
+    @PostMapping("/giang-vien/import")
+    public UserDtos.ImportResultDto importGiangVien(@RequestPart("file") MultipartFile file) {
+        return userService.importGiangVien(file);
+    }
+
+    @PostMapping("/giang-vien/import/preview")
+    public UserDtos.UserImportPreviewResponse previewImportGiangVien(@RequestPart("file") MultipartFile file) {
+        return userService.previewImportGiangVien(file);
+    }
+
+    @PostMapping("/giang-vien/import/confirm")
+    public UserDtos.ImportResultDto confirmImportGiangVien(@Valid @RequestBody UserDtos.UserConfirmImportRequest request) {
+        return userService.confirmImportGiangVien(request);
+    }
+
+    @PostMapping("/giang-vien/import/export-errors")
+    public ResponseEntity<byte[]> xuatLoiImportGiangVien(@RequestBody List<UserDtos.UserImportRowDetailDto> danhSachLoi) {
+        byte[] csv = userService.exportErrorReport(danhSachLoi);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=loi-import-giang-vien.csv")
+                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                .body(csv);
     }
 }

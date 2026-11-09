@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
-import { Lock, LockOpen, Pencil, Plus, Search, UserCog } from "lucide-react";
+import { Download, Lock, LockOpen, Pencil, Plus, Search, Upload, UserCog } from "lucide-react";
 import api, { getErrorMessage } from "../../api/client";
 import { useConfirm } from "../../components/ConfirmDialog";
 import { Alert, Badge, EmptyState, Field, Modal, PageHeader, Spinner } from "../../components/ui";
+import UserImportModal from "../../components/UserImportModal";
 import { useApi } from "../../lib/useApi";
 
 const EMPTY_FORM = {
@@ -23,6 +24,7 @@ export default function LecturerPage() {
   const [search, setSearch] = useState("");
   const [message, setMessage] = useState("");
   const [actionError, setActionError] = useState("");
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [busyId, setBusyId] = useState(null);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -124,6 +126,30 @@ export default function LecturerPage() {
     }
   };
 
+  const taiFileMau = async () => {
+    try {
+      const response = await api.get("/admin/giang-vien/import/template", { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: "text/csv;charset=utf-8" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "mau-import-giang-vien.csv";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      const csv = "\uFEFFma,hoTen,email,soDienThoai,khoaId\nGV010,Nguyen Van B,b@lecturer.edu.vn,0912345678,1\n";
+      const url = window.URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "mau-import-giang-vien.csv";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    }
+  };
+
   return (
     <div>
       <PageHeader
@@ -131,9 +157,21 @@ export default function LecturerPage() {
         title="Giảng viên"
         description="Quản lý hồ sơ giảng viên và trạng thái tài khoản giảng dạy."
         actions={
-          <button type="button" className="btn-primary" onClick={openCreate}>
-            <Plus size={16} /> Thêm giảng viên
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" className="btn-secondary" onClick={taiFileMau}>
+              <Download size={16} /> File mẫu
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setImportModalOpen(true)}
+            >
+              <Upload size={16} /> Nhập CSV (Xem trước & Kiểm tra)
+            </button>
+            <button type="button" className="btn-primary" onClick={openCreate}>
+              <Plus size={16} /> Thêm giảng viên
+            </button>
+          </div>
         }
       />
 
@@ -316,6 +354,13 @@ export default function LecturerPage() {
           </div>
         </form>
       </Modal>
+
+      <UserImportModal
+        open={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        type="giang-vien"
+        onSuccess={reload}
+      />
     </div>
   );
 }
