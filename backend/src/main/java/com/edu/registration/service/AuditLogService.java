@@ -55,7 +55,7 @@ public class AuditLogService {
             "daHuy", "thoiGianHuy", "nguoiHuyId", "nguoiHuyUsername", "lopNguonId", "maLopNguon", "lopDichId", "maLopDich", "soLuongChuyen", "loaiQuanHeMon", "soDangKyBiHuy", "phongHocId", "maPhong", "tenPhong", "toaNha", "tang", "viTri", "sucChua", "loaiPhong", "thietBi", "trangThaiPhong", "ghiChu",
             "trangThaiHocTap", "trangThaiHocTapTruoc", "trangThaiHocTapSau", "ngayHieuLuc",
             "phucKhaoId", "maHoSo", "diemQuaTrinhGoc", "diemCuoiKyGoc", "diemTongKetGoc", "diemQuaTrinhMoi", "diemCuoiKyMoi", "diemTongKetMoi", "loaiDiemPhucKhao", "ketQuaXuLy", "hanNop", "ghiChuXuLy", "diemMongMuon", "mucDich", "loaiTraCuu", "tuKhoa", "trang", "soTrang", "sinhVienMa", "giangVienMa",
-            "mucUuTien", "mucUuTienCu", "mucUuTienMoi", "hanXuLy", "hanXuLyCu", "hanXuLyMoi", "nguoiXuLyId", "nguoiXuLyCuId", "nguoiXuLyMoiId", "nguoiXuLyUsername", "nguoiXuLyCuUsername", "nguoiXuLyMoiUsername", "loaiThayDoi", "giaTriCu", "giaTriMoi", "yeuCauBoSungMinhChung", "noiDungYeuCauMinhChung", "congKhai", "isNoiBo"
+            "mucUuTien", "mucUuTienCu", "mucUuTienMoi", "hanXuLy", "hanXuLyCu", "hanXuLyMoi", "nguoiXuLyId", "nguoiXuLyCuId", "nguoiXuLyMoiId", "nguoiXuLyUsername", "nguoiXuLyCuUsername", "nguoiXuLyMoiUsername", "loaiThayDoi", "giaTriCu", "giaTriMoi", "yeuCauBoSungMinhChung", "noiDungYeuCauMinhChung", "congKhai", "isNoiBo", "maSinhVien", "maXacMinhMasked", "fileSha256", "phienBan", "phienBanCu", "phienBanMoi", "banGhiGocId", "banGhiThayTheId", "lyDoThuHoi", "soMonDaCongBo"
     );
 
     private final AuditLogRepository repository;

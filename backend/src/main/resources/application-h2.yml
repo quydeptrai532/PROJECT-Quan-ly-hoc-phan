@@ -27,3 +27,6 @@ app:
     api:
       capacity: 50000
       window-seconds: 60
+    verify:
+      capacity: 1000
+      window-seconds: 60

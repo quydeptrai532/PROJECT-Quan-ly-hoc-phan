@@ -30,6 +30,15 @@ public class RateLimitService {
         return getActiveLimiter().tryAcquire(key, config.getCapacity(), config.getWindowSeconds());
     }
 
+    public RateLimitResult checkVerifyLimit(String clientIp) {
+        if (!properties.isEnabled() || properties.getStrategy() == RateLimitingProperties.Strategy.DISABLED) {
+            return RateLimitResult.allowed(Long.MAX_VALUE, Long.MAX_VALUE);
+        }
+        String key = "verify:" + clientIp;
+        RateLimitingProperties.EndpointLimit config = properties.getVerify();
+        return getActiveLimiter().tryAcquire(key, config.getCapacity(), config.getWindowSeconds());
+    }
+
     public RateLimitResult checkApiLimit(String clientIdentifier) {
         if (!properties.isEnabled() || properties.getStrategy() == RateLimitingProperties.Strategy.DISABLED) {
             return RateLimitResult.allowed(Long.MAX_VALUE, Long.MAX_VALUE);

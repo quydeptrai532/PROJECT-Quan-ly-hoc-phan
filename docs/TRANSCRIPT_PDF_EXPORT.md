@@ -25,6 +25,6 @@ Sinh viên có thể tải bảng điểm cá nhân dưới dạng PDF trực ti
 ## Các trường và thông tin chưa xuất do dữ liệu/mẫu chính thức chưa có
 
 - **Tên đơn vị phát hành chính thức**: chỉ hiển thị trên đầu bảng điểm khi cấu hình biến `app.export.bang-diem.don-vi-phat-hanh` (hoặc biến môi trường `EXPORT_BANG_DIEM_DON_VI_PHAT_HANH`). Mặc định để trống, không tự bịa tên trường/cơ quan chủ quản.
-- **Mẫu hành chính, chữ ký, con dấu, mã xác thực/QR**: dự án chưa có mẫu biểu hành chính và cơ chế ký số/xác thực văn bản nên PDF dùng bố cục học vụ trung tính và ghi chú rõ chỉ phục vụ tra cứu cá nhân.
+- **Mẫu hành chính, chữ ký, con dấu, mã xác thực/QR**: Đã được nâng cấp chính thức theo tiêu chuẩn điện tử xác thực trong **QLSV-99 / TASK-OP-12**. PDF hiện nhúng khối xác thực điện tử với mã xác minh ngẫu nhiên entropy cao, mã QR quét đường dẫn HTTPS tra cứu công khai và snapshot bất biến được lưu trữ tại cơ sở dữ liệu (`bang_diem_xac_thuc`). Chi tiết xem tại `docs/VERIFIABLE_TRANSCRIPT_QLSV_99.md`.
 - **Thông tin nhân thân bổ sung** (ngày sinh, giới tính, nơi sinh, CCCD, hệ đào tạo, xếp loại học lực toàn khóa, trạng thái học tập): chưa có cột dữ liệu trong bảng `sinh_vien` nên không đưa vào hoặc giữ giá trị `Chưa cập nhật` từ hồ sơ đào tạo.
 - **Quy chế thay thế điểm khi học lại/học cải thiện**: chưa được cấu hình chính thức trong hệ thống; PDF liệt kê đầy đủ các lần học đã công bố và ghi chú rõ cách tính hiện hành.
