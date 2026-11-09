@@ -12,6 +12,12 @@ public interface MajorRepository extends JpaRepository<Major, Long> {
     @EntityGraph(attributePaths = {"khoa"})
     List<Major> findAllByOrderByMaAsc();
 
+    @EntityGraph(attributePaths = {"khoa"})
+    List<Major> findByKhoaIdOrderByMaAsc(Long khoaId);
+
+    @EntityGraph(attributePaths = {"khoa"})
+    Optional<Major> findWithKhoaById(Long id);
+
     boolean existsByMa(String ma);
 
     Optional<Major> findByMa(String ma);

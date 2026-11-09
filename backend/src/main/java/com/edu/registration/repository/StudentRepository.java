@@ -46,4 +46,12 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
 
     @EntityGraph(attributePaths = {"user", "khoa", "nganh", "lopHanhChinh"})
     List<Student> findByHoTenContainingIgnoreCaseOrMaContainingIgnoreCaseOrderByMaAsc(String hoTen, String ma);
+
+    @EntityGraph(attributePaths = {"khoa", "nganh", "chuongTrinh"})
+    @Query("""
+            select sv from Student sv
+            where (:khoaId is null or sv.khoa.id = :khoaId)
+              and (:nganhId is null or sv.nganh.id = :nganhId)
+            """)
+    List<Student> findByKhoaIdAndNganhIdForAnalytics(@Param("khoaId") Long khoaId, @Param("nganhId") Long nganhId);
 }

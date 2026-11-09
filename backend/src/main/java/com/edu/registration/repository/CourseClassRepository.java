@@ -61,6 +61,20 @@ public interface CourseClassRepository extends JpaRepository<CourseClass, Long> 
                                             @Param("lopHocPhanId") Long lopHocPhanId);
 
     @EntityGraph(attributePaths = {"monHoc", "monHoc.khoa", "hocKy", "giangVien"})
+    @Query("""
+            select l from CourseClass l
+            where (:hocKyId is null or l.hocKy.id = :hocKyId)
+              and (:khoaId is null or l.monHoc.khoa.id = :khoaId)
+              and (:monHocId is null or l.monHoc.id = :monHocId)
+              and (:lopHocPhanId is null or l.id = :lopHocPhanId)
+            order by l.hocKy.ngayBatDau desc, l.ma asc
+            """)
+    List<CourseClass> findForAdminAnalytics(@Param("hocKyId") Long hocKyId,
+                                            @Param("khoaId") Long khoaId,
+                                            @Param("monHocId") Long monHocId,
+                                            @Param("lopHocPhanId") Long lopHocPhanId);
+
+    @EntityGraph(attributePaths = {"monHoc", "monHoc.khoa", "hocKy", "giangVien"})
     @Query("select l from CourseClass l where l.id = :id")
     Optional<CourseClass> findWithDetailsById(@Param("id") Long id);
 
