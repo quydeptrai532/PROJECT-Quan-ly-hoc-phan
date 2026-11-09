@@ -44,6 +44,43 @@ public final class RegistrationDtos {
                                   int soTiet, int siSoHienTai, int siSoToiDa, boolean dangMoDangKy,
                                   String loaiDangKy, List<LanHocTruocDto> cacLanHocTruoc) { }
 
+    public record KiemTraQuanHeMonItemDto(
+            Long quanHeId,
+            Long monHocId,
+            String maMonHoc,
+            String tenMonHoc,
+            Long monLienQuanId,
+            String maMonLienQuan,
+            String tenMonLienQuan,
+            String loaiQuanHe,
+            String tenLoaiQuanHe,
+            Double dieuKienDat,
+            boolean yeuCauDat,
+            String maNhomTuChon,
+            Integer tinChiTuChonYeuCau,
+            String khoaNhapHoc,
+            boolean hieuLucTrongHocKy,
+            boolean quyCheDaChot,
+            boolean chanDangKy,
+            String trangThaiKiemTra,
+            boolean daDatMonLienQuan,
+            boolean dangDangKyCungHocKy,
+            String thongDiep,
+            String phanCanChuDuAnChot) {
+    }
+
+    public record KetQuaKiemTraQuanHeDangKyDto(
+            Long lopHocPhanId,
+            String maLop,
+            Long monHocId,
+            String maMon,
+            String tenMon,
+            Long hocKyId,
+            String tenHocKy,
+            boolean duDieuKienTienQuyet,
+            List<KiemTraQuanHeMonItemDto> danhSachQuanHe) {
+    }
+
     public record NhapDiemRequest(
             @DecimalMin(value = "0", message = "Điểm phải từ 0 đến 10")
             @DecimalMax(value = "10", message = "Điểm phải từ 0 đến 10")

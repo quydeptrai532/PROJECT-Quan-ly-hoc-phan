@@ -76,4 +76,9 @@ public interface CourseClassRepository extends JpaRepository<CourseClass, Long> 
     List<CourseClass> findOpenForRegistration(@Param("ngay") LocalDate ngay);
 
     long countByHocKyId(Long hocKyId);
+
+    @EntityGraph(attributePaths = {"monHoc", "hocKy"})
+    List<CourseClass> findByMonHocIdOrderByMaAsc(Long monHocId);
+
+    long countByMonHocId(Long monHocId);
 }

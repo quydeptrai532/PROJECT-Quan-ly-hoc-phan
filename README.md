@@ -140,6 +140,7 @@ Dữ liệu mẫu gồm 2 khoa, 3 ngành, 3 lớp hành chính, 8 môn học (c�
 12. Mở lớp học phần có cảnh báo trùng phòng/trùng lịch giảng viên (vẫn cho phép lưu, trả về danh sách `canhBao`).
 13. Giảng viên chỉ được gửi thông báo cho các lớp học phần mình phụ trách. Người nhận được xác minh trên server từ các sinh viên đang đăng ký hiệu lực (`DA_DANG_KY`). Thông báo gửi ngay lập tức tới Notification Center của đúng sinh viên, lưu người tạo, thời điểm và ghi audit log (`CLASS_ANNOUNCEMENT_CREATED`). Chi tiết: [docs/LECTURER_CLASS_ANNOUNCEMENTS.md](docs/LECTURER_CLASS_ANNOUNCEMENTS.md).
 14. Thống kê điểm lớp học phần và phân bố khoảng điểm (`[0.0, 4.0)`, `[4.0, 5.0)`, `[5.0, 6.5)`, `[6.5, 8.0)`, `[8.0, 10.0]`) chỉ tính thống kê chính thức trên các lớp có bảng điểm đã công bố (`DA_CONG_BO` hoặc `DA_KHOA`), dùng mẫu số là các bản ghi đăng ký hiệu lực đã có điểm tổng kết hợp lệ (không tính sinh viên chưa có điểm công bố thành `0.0`). Dữ liệu lớp chưa công bố được tách riêng ở khối tạm tính có nhãn cảnh báo cho giảng viên phụ trách / quản trị. Chi tiết: [docs/CLASS_GRADE_ANALYTICS.md](docs/CLASS_GRADE_ANALYTICS.md).
+15. Quản trị khóa học/niên khóa (`/api/admin/khoa-hoc`) và quan hệ giữa các môn học (`/api/admin/quan-he-mon`: `TIEN_QUYET`, `SONG_HANH`, `TUONG_DUONG`, `THAY_THE`, `NHOM_TU_CHON`) có kiểm tra chống tự tham chiếu, chống chu trình tiên quyết nhiều bước, bảo vệ xóa (`409 Conflict`) khi đang được chương trình đào tạo hoặc lớp học phần sử dụng, và lưu metadata người tạo/cập nhật kèm audit log. Khi kiểm tra đăng ký, hệ thống cưỡng chế `TIEN_QUYET` đang hiệu lực theo ngưỡng đạt cấu hình và trả về thông tin đối chiếu có cấu trúc cho các quan hệ `SONG_HANH`, `TUONG_DUONG`, `THAY_THE`, `NHOM_TU_CHON` đang chờ chủ dự án chốt quy chế. Chi tiết: [docs/COURSE_AND_SUBJECT_RELATIONS.md](docs/COURSE_AND_SUBJECT_RELATIONS.md).
 
 ## API chính
 
@@ -179,8 +180,9 @@ Dữ liệu mẫu gồm 2 khoa, 3 ngành, 3 lớp hành chính, 8 môn học (c�
 | GET | `/api/giang-vien/thong-ke-diem?hocKyId=&monHocId=&lopHocPhanId=` | Thống kê điểm lớp và phân bố khoảng điểm trong phạm vi lớp giảng viên phụ trách (không chứa PII sinh viên) |
 | GET | `/api/giang-vien/lop-hoc-phan/{id}/thong-ke-diem` | Thống kê điểm và phân bố của một lớp học phần cụ thể (tách riêng thống kê công bố và tạm tính chưa công bố) |
 | GET | `/api/admin/thong-ke/diem-lop?hocKyId=&khoaId=&monHocId=&lopHocPhanId=` | Quản trị viên thống kê điểm lớp học phần và phân bố điểm theo học kỳ, khoa, môn học, lớp học phần |
-| CRUD | `/api/admin/khoa`, `/nganh`, `/lop-hanh-chinh`, `/mon-hoc`, `/hoc-ky` | Quản trị danh mục |
-| GET/POST/DELETE | `/api/admin/mon-hoc/{id}/tien-quyet` | Cấu hình môn tiên quyết |
+| CRUD | `/api/admin/khoa`, `/nganh`, `/lop-hanh-chinh`, `/mon-hoc`, `/hoc-ky`, `/khoa-hoc` | Quản trị danh mục (bao gồm Khóa học / Niên khóa) |
+| GET/POST/PUT/DELETE | `/api/admin/quan-he-mon`, `/api/admin/mon-hoc/{id}/tien-quyet`, `/api/admin/loai-quan-he-mon` | Cấu hình và tra cứu quan hệ giữa các môn học (tiên quyết, song hành, tương đương, thay thế, nhóm tự chọn) |
+| GET | `/api/dang-ky/kiem-tra-quan-he?lopHocPhanId=` | Kiểm tra chi tiết các quan hệ môn học đang hiệu lực của lớp học phần đối với sinh viên đăng nhập |
 | CRUD | `/api/admin/lop-hoc-phan` | Mở lớp học phần |
 | POST | `/api/admin/lop-hoc-phan/{id}/huy` | Hủy lớp học phần, chuyển các đăng ký đang hoạt động sang `DA_HUY` và thông báo sinh viên bị ảnh hưởng |
 | CRUD | `/api/admin/sinh-vien`, `/giang-vien` | Quản lý người dùng |

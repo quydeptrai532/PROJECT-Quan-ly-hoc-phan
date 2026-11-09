@@ -1,34 +1,37 @@
 package com.edu.registration.config;
 
-import com.edu.registration.entity.CourseRegistration;
-import com.edu.registration.entity.Grade;
-import com.edu.registration.entity.Lecturer;
-import com.edu.registration.entity.Semester;
-import com.edu.registration.entity.Faculty;
+import com.edu.registration.entity.AcademicCohort;
 import com.edu.registration.entity.AdministrativeClass;
 import com.edu.registration.entity.CourseClass;
-import com.edu.registration.entity.Subject;
-import com.edu.registration.entity.PrerequisiteSubject;
-import com.edu.registration.entity.Major;
-import com.edu.registration.entity.Role;
-import com.edu.registration.entity.Student;
+import com.edu.registration.entity.CourseRegistration;
+import com.edu.registration.entity.Faculty;
+import com.edu.registration.entity.Grade;
 import com.edu.registration.entity.GradeSheetStatus;
+import com.edu.registration.entity.Lecturer;
+import com.edu.registration.entity.Major;
+import com.edu.registration.entity.PrerequisiteSubject;
 import com.edu.registration.entity.RegistrationStatus;
+import com.edu.registration.entity.Role;
+import com.edu.registration.entity.Semester;
+import com.edu.registration.entity.Student;
+import com.edu.registration.entity.Subject;
 import com.edu.registration.entity.User;
-import com.edu.registration.repository.CourseRegistrationRepository;
-import com.edu.registration.repository.GradeRepository;
-import com.edu.registration.repository.LecturerRepository;
-import com.edu.registration.repository.SemesterRepository;
-import com.edu.registration.repository.FacultyRepository;
+import com.edu.registration.repository.AcademicCohortRepository;
 import com.edu.registration.repository.AdministrativeClassRepository;
 import com.edu.registration.repository.CourseClassRepository;
-import com.edu.registration.repository.SubjectRepository;
-import com.edu.registration.repository.PrerequisiteSubjectRepository;
+import com.edu.registration.repository.CourseRegistrationRepository;
+import com.edu.registration.repository.FacultyRepository;
+import com.edu.registration.repository.GradeRepository;
+import com.edu.registration.repository.LecturerRepository;
 import com.edu.registration.repository.MajorRepository;
+import com.edu.registration.repository.PrerequisiteSubjectRepository;
+import com.edu.registration.repository.SemesterRepository;
 import com.edu.registration.repository.StudentRepository;
+import com.edu.registration.repository.SubjectRepository;
 import com.edu.registration.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -40,10 +43,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.regex.Pattern;
 
 @Component
@@ -64,6 +65,7 @@ public class DataSeeder implements CommandLineRunner {
     private final CourseClassRepository lopHocPhanRepository;
     private final CourseRegistrationRepository dangKyHocPhanRepository;
     private final GradeRepository diemRepository;
+    private final AcademicCohortRepository khoaHocRepository;
     private final PasswordEncoder passwordEncoder;
 
     private static final String[] LAST_NAMES = {
@@ -105,6 +107,21 @@ public class DataSeeder implements CommandLineRunner {
                       StudentRepository sinhVienRepository, CourseClassRepository lopHocPhanRepository,
                       CourseRegistrationRepository dangKyHocPhanRepository, GradeRepository diemRepository,
                       PasswordEncoder passwordEncoder) {
+        this(userRepository, khoaRepository, nganhRepository, lopHanhChinhRepository,
+                monHocRepository, monTienQuyetRepository, hocKyRepository, giangVienRepository,
+                sinhVienRepository, lopHocPhanRepository, dangKyHocPhanRepository, diemRepository,
+                null, passwordEncoder);
+    }
+
+    @Autowired
+    public DataSeeder(UserRepository userRepository, FacultyRepository khoaRepository,
+                      MajorRepository nganhRepository, AdministrativeClassRepository lopHanhChinhRepository,
+                      SubjectRepository monHocRepository, PrerequisiteSubjectRepository monTienQuyetRepository,
+                      SemesterRepository hocKyRepository, LecturerRepository giangVienRepository,
+                      StudentRepository sinhVienRepository, CourseClassRepository lopHocPhanRepository,
+                      CourseRegistrationRepository dangKyHocPhanRepository, GradeRepository diemRepository,
+                      AcademicCohortRepository khoaHocRepository,
+                      PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.khoaRepository = khoaRepository;
         this.nganhRepository = nganhRepository;
@@ -117,6 +134,7 @@ public class DataSeeder implements CommandLineRunner {
         this.lopHocPhanRepository = lopHocPhanRepository;
         this.dangKyHocPhanRepository = dangKyHocPhanRepository;
         this.diemRepository = diemRepository;
+        this.khoaHocRepository = khoaHocRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -124,6 +142,7 @@ public class DataSeeder implements CommandLineRunner {
     @Transactional
     public void run(String... args) {
         if (userRepository.count() > 0 && sinhVienRepository.count() >= 500) {
+            seedKhoaHocNeuChuaCo(null, null);
             log.info("Dữ liệu đầy đủ (500 sinh viên, 50 giảng viên, 50 môn học), bỏ qua bước tạo dữ liệu mẫu");
             return;
         }
@@ -140,6 +159,9 @@ public class DataSeeder implements CommandLineRunner {
             lopHanhChinhRepository.deleteAllInBatch();
             nganhRepository.deleteAllInBatch();
             khoaRepository.deleteAllInBatch();
+            if (khoaHocRepository != null) {
+                khoaHocRepository.deleteAllInBatch();
+            }
             hocKyRepository.deleteAllInBatch();
             userRepository.deleteAllInBatch();
         }
@@ -293,10 +315,11 @@ public class DataSeeder implements CommandLineRunner {
         taoHocKy("Học kỳ 2", "2024-2025",
                 homNay.minusMonths(20), homNay.minusMonths(16),
                 homNay.minusMonths(21), homNay.minusMonths(20).plusDays(20), 12, 24);
-        taoHocKy("Học kỳ 1", "2024-2025",
+        Semester hocKyCuNhat = taoHocKy("Học kỳ 1", "2024-2025",
                 homNay.minusMonths(26), homNay.minusMonths(22),
                 homNay.minusMonths(27), homNay.minusMonths(26).plusDays(20), 12, 24);
 
+        seedKhoaHocNeuChuaCo(hocKyCuNhat, hocKyHienTai);
 
         // 6. Tạo Quản trị viên
         taoUserWithHash("admin", encodedAdminPassword, Role.QUAN_TRI);
@@ -462,7 +485,6 @@ public class DataSeeder implements CommandLineRunner {
         }
 
         // sv21..sv500: Phân bố GPA đầy đủ từ Xuất sắc, Giỏi, Khá, Trung bình đến Yếu / Học lại
-        // Chỉ đăng ký vào các lớp chung khác, tránh làm thay đổi sĩ số các lớp test (int30301, int20101, int20102)
         List<CourseClass> generalCurrentClasses = new ArrayList<>();
         for (int j = 5; j < currentClasses.size(); j++) {
             generalCurrentClasses.add(currentClasses.get(j));
@@ -478,23 +500,17 @@ public class DataSeeder implements CommandLineRunner {
             double baseScore;
 
             if (tier < 10) {
-                // Xuất sắc (10%): GPA 9.0 - 10.0
                 baseScore = 8.8 + ((i * 3) % 10) * 0.1;
             } else if (tier < 35) {
-                // Giỏi (25%): GPA 8.0 - 8.9
                 baseScore = 8.0 + ((i * 7) % 8) * 0.1;
             } else if (tier < 75) {
-                // Khá (40%): GPA 6.5 - 7.9
                 baseScore = 6.5 + ((i * 11) % 15) * 0.1;
             } else if (tier < 90) {
-                // Trung bình (15%): GPA 5.0 - 6.4
                 baseScore = 5.0 + ((i * 5) % 14) * 0.1;
             } else {
-                // Yếu / Cần học lại (10%): GPA < 5.0 (học lại)
                 baseScore = 3.2 + ((i * 9) % 16) * 0.1;
             }
 
-            // Gán 2 lớp quá khứ có điểm
             CourseClass lopPast1 = pastClasses[i % 7];
             CourseClass lopPast2 = pastClasses[7 + (i % 6)];
 
@@ -506,7 +522,6 @@ public class DataSeeder implements CommandLineRunner {
             double ck2 = Math.min(10.0, Math.max(1.0, Math.round((baseScore + ((i % 4) - 2) * 0.4) * 10.0) / 10.0));
             dangKyVoiDiem(sv, lopPast2, qt2, ck2);
 
-            // Đăng ký học kỳ hiện tại vào các lớp mở rộng
             CourseClass curLop1 = generalCurrentClasses.get(i % generalCurrentClasses.size());
             dangKyHienTai(sv, curLop1);
             if (generalCurrentClasses.size() > 1 && i % 3 == 0) {
@@ -518,6 +533,43 @@ public class DataSeeder implements CommandLineRunner {
         }
 
         log.info("Đã tạo thành công bộ dữ liệu hoàn chỉnh: 500 sinh viên, 50 giảng viên, 50 môn học chia đều các kỳ!");
+    }
+
+    private void seedKhoaHocNeuChuaCo(Semester hkBatDau, Semester hkHienTai) {
+        if (khoaHocRepository == null || khoaHocRepository.count() > 0) {
+            return;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        taoKhoaHocMau("K2024", "Khóa 2024", "2024-2028", 2024, 2028, hkBatDau,
+                LocalDate.of(2024, 9, 1), LocalDate.of(2028, 6, 30),
+                "Khóa tuyển sinh đại học chính quy năm 2024", now);
+        taoKhoaHocMau("K2025", "Khóa 2025", "2025-2029", 2025, 2029, null,
+                LocalDate.of(2025, 9, 1), LocalDate.of(2029, 6, 30),
+                "Khóa tuyển sinh đại học chính quy năm 2025", now);
+        taoKhoaHocMau("K2026", "Khóa 2026", "2026-2030", 2026, 2030, hkHienTai,
+                LocalDate.of(2026, 9, 1), LocalDate.of(2030, 6, 30),
+                "Khóa tuyển sinh đại học chính quy năm 2026", now);
+    }
+
+    private void taoKhoaHocMau(String ma, String ten, String nienKhoa, int namBatDau, int namKetThuc,
+                               Semester hkBatDau, LocalDate hieuLucTu, LocalDate hieuLucDen,
+                               String moTa, LocalDateTime now) {
+        AcademicCohort cohort = new AcademicCohort();
+        cohort.setMa(ma);
+        cohort.setTen(ten);
+        cohort.setNienKhoa(nienKhoa);
+        cohort.setNamBatDau(namBatDau);
+        cohort.setNamKetThuc(namKetThuc);
+        cohort.setHocKyBatDau(hkBatDau);
+        cohort.setHieuLucTu(hieuLucTu);
+        cohort.setHieuLucDen(hieuLucDen);
+        cohort.setDangHieuLuc(true);
+        cohort.setMoTa(moTa);
+        cohort.setNguoiTaoUsername("system");
+        cohort.setTaoLuc(now);
+        cohort.setNguoiCapNhatUsername("system");
+        cohort.setCapNhatLuc(now);
+        khoaHocRepository.save(cohort);
     }
 
     private User taoUserWithHash(String username, String encodedPassword, Role role) {
@@ -558,12 +610,23 @@ public class DataSeeder implements CommandLineRunner {
         monHoc.setTen(ten);
         monHoc.setSoTinChi(soTinChi);
         monHoc.setKhoa(khoa);
+        LocalDateTime now = LocalDateTime.now();
+        monHoc.setNguoiTaoUsername("system");
+        monHoc.setTaoLuc(now);
+        monHoc.setNguoiCapNhatUsername("system");
+        monHoc.setCapNhatLuc(now);
         return monHocRepository.save(monHoc);
     }
 
     private void taoTienQuyet(Subject monHoc, Subject tienQuyet) {
         if (monHoc != null && tienQuyet != null) {
-            monTienQuyetRepository.save(new PrerequisiteSubject(monHoc, tienQuyet));
+            PrerequisiteSubject rel = new PrerequisiteSubject(monHoc, tienQuyet);
+            LocalDateTime now = LocalDateTime.now();
+            rel.setNguoiTaoUsername("system");
+            rel.setTaoLuc(now);
+            rel.setNguoiCapNhatUsername("system");
+            rel.setCapNhatLuc(now);
+            monTienQuyetRepository.save(rel);
         }
     }
 

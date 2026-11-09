@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -89,9 +90,37 @@ public class AdminCatalogController {
         catalogService.xoaLopHanhChinh(id);
     }
 
+    @GetMapping({"/khoa-hoc", "/nien-khoa"})
+    public List<CatalogDtos.KhoaHocDto> danhSachKhoaHoc(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Boolean dangHieuLuc,
+            @RequestParam(required = false) Integer namBatDau) {
+        String term = (keyword != null && !keyword.isBlank()) ? keyword : q;
+        return catalogService.danhSachKhoaHoc(term, dangHieuLuc, namBatDau);
+    }
+
+    @PostMapping({"/khoa-hoc", "/nien-khoa"})
+    public CatalogDtos.KhoaHocDto taoKhoaHoc(@Valid @RequestBody CatalogDtos.KhoaHocRequest request) {
+        return catalogService.taoKhoaHoc(request);
+    }
+
+    @PutMapping({"/khoa-hoc/{id}", "/nien-khoa/{id}"})
+    public CatalogDtos.KhoaHocDto suaKhoaHoc(@PathVariable Long id,
+                                             @Valid @RequestBody CatalogDtos.KhoaHocRequest request) {
+        return catalogService.suaKhoaHoc(id, request);
+    }
+
+    @DeleteMapping({"/khoa-hoc/{id}", "/nien-khoa/{id}"})
+    public void xoaKhoaHoc(@PathVariable Long id) {
+        catalogService.xoaKhoaHoc(id);
+    }
+
     @GetMapping("/mon-hoc")
-    public List<CatalogDtos.MonHocDto> danhSachMonHoc() {
-        return catalogService.danhSachMonHoc();
+    public List<CatalogDtos.MonHocDto> danhSachMonHoc(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long khoaId) {
+        return catalogService.danhSachMonHoc(keyword, khoaId);
     }
 
     @PostMapping("/mon-hoc")
@@ -110,20 +139,66 @@ public class AdminCatalogController {
         catalogService.xoaMonHoc(id);
     }
 
-    @GetMapping("/mon-hoc/{id}/tien-quyet")
-    public List<CatalogDtos.MonTienQuyetDto> danhSachTienQuyet(@PathVariable Long id) {
-        return catalogService.danhSachTienQuyet(id);
+    @GetMapping({"/mon-hoc/{id}/tien-quyet", "/mon-hoc/{id}/quan-he"})
+    public List<CatalogDtos.MonTienQuyetDto> danhSachTienQuyet(
+            @PathVariable Long id,
+            @RequestParam(required = false) String loaiQuanHe,
+            @RequestParam(required = false) Boolean dangHieuLuc) {
+        return catalogService.danhSachTienQuyet(id, loaiQuanHe, dangHieuLuc);
     }
 
-    @PostMapping("/mon-hoc/{id}/tien-quyet")
+    @PostMapping({"/mon-hoc/{id}/tien-quyet", "/mon-hoc/{id}/quan-he"})
     public CatalogDtos.MonTienQuyetDto themTienQuyet(
             @PathVariable Long id, @Valid @RequestBody CatalogDtos.MonTienQuyetRequest request) {
         return catalogService.themTienQuyet(id, request);
     }
 
-    @DeleteMapping("/mon-hoc/{id}/tien-quyet/{lienKetId}")
+    @PutMapping({"/mon-hoc/{id}/tien-quyet/{lienKetId}", "/mon-hoc/{id}/quan-he/{lienKetId}"})
+    public CatalogDtos.MonTienQuyetDto suaTienQuyet(
+            @PathVariable Long id,
+            @PathVariable Long lienKetId,
+            @Valid @RequestBody CatalogDtos.MonTienQuyetRequest request) {
+        return catalogService.suaTienQuyet(id, lienKetId, request);
+    }
+
+    @DeleteMapping({"/mon-hoc/{id}/tien-quyet/{lienKetId}", "/mon-hoc/{id}/quan-he/{lienKetId}"})
     public void xoaTienQuyet(@PathVariable Long id, @PathVariable Long lienKetId) {
         catalogService.xoaTienQuyet(id, lienKetId);
+    }
+
+    @GetMapping({"/quan-he-mon/quy-che", "/loai-quan-he-mon"})
+    public List<CatalogDtos.QuyCheQuanHeMonDto> danhSachQuyCheQuanHeMon() {
+        return catalogService.danhSachQuyCheQuanHeMon();
+    }
+
+    @GetMapping("/quan-he-mon")
+    public List<CatalogDtos.MonTienQuyetDto> danhSachQuanHeMon(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Long monHocId,
+            @RequestParam(required = false) String loaiQuanHe,
+            @RequestParam(required = false) Long hocKyId,
+            @RequestParam(required = false) String khoaNhapHoc,
+            @RequestParam(required = false) Boolean dangHieuLuc) {
+        String term = (keyword != null && !keyword.isBlank()) ? keyword : q;
+        return catalogService.danhSachQuanHeMon(term, monHocId, loaiQuanHe, hocKyId, khoaNhapHoc, dangHieuLuc);
+    }
+
+    @PostMapping("/quan-he-mon")
+    public CatalogDtos.MonTienQuyetDto taoQuanHeMon(@Valid @RequestBody CatalogDtos.QuanHeMonRequest request) {
+        return catalogService.taoQuanHeMon(request);
+    }
+
+    @PutMapping("/quan-he-mon/{id}")
+    public CatalogDtos.MonTienQuyetDto suaQuanHeMon(
+            @PathVariable Long id,
+            @Valid @RequestBody CatalogDtos.QuanHeMonRequest request) {
+        return catalogService.suaQuanHeMon(id, request);
+    }
+
+    @DeleteMapping("/quan-he-mon/{id}")
+    public void xoaQuanHeMon(@PathVariable Long id) {
+        catalogService.xoaQuanHeMon(id);
     }
 
     @GetMapping("/hoc-ky")

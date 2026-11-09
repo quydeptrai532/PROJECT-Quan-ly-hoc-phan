@@ -58,6 +58,8 @@ const NAV = {
     { to: "/quan-tri/nganh", label: "Ngành", icon: Network },
     { to: "/quan-tri/lop-hanh-chinh", label: "Lớp hành chính", icon: Users },
     { to: "/quan-tri/mon-hoc", label: "Môn học", icon: BookMarked },
+    { to: "/quan-tri/quan-he-mon", label: "Quan hệ môn học", icon: Network },
+    { to: "/quan-tri/khoa-hoc", label: "Khóa học / Niên khóa", icon: CalendarRange },
     { to: "/quan-tri/lop-hoc-phan", label: "Lớp học phần", icon: Layers },
     { to: "/quan-tri/sinh-vien", label: "Sinh viên", icon: UserRound },
     { to: "/quan-tri/chuong-trinh-dao-tao", label: "Chương trình đào tạo", icon: LibraryBig },
