@@ -16,31 +16,56 @@ public final class CatalogDtos {
     private CatalogDtos() {
     }
 
-    public record KhoaDto(Long id, String ma, String ten) {
+    public record KhoaDto(Long id, String ma, String ten, boolean dangHieuLuc) {
+        public KhoaDto(Long id, String ma, String ten) {
+            this(id, ma, ten, true);
+        }
     }
 
     public record KhoaRequest(
             @NotBlank(message = "Mã khoa không được để trống") String ma,
-            @NotBlank(message = "Tên khoa không được để trống") String ten) {
+            @NotBlank(message = "Tên khoa không được để trống") String ten,
+            Boolean dangHieuLuc,
+            Boolean khoiPhucNeuDaLuuTru) {
+        public KhoaRequest(String ma, String ten) {
+            this(ma, ten, true, false);
+        }
     }
 
-    public record NganhDto(Long id, String ma, String ten, Long khoaId, String khoaTen) {
+    public record NganhDto(Long id, String ma, String ten, Long khoaId, String khoaTen, boolean dangHieuLuc) {
+        public NganhDto(Long id, String ma, String ten, Long khoaId, String khoaTen) {
+            this(id, ma, ten, khoaId, khoaTen, true);
+        }
     }
 
     public record NganhRequest(
             @NotBlank(message = "Mã ngành không được để trống") String ma,
             @NotBlank(message = "Tên ngành không được để trống") String ten,
-            @NotNull(message = "Vui lòng chọn khoa") Long khoaId) {
+            @NotNull(message = "Vui lòng chọn khoa") Long khoaId,
+            Boolean dangHieuLuc,
+            Boolean khoiPhucNeuDaLuuTru) {
+        public NganhRequest(String ma, String ten, Long khoaId) {
+            this(ma, ten, khoaId, true, false);
+        }
     }
 
     public record LopHanhChinhDto(Long id, String ma, String ten, Long nganhId, String nganhTen,
-                                  Long khoaId, String khoaTen) {
+                                  Long khoaId, String khoaTen, boolean dangHieuLuc) {
+        public LopHanhChinhDto(Long id, String ma, String ten, Long nganhId, String nganhTen,
+                               Long khoaId, String khoaTen) {
+            this(id, ma, ten, nganhId, nganhTen, khoaId, khoaTen, true);
+        }
     }
 
     public record LopHanhChinhRequest(
             @NotBlank(message = "Mã lớp không được để trống") String ma,
             @NotBlank(message = "Tên lớp không được để trống") String ten,
-            @NotNull(message = "Vui lòng chọn ngành") Long nganhId) {
+            @NotNull(message = "Vui lòng chọn ngành") Long nganhId,
+            Boolean dangHieuLuc,
+            Boolean khoiPhucNeuDaLuuTru) {
+        public LopHanhChinhRequest(String ma, String ten, Long nganhId) {
+            this(ma, ten, nganhId, true, false);
+        }
     }
 
     public record MonHocDto(
@@ -50,6 +75,9 @@ public final class CatalogDtos {
             int soTinChi,
             Long khoaId,
             String khoaTen,
+            boolean dangHieuLuc,
+            LocalDateTime ngayLuuTru,
+            String lyDoLuuTru,
             Long nguoiTaoId,
             String nguoiTaoUsername,
             LocalDateTime taoLuc,
@@ -58,7 +86,14 @@ public final class CatalogDtos {
             LocalDateTime capNhatLuc) {
 
         public MonHocDto(Long id, String ma, String ten, int soTinChi, Long khoaId, String khoaTen) {
-            this(id, ma, ten, soTinChi, khoaId, khoaTen, null, null, null, null, null, null);
+            this(id, ma, ten, soTinChi, khoaId, khoaTen, true, null, null, null, null, null, null, null, null);
+        }
+
+        public MonHocDto(Long id, String ma, String ten, int soTinChi, Long khoaId, String khoaTen,
+                         Long nguoiTaoId, String nguoiTaoUsername, LocalDateTime taoLuc,
+                         Long nguoiCapNhatId, String nguoiCapNhatUsername, LocalDateTime capNhatLuc) {
+            this(id, ma, ten, soTinChi, khoaId, khoaTen, true, null, null,
+                    nguoiTaoId, nguoiTaoUsername, taoLuc, nguoiCapNhatId, nguoiCapNhatUsername, capNhatLuc);
         }
     }
 
@@ -67,7 +102,18 @@ public final class CatalogDtos {
             @NotBlank(message = "Tên môn học không được để trống") String ten,
             @Min(value = 1, message = "Số tín chỉ tối thiểu là 1")
             @Max(value = 10, message = "Số tín chỉ tối đa là 10") int soTinChi,
-            @NotNull(message = "Vui lòng chọn khoa") Long khoaId) {
+            @NotNull(message = "Vui lòng chọn khoa") Long khoaId,
+            Boolean dangHieuLuc,
+            String lyDoLuuTru,
+            Boolean khoiPhucNeuDaLuuTru) {
+
+        public MonHocRequest(String ma, String ten, int soTinChi, Long khoaId) {
+            this(ma, ten, soTinChi, khoaId, true, null, false);
+        }
+    }
+
+    public record LuuTruRequest(
+            String lyDo) {
     }
 
     public record MonTienQuyetDto(
@@ -253,7 +299,15 @@ public final class CatalogDtos {
             LocalDate hieuLucDen,
             Boolean dangHieuLuc,
             @Size(max = 500, message = "Mô tả tối đa 500 ký tự")
-            String moTa) {
+            String moTa,
+            Boolean khoiPhucNeuDaLuuTru) {
+
+        public KhoaHocRequest(String ma, String ten, String nienKhoa, int namBatDau, int namKetThuc,
+                              Long hocKyBatDauId, Long hocKyKetThucId, LocalDate hieuLucTu,
+                              LocalDate hieuLucDen, Boolean dangHieuLuc, String moTa) {
+            this(ma, ten, nienKhoa, namBatDau, namKetThuc, hocKyBatDauId, hocKyKetThucId,
+                    hieuLucTu, hieuLucDen, dangHieuLuc, moTa, false);
+        }
     }
 
     public record HocKyDto(Long id, String ten, String namHoc, LocalDate ngayBatDau, LocalDate ngayKetThuc,

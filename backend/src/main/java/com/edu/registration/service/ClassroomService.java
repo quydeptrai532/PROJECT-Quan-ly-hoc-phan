@@ -72,6 +72,11 @@ public class ClassroomService {
     public ClassroomDtos.PhongHocDto tao(ClassroomDtos.PhongHocRequest request) {
         String maChuanHoa = chuanHoaMaPhong(request.ma());
         if (classroomRepository.existsByMaIgnoreCase(maChuanHoa)) {
+            Classroom existing = classroomRepository.findByMaIgnoreCase(maChuanHoa).orElse(null);
+            if (existing != null && existing.getTrangThai() == ClassroomStatus.NGUNG_SU_DUNG) {
+                throw ApiException.conflict("Mã phòng học '" + maChuanHoa + "' đã tồn tại trong danh mục ngừng sử dụng (lưu trữ). "
+                        + "Vui lòng khôi phục phòng học này thay vì tạo mới.");
+            }
             throw ApiException.conflict("Mã phòng học '" + maChuanHoa + "' đã tồn tại");
         }
         if (request.sucChua() == null || request.sucChua() <= 0) {

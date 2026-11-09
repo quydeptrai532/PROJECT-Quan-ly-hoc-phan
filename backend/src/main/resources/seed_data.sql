@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS khoa (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     ma VARCHAR(20) NOT NULL UNIQUE,
-    ten VARCHAR(150) NOT NULL
+    ten VARCHAR(150) NOT NULL,
+    dang_hieu_luc BOOLEAN NOT NULL DEFAULT TRUE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS nganh (
@@ -31,6 +32,7 @@ CREATE TABLE IF NOT EXISTS nganh (
     ma VARCHAR(20) NOT NULL UNIQUE,
     ten VARCHAR(150) NOT NULL,
     khoa_id BIGINT NOT NULL,
+    dang_hieu_luc BOOLEAN NOT NULL DEFAULT TRUE,
     CONSTRAINT fk_nganh_khoa FOREIGN KEY (khoa_id) REFERENCES khoa(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -39,6 +41,7 @@ CREATE TABLE IF NOT EXISTS lop_hanh_chinh (
     ma VARCHAR(20) NOT NULL UNIQUE,
     ten VARCHAR(150) NOT NULL,
     nganh_id BIGINT NOT NULL,
+    dang_hieu_luc BOOLEAN NOT NULL DEFAULT TRUE,
     CONSTRAINT fk_lop_nganh FOREIGN KEY (nganh_id) REFERENCES nganh(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -60,6 +63,9 @@ CREATE TABLE IF NOT EXISTS mon_hoc (
     ten VARCHAR(150) NOT NULL,
     so_tin_chi INT NOT NULL,
     khoa_id BIGINT NOT NULL,
+    dang_hieu_luc BOOLEAN NOT NULL DEFAULT TRUE,
+    ngay_luu_tru DATETIME NULL,
+    ly_do_luu_tru VARCHAR(255) NULL,
     CONSTRAINT fk_mon_khoa FOREIGN KEY (khoa_id) REFERENCES khoa(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

@@ -25,4 +25,6 @@ public interface LecturerRepository extends JpaRepository<Lecturer, Long> {
 
     @EntityGraph(attributePaths = {"user", "khoa"})
     List<Lecturer> findByHoTenContainingIgnoreCaseOrMaContainingIgnoreCaseOrderByMaAsc(String hoTen, String ma);
+
+    long countByKhoaId(Long khoaId);
 }

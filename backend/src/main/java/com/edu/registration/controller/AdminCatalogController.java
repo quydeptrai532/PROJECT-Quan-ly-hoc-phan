@@ -27,9 +27,13 @@ public class AdminCatalogController {
         this.catalogService = catalogService;
     }
 
+    // ==================== KHOA ====================
+
     @GetMapping("/khoa")
-    public List<CatalogDtos.KhoaDto> danhSachKhoa() {
-        return catalogService.danhSachKhoa();
+    public List<CatalogDtos.KhoaDto> danhSachKhoa(
+            @RequestParam(required = false) Boolean dangHieuLuc,
+            @RequestParam(required = false) Boolean includeInactive) {
+        return catalogService.danhSachKhoa(dangHieuLuc, includeInactive);
     }
 
     @PostMapping("/khoa")
@@ -43,13 +47,24 @@ public class AdminCatalogController {
     }
 
     @DeleteMapping("/khoa/{id}")
-    public void xoaKhoa(@PathVariable Long id) {
-        catalogService.xoaKhoa(id);
+    public void xoaKhoa(@PathVariable Long id,
+                         @RequestParam(required = false, defaultValue = "false") boolean permanent) {
+        catalogService.xoaKhoa(id, permanent);
     }
 
+    @PutMapping("/khoa/{id}/khoi-phuc")
+    public CatalogDtos.KhoaDto khoiPhucKhoa(@PathVariable Long id) {
+        return catalogService.khoiPhucKhoa(id);
+    }
+
+    // ==================== NGÀNH ====================
+
     @GetMapping("/nganh")
-    public List<CatalogDtos.NganhDto> danhSachNganh() {
-        return catalogService.danhSachNganh();
+    public List<CatalogDtos.NganhDto> danhSachNganh(
+            @RequestParam(required = false) Long khoaId,
+            @RequestParam(required = false) Boolean dangHieuLuc,
+            @RequestParam(required = false) Boolean includeInactive) {
+        return catalogService.danhSachNganh(khoaId, dangHieuLuc, includeInactive);
     }
 
     @PostMapping("/nganh")
@@ -64,13 +79,24 @@ public class AdminCatalogController {
     }
 
     @DeleteMapping("/nganh/{id}")
-    public void xoaNganh(@PathVariable Long id) {
-        catalogService.xoaNganh(id);
+    public void xoaNganh(@PathVariable Long id,
+                         @RequestParam(required = false, defaultValue = "false") boolean permanent) {
+        catalogService.xoaNganh(id, permanent);
     }
 
+    @PutMapping("/nganh/{id}/khoi-phuc")
+    public CatalogDtos.NganhDto khoiPhucNganh(@PathVariable Long id) {
+        return catalogService.khoiPhucNganh(id);
+    }
+
+    // ==================== LỚP HÀNH CHÍNH ====================
+
     @GetMapping("/lop-hanh-chinh")
-    public List<CatalogDtos.LopHanhChinhDto> danhSachLopHanhChinh() {
-        return catalogService.danhSachLopHanhChinh();
+    public List<CatalogDtos.LopHanhChinhDto> danhSachLopHanhChinh(
+            @RequestParam(required = false) Long nganhId,
+            @RequestParam(required = false) Boolean dangHieuLuc,
+            @RequestParam(required = false) Boolean includeInactive) {
+        return catalogService.danhSachLopHanhChinh(nganhId, dangHieuLuc, includeInactive);
     }
 
     @PostMapping("/lop-hanh-chinh")
@@ -86,9 +112,17 @@ public class AdminCatalogController {
     }
 
     @DeleteMapping("/lop-hanh-chinh/{id}")
-    public void xoaLopHanhChinh(@PathVariable Long id) {
-        catalogService.xoaLopHanhChinh(id);
+    public void xoaLopHanhChinh(@PathVariable Long id,
+                                @RequestParam(required = false, defaultValue = "false") boolean permanent) {
+        catalogService.xoaLopHanhChinh(id, permanent);
     }
+
+    @PutMapping("/lop-hanh-chinh/{id}/khoi-phuc")
+    public CatalogDtos.LopHanhChinhDto khoiPhucLopHanhChinh(@PathVariable Long id) {
+        return catalogService.khoiPhucLopHanhChinh(id);
+    }
+
+    // ==================== KHÓA HỌC / NIÊN KHÓA ====================
 
     @GetMapping({"/khoa-hoc", "/nien-khoa"})
     public List<CatalogDtos.KhoaHocDto> danhSachKhoaHoc(
@@ -116,11 +150,15 @@ public class AdminCatalogController {
         catalogService.xoaKhoaHoc(id);
     }
 
+    // ==================== MÔN HỌC ====================
+
     @GetMapping("/mon-hoc")
     public List<CatalogDtos.MonHocDto> danhSachMonHoc(
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) Long khoaId) {
-        return catalogService.danhSachMonHoc(keyword, khoaId);
+            @RequestParam(required = false) Long khoaId,
+            @RequestParam(required = false) Boolean dangHieuLuc,
+            @RequestParam(required = false) Boolean includeInactive) {
+        return catalogService.danhSachMonHoc(keyword, khoaId, dangHieuLuc, includeInactive);
     }
 
     @PostMapping("/mon-hoc")
@@ -135,9 +173,24 @@ public class AdminCatalogController {
     }
 
     @DeleteMapping("/mon-hoc/{id}")
-    public void xoaMonHoc(@PathVariable Long id) {
-        catalogService.xoaMonHoc(id);
+    public void xoaMonHoc(@PathVariable Long id,
+                           @RequestParam(required = false, defaultValue = "false") boolean permanent) {
+        catalogService.xoaMonHoc(id, permanent);
     }
+
+    @PutMapping("/mon-hoc/{id}/luu-tru")
+    public CatalogDtos.MonHocDto luuTruMonHoc(@PathVariable Long id,
+                                              @RequestBody(required = false) CatalogDtos.LuuTruRequest request) {
+        String lyDo = request != null ? request.lyDo() : null;
+        return catalogService.luuTruMonHoc(id, lyDo);
+    }
+
+    @PutMapping("/mon-hoc/{id}/khoi-phuc")
+    public CatalogDtos.MonHocDto khoiPhucMonHoc(@PathVariable Long id) {
+        return catalogService.khoiPhucMonHoc(id);
+    }
+
+    // ==================== QUAN HỆ MÔN HỌC ====================
 
     @GetMapping({"/mon-hoc/{id}/tien-quyet", "/mon-hoc/{id}/quan-he"})
     public List<CatalogDtos.MonTienQuyetDto> danhSachTienQuyet(
@@ -200,6 +253,8 @@ public class AdminCatalogController {
     public void xoaQuanHeMon(@PathVariable Long id) {
         catalogService.xoaQuanHeMon(id);
     }
+
+    // ==================== HỌC KỲ ====================
 
     @GetMapping("/hoc-ky")
     public List<CatalogDtos.HocKyDto> danhSachHocKy() {

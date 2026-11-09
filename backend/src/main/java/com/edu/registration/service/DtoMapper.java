@@ -29,18 +29,19 @@ import java.time.LocalDateTime;
 public class DtoMapper {
 
     public CatalogDtos.KhoaDto khoa(Faculty khoa) {
-        return new CatalogDtos.KhoaDto(khoa.getId(), khoa.getMa(), khoa.getTen());
+        return new CatalogDtos.KhoaDto(khoa.getId(), khoa.getMa(), khoa.getTen(), khoa.isDangHieuLuc());
     }
 
     public CatalogDtos.NganhDto nganh(Major nganh) {
         return new CatalogDtos.NganhDto(nganh.getId(), nganh.getMa(), nganh.getTen(),
-                nganh.getKhoa().getId(), nganh.getKhoa().getTen());
+                nganh.getKhoa().getId(), nganh.getKhoa().getTen(), nganh.isDangHieuLuc());
     }
 
     public CatalogDtos.LopHanhChinhDto lopHanhChinh(AdministrativeClass lop) {
         return new CatalogDtos.LopHanhChinhDto(lop.getId(), lop.getMa(), lop.getTen(),
                 lop.getNganh().getId(), lop.getNganh().getTen(),
-                lop.getNganh().getKhoa().getId(), lop.getNganh().getKhoa().getTen());
+                lop.getNganh().getKhoa().getId(), lop.getNganh().getKhoa().getTen(),
+                lop.isDangHieuLuc());
     }
 
     public CatalogDtos.MonHocDto monHoc(Subject monHoc) {
@@ -51,6 +52,9 @@ public class DtoMapper {
                 monHoc.getSoTinChi(),
                 monHoc.getKhoa() != null ? monHoc.getKhoa().getId() : null,
                 monHoc.getKhoa() != null ? monHoc.getKhoa().getTen() : null,
+                monHoc.isDangHieuLuc(),
+                monHoc.getNgayLuuTru(),
+                monHoc.getLyDoLuuTru(),
                 monHoc.getNguoiTaoId(),
                 monHoc.getNguoiTaoUsername(),
                 monHoc.getTaoLuc(),
@@ -218,8 +222,8 @@ public class DtoMapper {
                 lop.getMonHoc().getId(), lop.getMonHoc().getMa(), lop.getMonHoc().getTen(),
                 lop.getMonHoc().getSoTinChi(), lop.getHocKy().getId(), lop.getHocKy().getTen(),
                 lop.getGiangVien().getId(), lop.getGiangVien().getHoTen(), lop.getPhong(),
-                lop.getThu(), lop.getTietBatDau(), lop.getSoTiet(), lop.getSiSoToiDa(),
-                lop.getSiSoHienTai(), lop.getConLai(),
+                lop.getThu(), lop.getTietBatDau(), lop.getSoTiet(),
+                lop.getSiSoToiDa(), lop.getSiSoHienTai(), lop.getConLai(),
                 lop.getTrangThaiBangDiemHieuLuc().name(), lop.getPhienBanCongBo(),
                 lop.getGuiDuyetBangDiemLuc(),
                 lop.getTraVeBangDiemLuc(),
