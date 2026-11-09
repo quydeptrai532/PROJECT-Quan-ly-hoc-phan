@@ -16,4 +16,7 @@ public class Curriculum {
     public String getKhoaNhapHoc(){return khoaNhapHoc;} public void setKhoaNhapHoc(String v){khoaNhapHoc=v;}
     public String getPhienBan(){return phienBan;} public void setPhienBan(String v){phienBan=v;}
     public Set<CurriculumGroup> getNhom(){return nhom;}
+    public int getTongTinChiYeuCau() {
+        return nhom == null ? 0 : nhom.stream().mapToInt(CurriculumGroup::getTinChiYeuCau).sum();
+    }
 }
