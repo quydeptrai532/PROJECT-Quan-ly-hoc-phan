@@ -300,6 +300,14 @@ public class UserService {
         });
     }
 
+    public UserDtos.UserImportConfigDto layCauHinhImportSinhVien() {
+        return userImportService.layCauHinhImport(UserImportService.TargetType.SINH_VIEN);
+    }
+
+    public UserDtos.UserImportConfigDto layCauHinhImportGiangVien() {
+        return userImportService.layCauHinhImport(UserImportService.TargetType.GIANG_VIEN);
+    }
+
     public UserDtos.ImportResultDto importSinhVien(MultipartFile file) {
         return userImportService.directImport(UserImportService.TargetType.SINH_VIEN, file);
     }

@@ -207,7 +207,7 @@ export default function UserImportModal({ open, onClose, type = "sinh-vien", onS
                 <p className="text-xs text-slate-500">
                   {file
                     ? `${(file.size / 1024).toFixed(1)} KB — Bấm "Xem trước" để phân tích dữ liệu`
-                    : "Hỗ trợ định dạng .csv chuẩn UTF-8, dung lượng tối đa 5 MB"}
+                    : "Hỗ trợ định dạng .csv chuẩn UTF-8, dung lượng tối đa 5 MB, tối đa 2.000 dòng"}
                 </p>
               </div>
               <div className="mt-2 flex gap-2">

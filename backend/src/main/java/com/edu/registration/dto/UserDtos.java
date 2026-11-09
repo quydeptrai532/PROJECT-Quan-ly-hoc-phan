@@ -139,4 +139,19 @@ public final class UserDtos {
             String fileSha256
     ) {
     }
+
+    public record UserImportConfigDto(
+            String loaiImport,
+            String tenLoai,
+            String dinhDangTep,
+            String phanMoRong,
+            long maxFileSizeBytes,
+            int maxRows,
+            long previewTtlSeconds,
+            String transactionPolicy,
+            String idempotencyPolicy,
+            String policyNote,
+            List<GradeImportDtos.TemplateColumnDto> danhSachCot
+    ) {
+    }
 }

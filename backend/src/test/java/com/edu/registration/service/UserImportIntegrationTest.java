@@ -280,4 +280,65 @@ class UserImportIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition", "attachment; filename=loi-import-sinh-vien.csv"));
     }
+
+    @Test
+    @DisplayName("API lấy cấu hình import chuẩn hóa cho sinh viên và giảng viên")
+    void testImportConfigurationEndpoints() throws Exception {
+        mockMvc.perform(get("/api/admin/sinh-vien/import/cau-hinh")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.loaiImport").value("SINH_VIEN"))
+                .andExpect(jsonPath("$.dinhDangTep").value("CSV"))
+                .andExpect(jsonPath("$.phanMoRong").value(".csv"))
+                .andExpect(jsonPath("$.maxRows").value(2000))
+                .andExpect(jsonPath("$.transactionPolicy").value("ROW_BY_ROW"))
+                .andExpect(jsonPath("$.idempotencyPolicy").value("SKIP_IF_EXISTS"))
+                .andExpect(jsonPath("$.danhSachCot").isArray());
+
+        mockMvc.perform(get("/api/admin/giang-vien/import/cau-hinh")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.loaiImport").value("GIANG_VIEN"))
+                .andExpect(jsonPath("$.dinhDangTep").value("CSV"))
+                .andExpect(jsonPath("$.phanMoRong").value(".csv"))
+                .andExpect(jsonPath("$.maxRows").value(2000))
+                .andExpect(jsonPath("$.transactionPolicy").value("ROW_BY_ROW"))
+                .andExpect(jsonPath("$.idempotencyPolicy").value("SKIP_IF_EXISTS"))
+                .andExpect(jsonPath("$.danhSachCot").isArray());
+    }
+
+    @Test
+    @DisplayName("Chặn upload file có tên Path Traversal nguy hiểm")
+    void testPathTraversalUploadRejection() throws Exception {
+        MockMultipartFile dangerousFile = new MockMultipartFile(
+                "file",
+                "../../malicious.csv",
+                "text/csv",
+                "ma,hoTen,email,khoaId\nSV999,Hacker,hack@evil.com,1\n".getBytes(StandardCharsets.UTF_8)
+        );
+
+        mockMvc.perform(multipart("/api/admin/sinh-vien/import/preview")
+                        .file(dangerousFile)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Path Traversal")));
+    }
+
+    @Test
+    @DisplayName("Chặn upload file nhị phân/thực thi trá hình đuôi .csv")
+    void testFakeBinaryUploadRejection() throws Exception {
+        byte[] fakePeExe = new byte[] { 0x4D, 0x5A, 0x00, 0x01, 0x02, 0x03 };
+        MockMultipartFile fakeFile = new MockMultipartFile(
+                "file",
+                "trojan.csv",
+                "text/csv",
+                fakePeExe
+        );
+
+        mockMvc.perform(multipart("/api/admin/sinh-vien/import/preview")
+                        .file(fakeFile)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("chữ ký nhị phân")));
+    }
 }
