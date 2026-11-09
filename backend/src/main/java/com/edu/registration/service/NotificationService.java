@@ -57,6 +57,7 @@ public class NotificationService {
     public static final String CLASS_ANNOUNCEMENT_EVENT = "CLASS_ANNOUNCEMENT";
     public static final String ATTENDANCE_ALERT_EVENT = "ATTENDANCE_THRESHOLD_ALERT";
     public static final String ATTENDANCE_RESOLVED_EVENT = "ATTENDANCE_ALERT_RESOLVED";
+    public static final String CLASS_STUDENT_TRANSFERRED_EVENT = "CLASS_STUDENT_TRANSFERRED";
 
     private final NotificationRepository thongBaoRepository;
     private final CourseRegistrationRepository dangKyRepository;
@@ -246,6 +247,56 @@ public class NotificationService {
     /**
      * Emits notices to currently enrolled students when a lecturer announces a class session cancellation.
      */
+    /**
+     * Emits notifications when an administrator transfers a student to another class (QLSV-79).
+     * Dispatches after commit, uses deterministic idempotency keys per recipient to eliminate duplicate notifications.
+     */
+    public void studentTransferred(CourseClass lopNguon, CourseClass lopDich, Student sinhVien,
+                                   LocalDateTime occurredAt, String reason) {
+        if (lopNguon == null || lopDich == null || sinhVien == null) {
+            return;
+        }
+        LocalDateTime effectiveTime = occurredAt != null ? occurredAt : LocalDateTime.now();
+        User studentUser = sinhVien.getUser();
+        Lecturer srcLec = lopNguon.getGiangVien();
+        User srcLecUser = srcLec != null ? srcLec.getUser() : null;
+        Lecturer tgtLec = lopDich.getGiangVien();
+        User tgtLecUser = tgtLec != null ? tgtLec.getUser() : null;
+
+        String cleanReason = cleanSectionCancelReason(reason);
+        String timeStr = formatTime(effectiveTime);
+        String eventType = CLASS_STUDENT_TRANSFERRED_EVENT;
+        String baseKey = "transfer:" + lopNguon.getId() + ":" + lopDich.getId() + ":" + sinhVien.getId()
+                + ":" + effectiveTime.truncatedTo(ChronoUnit.SECONDS);
+
+        String studentTitle = "Chuyển lớp học phần thành công";
+        String studentMsg = "Bạn đã được chuyển từ lớp " + lopNguon.getMa() + " (" + lopNguon.getMonHoc().getTen() + ")"
+                + " sang lớp " + lopDich.getMa() + " (" + lopDich.getMonHoc().getTen() + ") lúc " + timeStr
+                + formatReason(cleanReason) + ". Bước tiếp theo: kiểm tra thời khóa biểu mới.";
+
+        String srcLecTitle = "Sinh viên được chuyển khỏi lớp";
+        String srcLecMsg = "Sinh viên " + sinhVien.getHoTen() + " (" + sinhVien.getMa() + ")"
+                + " đã được chuyển khỏi lớp " + lopNguon.getMa() + " sang lớp " + lopDich.getMa()
+                + " lúc " + timeStr + formatReason(cleanReason) + ".";
+
+        String tgtLecTitle = "Tiếp nhận sinh viên mới vào lớp";
+        String tgtLecMsg = "Lớp " + lopDich.getMa() + " (" + lopDich.getMonHoc().getTen() + ")"
+                + " tiếp nhận sinh viên " + sinhVien.getHoTen() + " (" + sinhVien.getMa() + ")"
+                + " được chuyển từ lớp " + lopNguon.getMa() + " lúc " + timeStr + formatReason(cleanReason) + ".";
+
+        dispatchAfterCommit(eventType + ":" + baseKey, () -> {
+            if (studentUser != null) {
+                send(studentUser, eventType, baseKey + ":student", studentTitle, studentMsg, "HIGH", "/thoi-khoa-bieu", effectiveTime);
+            }
+            if (srcLecUser != null) {
+                send(srcLecUser, eventType, baseKey + ":src-lec", srcLecTitle, srcLecMsg, "NORMAL", "/lop-cua-toi", effectiveTime);
+            }
+            if (tgtLecUser != null) {
+                send(tgtLecUser, eventType, baseKey + ":tgt-lec", tgtLecTitle, tgtLecMsg, "NORMAL", "/lop-cua-toi", effectiveTime);
+            }
+        });
+    }
+
     public void classSessionCancelled(ClassAbsenceNotice thongBaoNghi) {
         if (thongBaoNghi == null || thongBaoNghi.getLopHocPhan() == null) {
             return;

@@ -118,6 +118,21 @@ public class CourseClass {
     @Column(name = "nguong_ty_le_vang")
     private Double nguongTyLeVang;
 
+    @Column(name = "da_huy", nullable = false)
+    private boolean daHuy = false;
+
+    @Column(name = "thoi_gian_huy")
+    private LocalDateTime thoiGianHuy;
+
+    @Column(name = "ly_do_huy", length = 500)
+    private String lyDoHuy;
+
+    @Column(name = "nguoi_huy_id")
+    private Long nguoiHuyId;
+
+    @Column(name = "nguoi_huy_username", length = 100)
+    private String nguoiHuyUsername;
+
     public GradeSheetStatus getTrangThaiBangDiemHieuLuc() {
         return trangThaiBangDiem != null ? trangThaiBangDiem : GradeSheetStatus.NHAP;
     }
@@ -408,5 +423,45 @@ public class CourseClass {
 
     public void setNguongTyLeVang(Double nguongTyLeVang) {
         this.nguongTyLeVang = nguongTyLeVang;
+    }
+
+    public boolean isDaHuy() {
+        return daHuy;
+    }
+
+    public void setDaHuy(boolean daHuy) {
+        this.daHuy = daHuy;
+    }
+
+    public LocalDateTime getThoiGianHuy() {
+        return thoiGianHuy;
+    }
+
+    public void setThoiGianHuy(LocalDateTime thoiGianHuy) {
+        this.thoiGianHuy = thoiGianHuy;
+    }
+
+    public String getLyDoHuy() {
+        return lyDoHuy;
+    }
+
+    public void setLyDoHuy(String lyDoHuy) {
+        this.lyDoHuy = lyDoHuy;
+    }
+
+    public Long getNguoiHuyId() {
+        return nguoiHuyId;
+    }
+
+    public void setNguoiHuyId(Long nguoiHuyId) {
+        this.nguoiHuyId = nguoiHuyId;
+    }
+
+    public String getNguoiHuyUsername() {
+        return nguoiHuyUsername;
+    }
+
+    public void setNguoiHuyUsername(String nguoiHuyUsername) {
+        this.nguoiHuyUsername = nguoiHuyUsername;
     }
 }

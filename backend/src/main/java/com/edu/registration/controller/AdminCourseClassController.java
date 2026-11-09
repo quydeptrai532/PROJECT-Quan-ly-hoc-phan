@@ -61,11 +61,49 @@ public class AdminCourseClassController {
         return lopHocPhanService.sua(id, request);
     }
 
+    @GetMapping("/lop-hoc-phan/{id}/khao-sat-huy")
+    public CourseClassDtos.KhaoSatHuyLopDto khaoSatHuy(@PathVariable Long id) {
+        return lopHocPhanService.khaoSatHuyLop(id);
+    }
+
     @PostMapping("/lop-hoc-phan/{id}/huy")
     public CourseClassDtos.HuyLopHocPhanResponse huy(
             @PathVariable Long id,
             @Valid @RequestBody(required = false) CourseClassDtos.HuyLopHocPhanRequest request) {
         return lopHocPhanService.huyLopHocPhan(id, request != null ? request.lyDo() : null);
+    }
+
+    @PostMapping("/lop-hoc-phan/{id}/kiem-tra-chuyen")
+    public CourseClassDtos.KetQuaKiemTraChuyenLopDto kiemTraChuyen(
+            @PathVariable Long id,
+            @Valid @RequestBody CourseClassDtos.KiemTraChuyenLopRequest request) {
+        return lopHocPhanService.kiemTraChuyenLop(id, request.lopDichId(), request.sinhVienIds());
+    }
+
+    @PostMapping("/lop-hoc-phan/{id}/chuyen-sinh-vien")
+    public CourseClassDtos.ChuyenSinhVienResponse chuyenSinhVien(
+            @PathVariable Long id,
+            @Valid @RequestBody CourseClassDtos.ChuyenSinhVienRequest request) {
+        return lopHocPhanService.chuyenSinhVien(id, request.lopDichId(), request.sinhVienId(), request.lyDo());
+    }
+
+    @PostMapping("/lop-hoc-phan/{id}/chuyen-hang-loat")
+    public CourseClassDtos.KetQuaChuyenHangLoatDto chuyenHangLoat(
+            @PathVariable Long id,
+            @Valid @RequestBody CourseClassDtos.ChuyenHangLoatRequest request) {
+        return lopHocPhanService.chuyenSinhVienHangLoat(id, request.lopDichId(), request.sinhVienIds(), request.lyDo());
+    }
+
+    @GetMapping("/lop-hoc-phan/{id}/lich-su-chuyen")
+    public List<CourseClassDtos.LichSuChuyenLopDto> lichSuChuyenTheoLop(@PathVariable Long id) {
+        return lopHocPhanService.danhSachLichSuChuyen(id, null);
+    }
+
+    @GetMapping("/lop-hoc-phan/lich-su-chuyen")
+    public List<CourseClassDtos.LichSuChuyenLopDto> lichSuChuyen(
+            @RequestParam(required = false) Long lopHocPhanId,
+            @RequestParam(required = false) Long hocKyId) {
+        return lopHocPhanService.danhSachLichSuChuyen(lopHocPhanId, hocKyId);
     }
 
     @GetMapping("/lop-hoc-phan/{id}/sinh-vien")

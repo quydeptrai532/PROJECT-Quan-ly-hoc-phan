@@ -37,4 +37,21 @@ public interface PrerequisiteSubjectRepository extends JpaRepository<Prerequisit
     long countByHocKyHieuLucTuIdOrHocKyHieuLucDenId(Long hocKyTuId, Long hocKyDenId);
 
     boolean existsByKhoaNhapHocIgnoreCase(String khoaNhapHoc);
+
+    @EntityGraph(attributePaths = {"monHoc", "monTienQuyet", "hocKyHieuLucTu", "hocKyHieuLucDen"})
+    @Query("""
+            select q from PrerequisiteSubject q
+            where ((q.monHoc.id = :monA and q.monTienQuyet.id = :monB)
+                or (q.monHoc.id = :monB and q.monTienQuyet.id = :monA))
+              and q.loaiQuanHe = com.edu.registration.entity.SubjectRelationType.TUONG_DUONG
+            """)
+    List<PrerequisiteSubject> findQuanHeTuongDuong(@Param("monA") Long monA, @Param("monB") Long monB);
+
+    @EntityGraph(attributePaths = {"monHoc", "monTienQuyet", "hocKyHieuLucTu", "hocKyHieuLucDen"})
+    @Query("""
+            select q from PrerequisiteSubject q
+            where (q.monHoc.id = :monHocId or q.monTienQuyet.id = :monHocId)
+              and q.loaiQuanHe = com.edu.registration.entity.SubjectRelationType.TUONG_DUONG
+            """)
+    List<PrerequisiteSubject> findAllQuanHeTuongDuongByMonHocId(@Param("monHocId") Long monHocId);
 }

@@ -7,6 +7,7 @@ import com.edu.registration.dto.RegistrationPeriodDtos;
 import com.edu.registration.dto.UserDtos;
 import com.edu.registration.entity.AcademicCohort;
 import com.edu.registration.entity.AdministrativeClass;
+import com.edu.registration.entity.ClassTransferHistory;
 import com.edu.registration.entity.CourseClass;
 import com.edu.registration.entity.CourseRegistration;
 import com.edu.registration.entity.Faculty;
@@ -228,7 +229,12 @@ public class DtoMapper {
                 lop.getMoKhoaBangDiemLuc(),
                 lop.getLyDoMoKhoaBangDiem(),
                 lop.isChoPhepSuaDiem(),
-                lop.isBangDiemDaKhoa());
+                lop.isBangDiemDaKhoa(),
+                lop.isDaHuy(),
+                lop.getThoiGianHuy(),
+                lop.getLyDoHuy(),
+                lop.getNguoiHuyId(),
+                lop.getNguoiHuyUsername());
     }
 
     public RegistrationDtos.DangKyDto dangKy(CourseRegistration dangKy, Grade diem) {
@@ -271,6 +277,27 @@ public class DtoMapper {
                 sinhVien.getLopHanhChinh() != null ? sinhVien.getLopHanhChinh().getId() : null,
                 sinhVien.getLopHanhChinh() != null ? sinhVien.getLopHanhChinh().getTen() : null,
                 sinhVien.getUser().getUsername(), sinhVien.getUser().isTrangThai());
+    }
+
+    public CourseClassDtos.LichSuChuyenLopDto lichSuChuyenLop(ClassTransferHistory history) {
+        return new CourseClassDtos.LichSuChuyenLopDto(
+                history.getId(),
+                history.getLopNguon().getId(),
+                history.getLopNguon().getMa(),
+                history.getMonHocNguon().getTen(),
+                history.getLopDich().getId(),
+                history.getLopDich().getMa(),
+                history.getMonHocDich().getTen(),
+                history.getSinhVien().getId(),
+                history.getSinhVien().getMa(),
+                history.getSinhVien().getHoTen(),
+                history.getNguoiThucHien().getId(),
+                history.getNguoiThucHien().getUsername(),
+                history.getThoiGianChuyen(),
+                history.getLyDo(),
+                history.getLoaiQuanHeMon(),
+                history.getGhiChu()
+        );
     }
 
     public UserDtos.GiangVienDto giangVien(Lecturer giangVien) {

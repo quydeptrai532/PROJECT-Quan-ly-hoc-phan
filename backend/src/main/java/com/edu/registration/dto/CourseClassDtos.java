@@ -3,6 +3,7 @@ package com.edu.registration.dto;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -25,7 +26,34 @@ public class CourseClassDtos {
                                 LocalDateTime moKhoaBangDiemLuc,
                                 String lyDoMoKhoaBangDiem,
                                 boolean choPhepSuaDiem,
-                                boolean daKhoaBangDiem) {
+                                boolean daKhoaBangDiem,
+                                boolean daHuy,
+                                LocalDateTime thoiGianHuy,
+                                String lyDoHuy,
+                                Long nguoiHuyId,
+                                String nguoiHuyUsername) {
+
+        public LopHocPhanDto(Long id, String ma, Long monHocId, String maMon, String tenMon, int soTinChi,
+                             Long hocKyId, String tenHocKy, Long giangVienId, String tenGiangVien,
+                             String phong, int thu, int tietBatDau, int soTiet,
+                             int siSoToiDa, int siSoHienTai, int conLai,
+                             String trangThaiBangDiem, int phienBanCongBo,
+                             LocalDateTime guiDuyetBangDiemLuc,
+                             LocalDateTime traVeBangDiemLuc,
+                             String lyDoTraVeBangDiem,
+                             LocalDateTime duyetBangDiemLuc,
+                             LocalDateTime congBoBangDiemLuc,
+                             LocalDateTime khoaBangDiemLuc,
+                             LocalDateTime moKhoaBangDiemLuc,
+                             String lyDoMoKhoaBangDiem,
+                             boolean choPhepSuaDiem,
+                             boolean daKhoaBangDiem) {
+            this(id, ma, monHocId, maMon, tenMon, soTinChi, hocKyId, tenHocKy, giangVienId, tenGiangVien,
+                    phong, thu, tietBatDau, soTiet, siSoToiDa, siSoHienTai, conLai,
+                    trangThaiBangDiem, phienBanCongBo, guiDuyetBangDiemLuc, traVeBangDiemLuc, lyDoTraVeBangDiem,
+                    duyetBangDiemLuc, congBoBangDiemLuc, khoaBangDiemLuc, moKhoaBangDiemLuc, lyDoMoKhoaBangDiem,
+                    choPhepSuaDiem, daKhoaBangDiem, false, null, null, null, null);
+        }
 
         public LopHocPhanDto(Long id, String ma, Long monHocId, String maMon, String tenMon, int soTinChi,
                              Long hocKyId, String tenHocKy, Long giangVienId, String tenGiangVien,
@@ -141,5 +169,149 @@ public class CourseClassDtos {
             boolean choPhepLuu,
             boolean chinhSachDaChot,
             String ghiChuChinhSach
+    ) {}
+
+    // --- QLSV-79: Class cancellation impact & transfer records ---
+
+    public record SinhVienLopDto(
+            Long sinhVienId,
+            String maSinhVien,
+            String hoTen,
+            String lopHanhChinh,
+            boolean coDiem,
+            Double diemQuaTrinh,
+            Double diemCuoiKy,
+            Double diemTongKet,
+            LocalDateTime thoiGianDangKy
+    ) {}
+
+    public record LopDichKhaDiDto(
+            Long lopHocPhanId,
+            String maLop,
+            Long monHocId,
+            String maMon,
+            String tenMon,
+            int soTinChi,
+            String tenGiangVien,
+            String phong,
+            int thu,
+            int tietBatDau,
+            int soTiet,
+            int siSoHienTai,
+            int siSoToiDa,
+            int conLai,
+            String loaiQuanHeMon // "CUNG_MON" hoặc "TUONG_DUONG"
+    ) {}
+
+    public record KhaoSatHuyLopDto(
+            Long lopHocPhanId,
+            String maLop,
+            Long monHocId,
+            String maMon,
+            String tenMon,
+            int soTinChi,
+            Long giangVienId,
+            String tenGiangVien,
+            Long hocKyId,
+            String tenHocKy,
+            int siSoHienTai,
+            int siSoToiDa,
+            boolean daHuy,
+            boolean coDiem,
+            int soSinhVienCoDiem,
+            String trangThaiBangDiem,
+            boolean choPhepPhaoHuy,
+            String lyDoKhongChoPhep,
+            List<SinhVienLopDto> danhSachSinhVien,
+            List<LopDichKhaDiDto> danhSachLopDichKhaDi
+    ) {}
+
+    public record KiemTraChuyenLopRequest(
+            @NotNull(message = "Vui lòng chọn lớp đích") Long lopDichId,
+            List<Long> sinhVienIds
+    ) {}
+
+    public record KiemTraChuyenSinhVienItemDto(
+            Long sinhVienId,
+            String maSinhVien,
+            String hoTen,
+            boolean duDieuKien,
+            boolean trungLich,
+            String moTaTrungLich,
+            boolean duTienQuyet,
+            String moTaTienQuyet,
+            boolean coDiemTaiLopNguon,
+            String moTaDiem,
+            String thongDiepLoi
+    ) {}
+
+    public record KetQuaKiemTraChuyenLopDto(
+            Long lopNguonId,
+            String maLopNguon,
+            Long lopDichId,
+            String maLopDich,
+            String loaiQuanHeMon,
+            int soChoConLaiLopDich,
+            int tongSinhVienKiemTra,
+            int soSinhVienDuDieuKien,
+            boolean choPhepChuyenTatCa,
+            List<KiemTraChuyenSinhVienItemDto> chiTietSinhVien
+    ) {}
+
+    public record ChuyenSinhVienRequest(
+            @NotNull(message = "Vui lòng chọn sinh viên cần chuyển") Long sinhVienId,
+            @NotNull(message = "Vui lòng chọn lớp đích") Long lopDichId,
+            @Size(max = 500, message = "Lý do tối đa 500 ký tự") String lyDo
+    ) {}
+
+    public record ChuyenSinhVienResponse(
+            Long transferId,
+            Long lopNguonId,
+            String maLopNguon,
+            Long lopDichId,
+            String maLopDich,
+            Long sinhVienId,
+            String maSinhVien,
+            String hoTen,
+            LocalDateTime thoiGianChuyen,
+            String lyDo,
+            String loaiQuanHeMon
+    ) {}
+
+    public record ChuyenHangLoatRequest(
+            @NotNull(message = "Vui lòng chọn lớp đích") Long lopDichId,
+            @NotEmpty(message = "Danh sách sinh viên không được để trống") List<Long> sinhVienIds,
+            @Size(max = 500, message = "Lý do tối đa 500 ký tự") String lyDo
+    ) {}
+
+    public record KetQuaChuyenHangLoatDto(
+            Long lopNguonId,
+            String maLopNguon,
+            Long lopDichId,
+            String maLopDich,
+            int soLuongYeuCau,
+            int soLuongThanhCong,
+            int soLuongThatBai,
+            List<ChuyenSinhVienResponse> danhSachThanhCong,
+            List<String> danhSachLoi
+    ) {}
+
+    public record LichSuChuyenLopDto(
+            Long id,
+            Long lopNguonId,
+            String maLopNguon,
+            String tenMonNguon,
+            Long lopDichId,
+            String maLopDich,
+            String tenMonDich,
+            Long sinhVienId,
+            String maSinhVien,
+            String hoTenSinhVien,
+            Long nguoiThucHienId,
+            String nguoiThucHienTen,
+            LocalDateTime thoiGianChuyen,
+            String lyDo,
+            String loaiQuanHeMon,
+            String ghiChu
     ) {}
 }
