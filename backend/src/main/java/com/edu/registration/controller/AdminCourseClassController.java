@@ -43,6 +43,12 @@ public class AdminCourseClassController {
         return lopHocPhanService.danhSach(hocKyId, keyword);
     }
 
+    @PostMapping("/lop-hoc-phan/kiem-tra-xung-dot")
+    public CourseClassDtos.KetQuaKiemTraXungDotDto kiemTraXungDot(
+            @Valid @RequestBody CourseClassDtos.KiemTraXungDotRequest request) {
+        return lopHocPhanService.kiemTraXungDot(request);
+    }
+
     @PostMapping("/lop-hoc-phan")
     public CourseClassDtos.LopHocPhanResponse tao(
             @Valid @RequestBody CourseClassDtos.LopHocPhanRequest request) {

@@ -1,5 +1,6 @@
 package com.edu.registration.service;
 
+import com.edu.registration.config.ClassScheduleConflictProperties;
 import com.edu.registration.dto.CourseClassDtos;
 import com.edu.registration.dto.RegistrationDtos;
 import com.edu.registration.entity.CourseRegistration;
@@ -44,6 +45,7 @@ public class CourseClassService {
     private final CurrentUser currentUser;
     private final DtoMapper mapper;
     private final NotificationService thongBaoService;
+    private final ClassScheduleConflictService conflictService;
 
     public CourseClassService(CourseClassRepository lopHocPhanRepository, SubjectRepository monHocRepository,
                              LecturerRepository giangVienRepository,
@@ -52,7 +54,18 @@ public class CourseClassService {
                              SemesterService hocKyService, AuditLogService auditLogService,
                              CurrentUser currentUser, DtoMapper mapper, NotificationService thongBaoService) {
         this(lopHocPhanRepository, monHocRepository, giangVienRepository, dangKyHocPhanRepository,
-                null, thongBaoNghiRepository, hocKyService, auditLogService, currentUser, mapper, thongBaoService);
+                null, thongBaoNghiRepository, hocKyService, auditLogService, currentUser, mapper, thongBaoService, null);
+    }
+
+    public CourseClassService(CourseClassRepository lopHocPhanRepository, SubjectRepository monHocRepository,
+                             LecturerRepository giangVienRepository,
+                             CourseRegistrationRepository dangKyHocPhanRepository,
+                             RegistrationHistoryRepository lichSuDangKyRepository,
+                             ClassAbsenceNoticeRepository thongBaoNghiRepository,
+                             SemesterService hocKyService, AuditLogService auditLogService,
+                             CurrentUser currentUser, DtoMapper mapper, NotificationService thongBaoService) {
+        this(lopHocPhanRepository, monHocRepository, giangVienRepository, dangKyHocPhanRepository,
+                lichSuDangKyRepository, thongBaoNghiRepository, hocKyService, auditLogService, currentUser, mapper, thongBaoService, null);
     }
 
     @Autowired
@@ -62,7 +75,8 @@ public class CourseClassService {
                              RegistrationHistoryRepository lichSuDangKyRepository,
                              ClassAbsenceNoticeRepository thongBaoNghiRepository,
                              SemesterService hocKyService, AuditLogService auditLogService,
-                             CurrentUser currentUser, DtoMapper mapper, NotificationService thongBaoService) {
+                             CurrentUser currentUser, DtoMapper mapper, NotificationService thongBaoService,
+                             ClassScheduleConflictService conflictService) {
         this.lopHocPhanRepository = lopHocPhanRepository;
         this.monHocRepository = monHocRepository;
         this.giangVienRepository = giangVienRepository;
@@ -74,6 +88,7 @@ public class CourseClassService {
         this.currentUser = currentUser;
         this.mapper = mapper;
         this.thongBaoService = thongBaoService;
+        this.conflictService = conflictService != null ? conflictService : new ClassScheduleConflictService(lopHocPhanRepository, new ClassScheduleConflictProperties());
     }
 
     @Transactional(readOnly = true)
@@ -129,6 +144,11 @@ public class CourseClassService {
                 .orElseThrow(() -> ApiException.notFound("Lớp học phần không tồn tại")));
     }
 
+    @Transactional(readOnly = true)
+    public CourseClassDtos.KetQuaKiemTraXungDotDto kiemTraXungDot(CourseClassDtos.KiemTraXungDotRequest request) {
+        return conflictService.kiemTraXungDot(request, false);
+    }
+
     public CourseClassDtos.LopHocPhanResponse tao(CourseClassDtos.LopHocPhanRequest request) {
         return auditLogService.execute("COURSE_SECTION_CREATED", "COURSE_SECTION", null, audit -> {
             kiemTraLich(request);
@@ -142,7 +162,8 @@ public class CourseClassService {
                     .orElseThrow(() -> ApiException.notFound("Giảng viên không tồn tại"));
             Semester hocKy = hocKyService.lay(request.hocKyId());
 
-            List<String> canhBao = kiemTraCanhBao(request, null);
+            CourseClassDtos.KetQuaKiemTraXungDotDto ketQuaXungDot =
+                    conflictService.kiemTraVaApDungKhiLuu(request, null);
 
             CourseClass lop = new CourseClass();
             lop.setMa(ma);
@@ -156,7 +177,15 @@ public class CourseClassService {
             CourseClass saved = lopHocPhanRepository.save(lop);
             audit.entityId(saved.getId());
             audit.changes(Map.of(), auditSnapshot(saved));
-            return new CourseClassDtos.LopHocPhanResponse(mapper.lopHocPhan(saved), canhBao);
+            return new CourseClassDtos.LopHocPhanResponse(
+                    mapper.lopHocPhan(saved),
+                    ketQuaXungDot.moTaCanhBao(),
+                    ketQuaXungDot.danhSachXungDot(),
+                    ketQuaXungDot.coXungDot(),
+                    ketQuaXungDot.chinhSachEnforcement(),
+                    ketQuaXungDot.chinhSachDaChot(),
+                    ketQuaXungDot.ghiChuChinhSach()
+            );
         });
     }
 
@@ -180,7 +209,8 @@ public class CourseClassService {
                     .orElseThrow(() -> ApiException.notFound("Giảng viên không tồn tại"));
             Semester hocKy = hocKyService.lay(request.hocKyId());
 
-            List<String> canhBao = kiemTraCanhBao(request, id);
+            CourseClassDtos.KetQuaKiemTraXungDotDto ketQuaXungDot =
+                    conflictService.kiemTraVaApDungKhiLuu(request, id);
 
             lop.setMa(ma);
             lop.setMonHoc(monHoc);
@@ -190,7 +220,15 @@ public class CourseClassService {
             Map<String, Object> after = auditSnapshot(lop);
             audit.changes(before, after);
             thongBaoService.sectionChanged(lop, before, after, null);
-            return new CourseClassDtos.LopHocPhanResponse(mapper.lopHocPhan(lop), canhBao);
+            return new CourseClassDtos.LopHocPhanResponse(
+                    mapper.lopHocPhan(lop),
+                    ketQuaXungDot.moTaCanhBao(),
+                    ketQuaXungDot.danhSachXungDot(),
+                    ketQuaXungDot.coXungDot(),
+                    ketQuaXungDot.chinhSachEnforcement(),
+                    ketQuaXungDot.chinhSachDaChot(),
+                    ketQuaXungDot.ghiChuChinhSach()
+            );
         });
     }
 
