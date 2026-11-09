@@ -545,6 +545,46 @@ export default function DashboardPage() {
             </div>
           )}
         </section>
+        {/* Thao tác nhanh */}
+        <section className="card p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-800">Thao tác nhanh</h2>
+              <p className="mt-0.5 text-xs text-slate-500">Phím tắt quản trị học vụ</p>
+            </div>
+            <Badge tone="slate">Lối tắt</Badge>
+          </div>
+          <div className="mt-4 space-y-2.5">
+            <Link
+              to="/quan-tri/lop-hoc-phan"
+              className="flex items-center justify-between rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50/70"
+            >
+              <span>Mở lớp học phần</span>
+              <Layers size={16} className="text-slate-400" />
+            </Link>
+            <Link
+              to="/quan-tri/sinh-vien"
+              className="flex items-center justify-between rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50/70"
+            >
+              <span>Quản lý sinh viên</span>
+              <UserRound size={16} className="text-slate-400" />
+            </Link>
+            <Link
+              to="/quan-tri/hoc-ky"
+              className="flex items-center justify-between rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50/70"
+            >
+              <span>Cấu hình đợt đăng ký</span>
+              <ClipboardCheck size={16} className="text-slate-400" />
+            </Link>
+            <Link
+              to="/quan-tri/phuc-khao"
+              className="flex items-center justify-between rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50/70"
+            >
+              <span>Xử lý phúc khảo điểm</span>
+              <GraduationCap size={16} className="text-slate-400" />
+            </Link>
+          </div>
+        </section>
       </div>
 
       {/* BẢNG DỮ LIỆU THỐNG KÊ CHI TIẾT THEO MÔN HỌC */}
