@@ -21,6 +21,7 @@ import com.edu.registration.repository.CurriculumRepository;
 import com.edu.registration.repository.FacultyRepository;
 import com.edu.registration.repository.MajorRepository;
 import com.edu.registration.repository.PrerequisiteSubjectRepository;
+import com.edu.registration.repository.RegistrationPeriodRepository;
 import com.edu.registration.repository.SemesterRepository;
 import com.edu.registration.repository.SubjectRepository;
 import com.edu.registration.security.CurrentUser;
@@ -55,6 +56,7 @@ public class CatalogService {
     private final CourseClassRepository lopHocPhanRepository;
     private final AcademicCohortRepository khoaHocRepository;
     private final CurriculumRepository chuongTrinhRepository;
+    private final RegistrationPeriodRepository dotDangKyRepository;
     private final CurrentUser currentUser;
     private final DtoMapper mapper;
     private final AuditLogService auditLogService;
@@ -66,7 +68,7 @@ public class CatalogService {
                           AuditLogService auditLogService) {
         this(khoaRepository, nganhRepository, lopHanhChinhRepository, monHocRepository,
                 monTienQuyetRepository, hocKyRepository, lopHocPhanRepository,
-                null, null, null, mapper, auditLogService);
+                null, null, null, null, mapper, auditLogService);
     }
 
     @Autowired
@@ -76,6 +78,7 @@ public class CatalogService {
                           CourseClassRepository lopHocPhanRepository,
                           AcademicCohortRepository khoaHocRepository,
                           CurriculumRepository chuongTrinhRepository,
+                          @Autowired(required = false) RegistrationPeriodRepository dotDangKyRepository,
                           CurrentUser currentUser,
                           DtoMapper mapper,
                           AuditLogService auditLogService) {
@@ -88,6 +91,7 @@ public class CatalogService {
         this.lopHocPhanRepository = lopHocPhanRepository;
         this.khoaHocRepository = khoaHocRepository;
         this.chuongTrinhRepository = chuongTrinhRepository;
+        this.dotDangKyRepository = dotDangKyRepository;
         this.currentUser = currentUser;
         this.mapper = mapper;
         this.auditLogService = auditLogService;
@@ -331,6 +335,9 @@ public class CatalogService {
         if (monTienQuyetRepository.existsByKhoaNhapHocIgnoreCase(cohort.getMa())
                 || monTienQuyetRepository.existsByKhoaNhapHocIgnoreCase(cohort.getNienKhoa())) {
             thamChieu.add("quan hệ môn học áp dụng cho khóa " + cohort.getMa());
+        }
+        if (dotDangKyRepository != null && dotDangKyRepository.existsByKhoaHocId(cohort.getId())) {
+            thamChieu.add("đợt đăng ký học phần");
         }
         if (!thamChieu.isEmpty()) {
             throw ApiException.conflict("Không thể xóa khóa học/niên khóa " + cohort.getMa()
@@ -990,6 +997,9 @@ public class CatalogService {
             }
             if (monTienQuyetRepository.countByHocKyHieuLucTuIdOrHocKyHieuLucDenId(id, id) > 0) {
                 throw ApiException.conflict("Học kỳ đang được cấu hình làm đợt hiệu lực của quan hệ môn học, không thể xóa");
+            }
+            if (dotDangKyRepository != null && dotDangKyRepository.existsByHocKyId(id)) {
+                throw ApiException.conflict("Học kỳ đang có đợt đăng ký học phần được cấu hình, không thể xóa");
             }
             hocKyRepository.delete(hocKy);
             return null;

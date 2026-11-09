@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import api, { getErrorMessage } from "../../api/client";
 import { Alert, Badge, EmptyState, Modal, PageHeader, Spinner } from "../../components/ui";
-import { formatDate, lichHoc, soBuoiHoc, tietLyThuyet } from "../../lib/format";
+import { formatDate, formatDateTime, lichHoc, soBuoiHoc, tietLyThuyet } from "../../lib/format";
 import { useApi } from "../../lib/useApi";
 
 export default function RegisterPage() {
@@ -66,7 +66,7 @@ export default function RegisterPage() {
     try {
       const { data } = await api.post("/dang-ky", { lopHocPhanId: lop.id });
       setMessage(`Đăng ký thành công lớp ${data.maLop} - ${data.tenMon}`);
-      await Promise.all([reloadLop(), reloadRegs()]);
+      await Promise.all([reloadLop(), reloadRegs(), reloadDot?.()]);
       window.dispatchEvent(new Event("notifications:updated"));
     } catch (err) {
       setError(getErrorMessage(err));

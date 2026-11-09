@@ -25,6 +25,7 @@ import com.edu.registration.repository.GradeRepository;
 import com.edu.registration.repository.LecturerRepository;
 import com.edu.registration.repository.MajorRepository;
 import com.edu.registration.repository.PrerequisiteSubjectRepository;
+import com.edu.registration.repository.RegistrationPeriodRepository;
 import com.edu.registration.repository.SemesterRepository;
 import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.repository.SubjectRepository;
@@ -66,6 +67,7 @@ public class DataSeeder implements CommandLineRunner {
     private final CourseRegistrationRepository dangKyHocPhanRepository;
     private final GradeRepository diemRepository;
     private final AcademicCohortRepository khoaHocRepository;
+    private final RegistrationPeriodRepository dotDangKyRepository;
     private final PasswordEncoder passwordEncoder;
 
     private static final String[] LAST_NAMES = {
@@ -110,7 +112,7 @@ public class DataSeeder implements CommandLineRunner {
         this(userRepository, khoaRepository, nganhRepository, lopHanhChinhRepository,
                 monHocRepository, monTienQuyetRepository, hocKyRepository, giangVienRepository,
                 sinhVienRepository, lopHocPhanRepository, dangKyHocPhanRepository, diemRepository,
-                null, passwordEncoder);
+                null, null, passwordEncoder);
     }
 
     @Autowired
@@ -121,6 +123,7 @@ public class DataSeeder implements CommandLineRunner {
                       StudentRepository sinhVienRepository, CourseClassRepository lopHocPhanRepository,
                       CourseRegistrationRepository dangKyHocPhanRepository, GradeRepository diemRepository,
                       AcademicCohortRepository khoaHocRepository,
+                      @Autowired(required = false) RegistrationPeriodRepository dotDangKyRepository,
                       PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.khoaRepository = khoaRepository;
@@ -135,6 +138,7 @@ public class DataSeeder implements CommandLineRunner {
         this.dangKyHocPhanRepository = dangKyHocPhanRepository;
         this.diemRepository = diemRepository;
         this.khoaHocRepository = khoaHocRepository;
+        this.dotDangKyRepository = dotDangKyRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -161,6 +165,9 @@ public class DataSeeder implements CommandLineRunner {
             khoaRepository.deleteAllInBatch();
             if (khoaHocRepository != null) {
                 khoaHocRepository.deleteAllInBatch();
+            }
+            if (dotDangKyRepository != null) {
+                dotDangKyRepository.deleteAllInBatch();
             }
             hocKyRepository.deleteAllInBatch();
             userRepository.deleteAllInBatch();
