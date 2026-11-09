@@ -36,6 +36,7 @@ import AdminSupportRequestsPage from "./pages/admin/AdminSupportRequestsPage";
 import AuditAlertsPage from "./pages/admin/AuditAlertsPage";
 import GradeAppealsPage from "./pages/student/GradeAppealsPage";
 import AdminGradeAppealsPage from "./pages/admin/AdminGradeAppealsPage";
+import AdminLookupPage from "./pages/admin/AdminLookupPage";
 
 function RootRedirect() {
   const { user } = useAuth();
@@ -280,6 +281,11 @@ export default function App() {
         }
       />
       <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/quan-tri/tra-cuu-lich-su"
+               element={
+            <ProtectedRoute roles={["QUAN_TRI"]}><AdminLookupPage />
+            </ProtectedRoute>}
+        />.
     </Routes>
   );
 }
