@@ -27,6 +27,7 @@ import {
   UserCog,
   UserRound,
   Users,
+  ShieldAlert,
   X,
 } from "lucide-react";
 import { ROLE_LABEL, useAuth } from "../context/AuthContext";
@@ -47,6 +48,7 @@ const NAV = {
     { to: "/lich-su-hoc-tap", label: "Lịch sử học tập", icon: ScrollText },
     { to: "/tien-do", label: "Tiến độ học tập", icon: ChartNoAxesCombined },
     { to: "/yeu-cau-ho-tro", label: "Hỗ trợ & khiếu nại", icon: LifeBuoy },
+    { to: "/canh-bao-hoc-vu", label: "Cảnh báo học vụ", icon: ShieldAlert },
     { to: "/thong-bao", label: "Thông báo", icon: Bell },
   ],
   GIANG_VIEN: [
@@ -73,6 +75,7 @@ const NAV = {
     { to: "/quan-tri/giang-vien", label: "Giảng viên", icon: UserCog },
     { to: "/quan-tri/yeu-cau-ho-tro", label: "Yêu cầu hỗ trợ", icon: LifeBuoy },
     { to: "/quan-tri/nhat-ky-hoat-dong", label: "Nhật ký hoạt động", icon: History },
+      { to: "/quan-tri/canh-bao-hoc-tap", label: "Cảnh báo học tập sớm", icon: ShieldAlert },
       { to: "/quan-tri/canh-bao-audit", label: "Cảnh báo Audit", icon: Bell },
       { to: "/quan-tri/tra-cuu-lich-su", label: "Tra cứu lịch sử", icon: UserRound },
   ],

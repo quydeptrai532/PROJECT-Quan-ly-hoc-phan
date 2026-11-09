@@ -169,6 +169,40 @@ app:
     hoat-dong: ${ROOM_POLICY_HOAT_DONG:BAT_BUOC}
     suc-chua: ${ROOM_POLICY_SUC_CHUA:CANH_BAO}
 
+  early-warning:
+    # QLSV-97 (TASK-OP-10): He thong Canh bao som hoc tap dua tren quy tac minh bach, giai thich duoc
+    enabled: ${EARLY_WARNING_ENABLED:true}
+    official-regulation: ${EARLY_WARNING_OFFICIAL_REGULATION:false}
+    policy-note: ${EARLY_WARNING_POLICY_NOTE:Cac nguong canh bao hoc tap som va chinh sach quyen rieng tu cho sinh vien dang ap dung cau hinh tap trung du kien, cho Hoi dong Dao tao / Chu du an phe duyet chinh thuc.}
+    diem-qua-trinh:
+      enabled: ${EARLY_WARNING_DIEM_QT_ENABLED:true}
+      nguong-diem: ${EARLY_WARNING_DIEM_QT_NGUONG:5.0}
+      muc-do: ${EARLY_WARNING_DIEM_QT_MUC_DO:CANH_BAO}
+      cho-phep-sinh-vien-xem: ${EARLY_WARNING_DIEM_QT_SV_XEM:true}
+      ghi-chu: ${EARLY_WARNING_DIEM_QT_GHI_CHU:Can xac nhan nguong diem qua trinh chinh thuc giua muc 4.0 (nguy co rot mon) va 5.0 (duoi chuan dat).}
+    diem-danh:
+      enabled: ${EARLY_WARNING_DIEM_DANH_ENABLED:true}
+      nguong-so-buoi-vang: ${EARLY_WARNING_DIEM_DANH_SO_BUOI:3}
+      nguong-ty-le-vang: ${EARLY_WARNING_DIEM_DANH_TY_LE:20.0}
+      muc-do: ${EARLY_WARNING_DIEM_DANH_MUC_DO:NGHIEM_TRONG}
+      cho-phep-sinh-vien-xem: ${EARLY_WARNING_DIEM_DANH_SV_XEM:true}
+      ghi-chu: ${EARLY_WARNING_DIEM_DANH_GHI_CHU:Can xac nhan nguong so buoi vang tuyet doi hay ty le vang phan tram de kich hoat canh bao/cam thi chinh thuc.}
+    gpa-giam:
+      enabled: ${EARLY_WARNING_GPA_GIAM_ENABLED:true}
+      so-hoc-ky-lien-tiep: ${EARLY_WARNING_GPA_GIAM_SO_KY:2}
+      muc-giam-toi-thieu: ${EARLY_WARNING_GPA_GIAM_MUC_GIAM:0.3}
+      muc-do: ${EARLY_WARNING_GPA_GIAM_MUC_DO:CANH_BAO}
+      cho-phep-sinh-vien-xem: ${EARLY_WARNING_GPA_GIAM_SV_XEM:false}
+      ghi-chu: ${EARLY_WARNING_GPA_GIAM_GHI_CHU:Chinh sach rieng tu - canh bao suy giam GPA hien chi mo cho Can bo Quan tri va Co van hoc tap; cho quyet dinh chinh thuc ve viec hien thi truc tiep cho Sinh vien.}
+    tien-do-tin-chi:
+      enabled: ${EARLY_WARNING_TIEN_DO_ENABLED:true}
+      tin-chi-chuan-moi-ky: ${EARLY_WARNING_TIEN_DO_TC_CHUAN:14}
+      nguong-tin-chi-thieu: ${EARLY_WARNING_TIEN_DO_TC_THIEU:8}
+      nguong-ty-le-hoan-thanh: ${EARLY_WARNING_TIEN_DO_TY_LE:70.0}
+      muc-do: ${EARLY_WARNING_TIEN_DO_MUC_DO:CANH_BAO}
+      cho-phep-sinh-vien-xem: ${EARLY_WARNING_TIEN_DO_SV_XEM:true}
+      ghi-chu: ${EARLY_WARNING_TIEN_DO_GHI_CHU:Can xac nhan tien do chuan 14 tin chi/ky va nguong thieu 8 tin chi co ap dung chung toan truong hay phan theo nganh/khoa.}
+
   rate-limiting:
     # QLSV-94 (TASK-OP-07): Cau hinh rate limiting
     enabled: ${RATE_LIMITING_ENABLED:true}

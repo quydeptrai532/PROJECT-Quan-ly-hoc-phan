@@ -37,6 +37,8 @@ import AuditAlertsPage from "./pages/admin/AuditAlertsPage";
 import GradeAppealsPage from "./pages/student/GradeAppealsPage";
 import AdminGradeAppealsPage from "./pages/admin/AdminGradeAppealsPage";
 import AdminLookupPage from "./pages/admin/AdminLookupPage";
+import AdminEarlyWarningPage from "./pages/admin/AdminEarlyWarningPage";
+import StudentAcademicAlertsPage from "./pages/student/StudentAcademicAlertsPage";
 
 function RootRedirect() {
   const { user } = useAuth();
@@ -113,6 +115,8 @@ export default function App() {
       <Route path="/ke-hoach-mon-thieu" element={<ProtectedRoute roles={["SINH_VIEN"]}><ProgressPlannerPage /></ProtectedRoute>} />
       <Route path="/yeu-cau-ho-tro" element={<ProtectedRoute roles={["SINH_VIEN"]}><SupportRequestsPage /></ProtectedRoute>} />
       <Route path="/phuc-khao-diem" element={<ProtectedRoute roles={["SINH_VIEN"]}><GradeAppealsPage /></ProtectedRoute>} />
+      <Route path="/canh-bao-hoc-vu" element={<ProtectedRoute roles={["SINH_VIEN"]}><StudentAcademicAlertsPage /></ProtectedRoute>} />
+      <Route path="/canh-bao-hoc-tap" element={<ProtectedRoute roles={["SINH_VIEN"]}><StudentAcademicAlertsPage /></ProtectedRoute>} />
       <Route
         path="/thong-bao"
         element={
@@ -282,6 +286,7 @@ export default function App() {
         }
       />
       <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/quan-tri/canh-bao-hoc-tap" element={<ProtectedRoute roles={["QUAN_TRI"]}><AdminEarlyWarningPage /></ProtectedRoute>} />
         <Route path="/quan-tri/tra-cuu-lich-su"
                element={
             <ProtectedRoute roles={["QUAN_TRI"]}><AdminLookupPage />
