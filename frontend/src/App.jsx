@@ -33,6 +33,7 @@ import CurriculumPage from "./pages/admin/CurriculumPage";
 import SupportRequestsPage from "./pages/student/SupportRequestsPage";
 import AdminSupportRequestsPage from "./pages/admin/AdminSupportRequestsPage";
 import AuditAlertsPage from "./pages/admin/AuditAlertsPage";
+
 function RootRedirect() {
   const { user } = useAuth();
   return <Navigate to={user ? homePath(user.role) : "/login"} replace />;
@@ -192,7 +193,23 @@ export default function App() {
         path="/quan-tri/mon-hoc"
         element={
           <ProtectedRoute roles={["QUAN_TRI"]}>
-            <SubjectPage />
+            <SubjectPage initialTab="mon-hoc" />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/quan-tri/quan-he-mon"
+        element={
+          <ProtectedRoute roles={["QUAN_TRI"]}>
+            <SubjectPage initialTab="quan-he-mon" />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/quan-tri/khoa-hoc"
+        element={
+          <ProtectedRoute roles={["QUAN_TRI"]}>
+            <SubjectPage initialTab="khoa-hoc" />
           </ProtectedRoute>
         }
       />
@@ -240,16 +257,15 @@ export default function App() {
         }
       />
 
+      <Route
+        path="/quan-tri/canh-bao-audit"
+        element={
+          <ProtectedRoute roles={["QUAN_TRI"]}>
+            <AuditAlertsPage />
+          </ProtectedRoute>
+        }
+      />
       <Route path="*" element={<Navigate to="/" replace />} />
-        <Route
-            path="/quan-tri/canh-bao-audit"
-            element={
-                <ProtectedRoute roles={["QUAN_TRI"]}>
-                    <AuditAlertsPage />
-                </ProtectedRoute>
-            }
-        />
     </Routes>
-
   );
 }

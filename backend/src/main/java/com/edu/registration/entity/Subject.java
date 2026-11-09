@@ -10,6 +10,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "mon_hoc")
 public class Subject {
@@ -30,6 +32,24 @@ public class Subject {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "khoa_id", nullable = false)
     private Faculty khoa;
+
+    @Column(name = "nguoi_tao_id")
+    private Long nguoiTaoId;
+
+    @Column(name = "nguoi_tao_username", length = 50)
+    private String nguoiTaoUsername;
+
+    @Column(name = "tao_luc")
+    private LocalDateTime taoLuc;
+
+    @Column(name = "nguoi_cap_nhat_id")
+    private Long nguoiCapNhatId;
+
+    @Column(name = "nguoi_cap_nhat_username", length = 50)
+    private String nguoiCapNhatUsername;
+
+    @Column(name = "cap_nhat_luc")
+    private LocalDateTime capNhatLuc;
 
     public Long getId() {
         return id;
@@ -69,5 +89,53 @@ public class Subject {
 
     public void setKhoa(Faculty khoa) {
         this.khoa = khoa;
+    }
+
+    public Long getNguoiTaoId() {
+        return nguoiTaoId;
+    }
+
+    public void setNguoiTaoId(Long nguoiTaoId) {
+        this.nguoiTaoId = nguoiTaoId;
+    }
+
+    public String getNguoiTaoUsername() {
+        return nguoiTaoUsername;
+    }
+
+    public void setNguoiTaoUsername(String nguoiTaoUsername) {
+        this.nguoiTaoUsername = nguoiTaoUsername;
+    }
+
+    public LocalDateTime getTaoLuc() {
+        return taoLuc;
+    }
+
+    public void setTaoLuc(LocalDateTime taoLuc) {
+        this.taoLuc = taoLuc;
+    }
+
+    public Long getNguoiCapNhatId() {
+        return nguoiCapNhatId;
+    }
+
+    public void setNguoiCapNhatId(Long nguoiCapNhatId) {
+        this.nguoiCapNhatId = nguoiCapNhatId;
+    }
+
+    public String getNguoiCapNhatUsername() {
+        return nguoiCapNhatUsername;
+    }
+
+    public void setNguoiCapNhatUsername(String nguoiCapNhatUsername) {
+        this.nguoiCapNhatUsername = nguoiCapNhatUsername;
+    }
+
+    public LocalDateTime getCapNhatLuc() {
+        return capNhatLuc;
+    }
+
+    public void setCapNhatLuc(LocalDateTime capNhatLuc) {
+        this.capNhatLuc = capNhatLuc;
     }
 }

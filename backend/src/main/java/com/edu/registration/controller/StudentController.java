@@ -107,6 +107,13 @@ public class StudentController {
         return dangKyService.dangKy(request.lopHocPhanId(), request.loaiDangKy());
     }
 
+    @GetMapping("/dang-ky/kiem-tra-quan-he")
+    @PreAuthorize("hasRole('SINH_VIEN')")
+    public RegistrationDtos.KetQuaKiemTraQuanHeDangKyDto kiemTraQuanHeDangKy(
+            @RequestParam Long lopHocPhanId) {
+        return dangKyService.kiemTraQuanHeDangKy(lopHocPhanId);
+    }
+
     @PostMapping("/dang-ky/xac-nhan-ke-hoach")
     @PreAuthorize("hasRole('SINH_VIEN')")
     public List<RegistrationDtos.DangKyDto> xacNhanKeHoach(

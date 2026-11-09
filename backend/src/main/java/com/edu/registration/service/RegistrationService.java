@@ -1,35 +1,38 @@
 package com.edu.registration.service;
 
 import com.edu.registration.dto.RegistrationDtos;
+import com.edu.registration.entity.CourseClass;
 import com.edu.registration.entity.CourseRegistration;
 import com.edu.registration.entity.Grade;
-import com.edu.registration.entity.Semester;
-import com.edu.registration.entity.RegistrationHistory;
-import com.edu.registration.entity.CourseClass;
-import com.edu.registration.entity.Subject;
 import com.edu.registration.entity.PrerequisiteSubject;
-import com.edu.registration.entity.Student;
+import com.edu.registration.entity.RegistrationHistory;
 import com.edu.registration.entity.RegistrationStatus;
+import com.edu.registration.entity.Semester;
+import com.edu.registration.entity.Student;
+import com.edu.registration.entity.Subject;
+import com.edu.registration.entity.SubjectRelationType;
 import com.edu.registration.exception.ApiException;
+import com.edu.registration.repository.CourseClassRepository;
 import com.edu.registration.repository.CourseRegistrationRepository;
 import com.edu.registration.repository.GradeRepository;
-import com.edu.registration.repository.CourseClassRepository;
-import com.edu.registration.repository.RegistrationHistoryRepository;
 import com.edu.registration.repository.PrerequisiteSubjectRepository;
+import com.edu.registration.repository.RegistrationHistoryRepository;
 import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.security.CurrentUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -149,7 +152,7 @@ public class RegistrationService {
             }
         }
 
-        kiemTraTienQuyet(sinhVien, monHoc);
+        kiemTraQuanHeMonKhiDangKy(sinhVien, monHoc, hocKy, dangKyHienTai);
 
         if (lop.getSiSoHienTai() >= lop.getSiSoToiDa()) {
             throw ApiException.conflict("Lớp " + lop.getMa() + " đã đủ sĩ số");
@@ -318,18 +321,141 @@ public class RegistrationService {
                 .stream().map(mapper::thoiKhoaBieu).toList();
     }
 
-    private void kiemTraTienQuyet(Student sinhVien, Subject monHoc) {
-        List<PrerequisiteSubject> danhSachTienQuyet =
+    /**
+     * Đánh giá đầy đủ các quan hệ môn đã cấu hình cho một lớp học phần đối với sinh viên đang đăng nhập.
+     * - Với TIEN_QUYET (quy chế đã chốt): kiểm tra điểm đạt >= ngưỡng đạt trong thời gian/đợt hiệu lực.
+     * - Với SONG_HANH, TUONG_DUONG, THAY_THE, NHOM_TU_CHON: ghi nhận thông tin đối chiếu có cấu trúc nhưng không tự đặt quy chế chặn/thay thế.
+     */
+    @Transactional(readOnly = true)
+    public RegistrationDtos.KetQuaKiemTraQuanHeDangKyDto kiemTraQuanHeDangKy(Long lopHocPhanId) {
+        Student sinhVien = sinhVienHienTai();
+        CourseClass lop = lopHocPhanRepository.findWithDetailsById(lopHocPhanId)
+                .orElseGet(() -> lopHocPhanRepository.findById(lopHocPhanId)
+                        .orElseThrow(() -> ApiException.notFound("Lớp học phần không tồn tại")));
+        Semester hocKy = lop.getHocKy();
+        Subject monHoc = lop.getMonHoc();
+        String khoaSinhVien = xacDinhKhoaSinhVien(sinhVien);
+
+        List<PrerequisiteSubject> danhSachQuanHe = monTienQuyetRepository.findByMonHocIdOrderByIdAsc(monHoc.getId());
+        List<CourseRegistration> dangKyCungKy = dangKyHocPhanRepository
+                .findTheoHocKy(sinhVien.getId(), hocKy.getId(), RegistrationStatus.DA_DANG_KY);
+        Set<Long> monDangKyCungKy = dangKyCungKy.stream()
+                .map(dk -> dk.getLopHocPhan().getMonHoc().getId())
+                .collect(Collectors.toSet());
+
+        Map<Double, Set<Long>> monDaDatTheoNguong = new HashMap<>();
+        List<RegistrationDtos.KiemTraQuanHeMonItemDto> ketQuaItems = new ArrayList<>();
+        boolean duDieuKienTienQuyet = true;
+
+        for (PrerequisiteSubject quanHe : danhSachQuanHe) {
+            Subject monLienQuan = quanHe.getMonTienQuyet();
+            SubjectRelationType loai = quanHe.getLoaiQuanHeHieuLuc();
+            boolean hieuLuc = quanHe.laHieuLucCho(hocKy, khoaSinhVien, LocalDate.now());
+            double nguongDat = quanHe.getDieuKienDatHieuLuc();
+            Set<Long> monDaDat = monDaDatTheoNguong.computeIfAbsent(
+                    nguongDat,
+                    threshold -> new HashSet<>(diemRepository.findMonDaDat(sinhVien.getId(), threshold)));
+            boolean daDat = monDaDat.contains(monLienQuan.getId());
+            boolean cungHocKy = monDangKyCungKy.contains(monLienQuan.getId());
+
+            String trangThaiKiemTra;
+            boolean chanDangKy = false;
+            String thongDiep;
+
+            if (!hieuLuc) {
+                trangThaiKiemTra = "KHONG_AP_DUNG_DOT_NAY";
+                thongDiep = "Quan hệ không thuộc đợt/thời gian hoặc khóa hiệu lực của học kỳ này.";
+            } else if (loai == SubjectRelationType.TIEN_QUYET) {
+                if (!quanHe.isYeuCauDatHieuLuc() || daDat) {
+                    trangThaiKiemTra = "DA_DAT";
+                    thongDiep = "Đã thỏa điều kiện môn tiên quyết " + monLienQuan.getMa() + ".";
+                } else {
+                    trangThaiKiemTra = "CHUA_DAT";
+                    chanDangKy = true;
+                    duDieuKienTienQuyet = false;
+                    thongDiep = "Chưa đạt môn tiên quyết: " + monLienQuan.getMa() + " - " + monLienQuan.getTen()
+                            + " (yêu cầu điểm tổng kết công bố >= " + nguongDat + ").";
+                }
+            } else {
+                trangThaiKiemTra = "CHO_CHU_DU_AN_CHOT_QUY_CHE";
+                thongDiep = "Đã ghi nhận cấu hình " + loai.getTenHienThi().toLowerCase()
+                        + " với môn " + monLienQuan.getMa() + " - " + monLienQuan.getTen()
+                        + "; hệ thống không tự chặn/thay thế khi quy chế chưa chốt.";
+            }
+
+            ketQuaItems.add(new RegistrationDtos.KiemTraQuanHeMonItemDto(
+                    quanHe.getId(),
+                    monHoc.getId(),
+                    monHoc.getMa(),
+                    monHoc.getTen(),
+                    monLienQuan.getId(),
+                    monLienQuan.getMa(),
+                    monLienQuan.getTen(),
+                    loai.name(),
+                    loai.getTenHienThi(),
+                    quanHe.getDieuKienDat(),
+                    quanHe.isYeuCauDatHieuLuc(),
+                    quanHe.getMaNhomTuChon(),
+                    quanHe.getTinChiTuChonYeuCau(),
+                    quanHe.getKhoaNhapHoc(),
+                    hieuLuc,
+                    loai.isQuyCheDaChot(),
+                    chanDangKy,
+                    trangThaiKiemTra,
+                    daDat,
+                    cungHocKy,
+                    thongDiep,
+                    loai.getPhanCanChuDuAnChot()));
+        }
+
+        return new RegistrationDtos.KetQuaKiemTraQuanHeDangKyDto(
+                lop.getId(),
+                lop.getMa(),
+                monHoc.getId(),
+                monHoc.getMa(),
+                monHoc.getTen(),
+                hocKy.getId(),
+                hocKy.getTen(),
+                duDieuKienTienQuyet,
+                ketQuaItems);
+    }
+
+    private void kiemTraQuanHeMonKhiDangKy(Student sinhVien, Subject monHoc, Semester hocKy,
+                                           List<CourseRegistration> dangKyHienTai) {
+        List<PrerequisiteSubject> danhSachQuanHe =
                 monTienQuyetRepository.findByMonHocIdOrderByIdAsc(monHoc.getId());
-        if (danhSachTienQuyet.isEmpty()) {
+        if (danhSachQuanHe.isEmpty()) {
             return;
         }
-        Set<Long> monDaDat = new HashSet<>(diemRepository.findMonDaDat(sinhVien.getId(), AcademicRules.DIEM_DAT));
-        for (PrerequisiteSubject lienKet : danhSachTienQuyet) {
-            Subject tienQuyet = lienKet.getMonTienQuyet();
-            if (!monDaDat.contains(tienQuyet.getId())) {
-                throw ApiException.badRequest("Chưa đạt môn tiên quyết: "
-                        + tienQuyet.getMa() + " - " + tienQuyet.getTen());
+        String khoaSinhVien = xacDinhKhoaSinhVien(sinhVien);
+        Map<Double, Set<Long>> monDaDatTheoNguong = new HashMap<>();
+
+        for (PrerequisiteSubject quanHe : danhSachQuanHe) {
+            if (!quanHe.laHieuLucCho(hocKy, khoaSinhVien, LocalDate.now())) {
+                continue;
+            }
+            SubjectRelationType loai = quanHe.getLoaiQuanHeHieuLuc();
+            Subject monLienQuan = quanHe.getMonTienQuyet();
+
+            if (loai == SubjectRelationType.TIEN_QUYET) {
+                if (!quanHe.isYeuCauDatHieuLuc()) {
+                    continue;
+                }
+                double nguongDat = quanHe.getDieuKienDatHieuLuc();
+                Set<Long> monDaDat = monDaDatTheoNguong.computeIfAbsent(
+                        nguongDat,
+                        threshold -> new HashSet<>(diemRepository.findMonDaDat(sinhVien.getId(), threshold)));
+                if (!monDaDat.contains(monLienQuan.getId())) {
+                    String chiTietNguong = Double.compare(nguongDat, AcademicRules.DIEM_DAT) != 0
+                            ? " (yêu cầu điểm >= " + nguongDat + ")"
+                            : "";
+                    throw ApiException.badRequest("Chưa đạt môn tiên quyết: "
+                            + monLienQuan.getMa() + " - " + monLienQuan.getTen() + chiTietNguong);
+                }
+            } else {
+                // Không tự đặt quy chế chặn/thay thế cho SONG_HANH, TUONG_DUONG, THAY_THE, NHOM_TU_CHON khi chủ dự án chưa chốt
+                log.debug("Ghi nhận quan hệ {} giữa {} và {} cho sinh viên {} (chờ chốt quy chế áp dụng)",
+                        loai, monHoc.getMa(), monLienQuan.getMa(), sinhVien.getMa());
             }
         }
     }
@@ -358,6 +484,17 @@ public class RegistrationService {
         List<Long> ids = danhSach.stream().map(CourseRegistration::getId).toList();
         return diemRepository.findByDangKyIdIn(ids).stream()
                 .collect(Collectors.toMap(diem -> diem.getDangKy().getId(), Function.identity()));
+    }
+
+    private String xacDinhKhoaSinhVien(Student sinhVien) {
+        if (sinhVien == null) {
+            return null;
+        }
+        if (sinhVien.getChuongTrinh() != null && sinhVien.getChuongTrinh().getKhoaNhapHoc() != null
+                && !sinhVien.getChuongTrinh().getKhoaNhapHoc().isBlank()) {
+            return sinhVien.getChuongTrinh().getKhoaNhapHoc().trim();
+        }
+        return null;
     }
 
     private Student sinhVienHienTai() {
