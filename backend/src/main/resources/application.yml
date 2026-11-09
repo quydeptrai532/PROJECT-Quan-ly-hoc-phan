@@ -34,8 +34,27 @@ app:
     allowed-types: ${SUPPORT_ALLOWED_TYPES:HOC_PHAN,DIEM_SO,HOC_KY,HO_SO_HOC_VU,KHAC}
     allowed-statuses: ${SUPPORT_ALLOWED_STATUSES:MOI_TAO,DANG_XU_LY,CHO_PHAN_HOI_SINH_VIEN,DA_GIAI_QUYET,TU_CHOI,DA_DONG}
     comment-allowed-statuses: ${SUPPORT_COMMENT_ALLOWED_STATUSES:MOI_TAO,DANG_XU_LY,CHO_PHAN_HOI_SINH_VIEN,DA_GIAI_QUYET}
-    # Không tuyên bố SLA chính thức khi chưa có quyết định của chủ dự án.
-    sla-note: ${SUPPORT_SLA_NOTE:}
+    # QLSV-87 (TASK-AD-12): Cấu hình tập trung cho hàng đợi xử lý hỗ trợ, phân quyền, SLA và lịch làm việc
+    # Các thông số chưa được chốt chính thức và đang chờ Chủ dự án phê duyệt.
+    sla-note: ${SUPPORT_SLA_NOTE:Chính sách SLA xử lý yêu cầu hỗ trợ và thời hạn cam kết đang áp dụng theo cấu hình tập trung dự kiến (tham khảo), chưa phải quy chế chính thức của Nhà trường và chờ Chủ dự án phê duyệt.}
+    queue:
+      allowed-handler-roles: ${SUPPORT_HANDLER_ROLES:QUAN_TRI}
+      scope-mode: ${SUPPORT_QUEUE_SCOPE_MODE:ALL}
+      default-priority: ${SUPPORT_DEFAULT_PRIORITY:TRUNG_BINH}
+      policy-note: ${SUPPORT_QUEUE_POLICY_NOTE:Vai trò xử lý hàng đợi mặc định giới hạn QUAN_TRI để tránh mở quyền rộng; các vai trò hỗ trợ chuyên trách khác (nếu có) đang chờ Chủ dự án chốt chính thức.}
+    working-calendar:
+      working-days: ${SUPPORT_WORKING_DAYS:MONDAY,TUESDAY,WEDNESDAY,THURSDAY,FRIDAY}
+      start-time: ${SUPPORT_WORK_START_TIME:08:00}
+      end-time: ${SUPPORT_WORK_END_TIME:17:00}
+      lunch-start-time: ${SUPPORT_WORK_LUNCH_START:12:00}
+      lunch-end-time: ${SUPPORT_WORK_LUNCH_END:13:00}
+      timezone: ${SUPPORT_TIMEZONE:Asia/Ho_Chi_Minh}
+      policy-note: ${SUPPORT_WORKING_CALENDAR_NOTE:Lịch làm việc chuẩn (Thứ 2 - Thứ 6, 08:00 - 17:00, nghỉ trưa 12:00 - 13:00) đang áp dụng cấu hình dự kiến và chờ Chủ dự án phê duyệt chính thức.}
+    sla:
+      official-sla-enabled: ${SUPPORT_OFFICIAL_SLA_ENABLED:false}
+      pause-on-student-wait: ${SUPPORT_SLA_PAUSE_ON_STUDENT_WAIT:true}
+      nearing-due-threshold-hours: ${SUPPORT_SLA_NEARING_DUE_HOURS:4.0}
+      policy-note: ${SUPPORT_SLA_POLICY_NOTE:Chính sách SLA xử lý yêu cầu hỗ trợ và thời hạn cam kết đang áp dụng theo cấu hình tập trung dự kiến (tham khảo), chưa phải quy chế chính thức của Nhà trường và chờ Chủ dự án phê duyệt.}
   dashboard:
     # Học kỳ/đợt đăng ký được xem là "sắp tới" trong vòng 14 ngày; chỉnh tại cấu hình này.
     upcoming-window-days: ${DASHBOARD_UPCOMING_WINDOW_DAYS:14}

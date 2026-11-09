@@ -43,6 +43,9 @@ public class SupportRequestComment {
     @Column(name = "noi_dung", nullable = false, length = 2000, updatable = false)
     private String noiDung;
 
+    @Column(name = "cong_khai", nullable = false, updatable = false)
+    private boolean congKhai = true;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -92,6 +95,14 @@ public class SupportRequestComment {
 
     public void setNoiDung(String noiDung) {
         this.noiDung = noiDung;
+    }
+
+    public boolean isCongKhai() {
+        return congKhai;
+    }
+
+    public void setCongKhai(boolean congKhai) {
+        this.congKhai = congKhai;
     }
 
     public LocalDateTime getCreatedAt() {

@@ -20,6 +20,13 @@ import { formatDateTime, formatDiem } from "../../lib/format";
 
 const PAGE_SIZE = 10;
 
+export const PRIORITY_TONE = {
+  THAP: "slate",
+  TRUNG_BINH: "sky",
+  CAO: "amber",
+  KHAN_CAP: "red",
+};
+
 export const STATUS_TONE = {
   MOI_TAO: "sky",
   DANG_XU_LY: "indigo",
@@ -86,6 +93,12 @@ export default function SupportRequestsPage() {
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [replyText, setReplyText] = useState("");
   const [replySubmitting, setReplySubmitting] = useState(false);
+
+  // Additional evidence submission state
+  const [additionalFiles, setAdditionalFiles] = useState([]);
+  const [additionalNote, setAdditionalNote] = useState("");
+  const [additionalSubmitting, setAdditionalSubmitting] = useState(false);
+  const [additionalError, setAdditionalError] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -783,6 +796,72 @@ export default function SupportRequestsPage() {
                 )}
               </div>
 
+
+              {/* Evidence Request from Staff Banner */}
+              {selectedTicket.yeuCauBoSungMinhChung && (
+                <div className="rounded-xl border border-amber-300 bg-amber-50/90 p-4 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                    <div className="space-y-1 flex-1">
+                      <h4 className="text-sm font-semibold text-amber-950">
+                        Yêu cầu bổ sung minh chứng từ Phòng Đào tạo
+                      </h4>
+                      <p className="text-xs text-amber-800 leading-relaxed whitespace-pre-line">
+                        {selectedTicket.noiDungYeuCauMinhChung}
+                      </p>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleUploadAdditionalEvidence} className="mt-4 space-y-3 border-t border-amber-200 pt-3">
+                    {additionalError && <Alert tone="error">{additionalError}</Alert>}
+                    <Field label="Nội dung giải trình bổ sung (tùy chọn)">
+                      <textarea
+                        rows={2}
+                        maxLength={1000}
+                        className="input w-full text-xs"
+                        placeholder="Nhập phản hồi hoặc mô tả tài liệu bổ sung..."
+                        value={additionalNote}
+                        onChange={(e) => setAdditionalNote(e.target.value)}
+                      />
+                    </Field>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700">
+                        Chọn tệp đính kèm bổ sung ({catalog?.chinhSachTep?.allowedExtensions?.join(", ").toUpperCase() || "PDF, PNG, JPG"})
+                      </label>
+                      <input
+                        type="file"
+                        multiple
+                        className="input mt-1 w-full text-xs"
+                        onChange={handleAdditionalFileChange}
+                      />
+                    </div>
+
+                    {additionalFiles.length > 0 && (
+                      <div className="space-y-1">
+                        {additionalFiles.map((f, idx) => (
+                          <div key={idx} className="flex items-center justify-between rounded bg-white px-2.5 py-1 text-xs border border-amber-200">
+                            <span className="truncate">{f.name} ({formatFileSize(f.size)})</span>
+                            <button
+                              type="button"
+                              className="text-rose-600 hover:text-rose-800 font-medium ml-2"
+                              onClick={() => setAdditionalFiles((prev) => prev.filter((_, i) => i !== idx))}
+                            >
+                              Xóa
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex justify-end pt-1">
+                      <button type="submit" className="btn-primary text-xs" disabled={additionalSubmitting}>
+                        {additionalSubmitting ? "Đang gửi minh chứng..." : "Gửi minh chứng bổ sung"}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
               {/* Attachments */}
               <div className="rounded-xl border border-slate-200 bg-white p-4">
                 <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-900">

@@ -12,6 +12,7 @@ import com.edu.registration.entity.Notification;
 import com.edu.registration.entity.CourseClassAnnouncement;
 import com.edu.registration.entity.ClassAbsenceNotice;
 import com.edu.registration.entity.RegistrationStatus;
+import com.edu.registration.entity.Role;
 import com.edu.registration.entity.User;
 import com.edu.registration.exception.ApiException;
 import com.edu.registration.repository.CourseRegistrationRepository;
@@ -52,13 +53,17 @@ public class NotificationService {
 
     private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-    public static final String SECTION_CANCELLED_REASON_PREFIX = "Lớp học phần bị hủy";
+    public static final String SECTION_CANCELLED_REASON_PREFIX = "Lá»›p há»c pháº§n bá»‹ há»§y";
     public static final String GRADES_PUBLISHED_EVENT = "GRADES_PUBLISHED";
     public static final String CLASS_ANNOUNCEMENT_EVENT = "CLASS_ANNOUNCEMENT";
     public static final String ATTENDANCE_ALERT_EVENT = "ATTENDANCE_THRESHOLD_ALERT";
     public static final String ATTENDANCE_RESOLVED_EVENT = "ATTENDANCE_ALERT_RESOLVED";
     public static final String CLASS_STUDENT_TRANSFERRED_EVENT = "CLASS_STUDENT_TRANSFERRED";
     public static final String GRADE_APPEAL_EVENT = "GRADE_APPEAL_PROCESSED";
+    public static final String SUPPORT_REQUEST_ASSIGNED_EVENT = "SUPPORT_REQUEST_ASSIGNED";
+    public static final String SUPPORT_REQUEST_STATUS_EVENT = "SUPPORT_REQUEST_STATUS_CHANGED";
+    public static final String SUPPORT_REQUEST_EVIDENCE_EVENT = "SUPPORT_REQUEST_EVIDENCE_REQUESTED";
+    public static final String SUPPORT_REQUEST_COMMENT_EVENT = "SUPPORT_REQUEST_COMMENT_ADDED";
 
     private final NotificationRepository thongBaoRepository;
     private final CourseRegistrationRepository dangKyRepository;
@@ -134,7 +139,7 @@ public class NotificationService {
     public NotificationDtos.ThongBaoDto markRead(Long id) {
         Long recipientId = currentUser.get().getId();
         Notification notification = thongBaoRepository.findByIdAndRecipientId(id, recipientId)
-                .orElseThrow(() -> ApiException.notFound("Thông báo không tồn tại"));
+                .orElseThrow(() -> ApiException.notFound("ThÃ´ng bÃ¡o khÃ´ng tá»“n táº¡i"));
         if (notification.getReadAt() == null) {
             notification.setReadAt(LocalDateTime.now());
         }
@@ -176,15 +181,15 @@ public class NotificationService {
 
         String eventType = registered ? "COURSE_REGISTRATION_CONFIRMED" : "COURSE_REGISTRATION_CANCELLED";
         String idempotencyKey = buildRegistrationEventKey(registrationId, eventType, registeredAt);
-        String title = registered ? "Đăng ký học phần thành công" : "Đã hủy đăng ký học phần";
+        String title = registered ? "ÄÄƒng kÃ½ há»c pháº§n thÃ nh cÃ´ng" : "ÄÃ£ há»§y Ä‘Äƒng kÃ½ há»c pháº§n";
         String message = buildStudentRegistrationMessage(
                 registered, false, sectionCode, subjectCode, subjectName, semesterName, effectiveTime, reason);
         String targetUrl = registered ? "/hoc-phan-cua-toi" : "/thoi-khoa-bieu";
 
-        String action = registered ? "đăng ký" : "hủy đăng ký";
-        String lecturerTitle = registered ? "Sinh viên đăng ký lớp học phần" : "Sinh viên hủy đăng ký lớp học phần";
-        String lecturerMessage = "Có sinh viên " + action + " lớp " + sectionCode + " — "
-                + subjectName + " lúc " + formatTime(effectiveTime) + ".";
+        String action = registered ? "Ä‘Äƒng kÃ½" : "há»§y Ä‘Äƒng kÃ½";
+        String lecturerTitle = registered ? "Sinh viÃªn Ä‘Äƒng kÃ½ lá»›p há»c pháº§n" : "Sinh viÃªn há»§y Ä‘Äƒng kÃ½ lá»›p há»c pháº§n";
+        String lecturerMessage = "CÃ³ sinh viÃªn " + action + " lá»›p " + sectionCode + " â€” "
+                + subjectName + " lÃºc " + formatTime(effectiveTime) + ".";
 
         dispatchAfterCommit(eventType + ":" + idempotencyKey, () -> {
             send(studentUser, eventType, idempotencyKey, title, message, "NORMAL", targetUrl, effectiveTime);
@@ -212,7 +217,7 @@ public class NotificationService {
         String cleanReason = cleanSectionCancelReason(reason);
 
         String eventType = "COURSE_SECTION_CANCELLED";
-        String title = "Lớp học phần bị hủy";
+        String title = "Lá»›p há»c pháº§n bá»‹ há»§y";
         String studentMessage = buildStudentRegistrationMessage(
                 false, true, sectionCode, subjectCode, subjectName, semesterName, effectiveTime, cleanReason);
 
@@ -230,9 +235,9 @@ public class NotificationService {
         User lecturerUser = section.getGiangVien() != null ? section.getGiangVien().getUser() : null;
         String lecturerKey = "section-cancelled:" + section.getId() + ":"
                 + (cleanReason == null ? "default" : cleanReason);
-        String lecturerMessage = "Lớp học phần " + sectionCode + " — " + subjectName + " (" + semesterName
-                + ") đã bị hủy lúc " + formatTime(effectiveTime) + formatReason(cleanReason)
-                + ". Bước tiếp theo: kiểm tra danh sách lớp phụ trách.";
+        String lecturerMessage = "Lá»›p há»c pháº§n " + sectionCode + " â€” " + subjectName + " (" + semesterName
+                + ") Ä‘Ã£ bá»‹ há»§y lÃºc " + formatTime(effectiveTime) + formatReason(cleanReason)
+                + ". BÆ°á»›c tiáº¿p theo: kiá»ƒm tra danh sÃ¡ch lá»›p phá»¥ trÃ¡ch.";
 
         dispatchAfterCommit(eventType + ":section:" + section.getId(), () -> {
             for (RecipientNotice item : studentNotices) {
@@ -270,20 +275,20 @@ public class NotificationService {
         String baseKey = "transfer:" + lopNguon.getId() + ":" + lopDich.getId() + ":" + sinhVien.getId()
                 + ":" + effectiveTime.truncatedTo(ChronoUnit.SECONDS);
 
-        String studentTitle = "Chuyển lớp học phần thành công";
-        String studentMsg = "Bạn đã được chuyển từ lớp " + lopNguon.getMa() + " (" + lopNguon.getMonHoc().getTen() + ")"
-                + " sang lớp " + lopDich.getMa() + " (" + lopDich.getMonHoc().getTen() + ") lúc " + timeStr
-                + formatReason(cleanReason) + ". Bước tiếp theo: kiểm tra thời khóa biểu mới.";
+        String studentTitle = "Chuyá»ƒn lá»›p há»c pháº§n thÃ nh cÃ´ng";
+        String studentMsg = "Báº¡n Ä‘Ã£ Ä‘Æ°á»£c chuyá»ƒn tá»« lá»›p " + lopNguon.getMa() + " (" + lopNguon.getMonHoc().getTen() + ")"
+                + " sang lá»›p " + lopDich.getMa() + " (" + lopDich.getMonHoc().getTen() + ") lÃºc " + timeStr
+                + formatReason(cleanReason) + ". BÆ°á»›c tiáº¿p theo: kiá»ƒm tra thá»i khÃ³a biá»ƒu má»›i.";
 
-        String srcLecTitle = "Sinh viên được chuyển khỏi lớp";
-        String srcLecMsg = "Sinh viên " + sinhVien.getHoTen() + " (" + sinhVien.getMa() + ")"
-                + " đã được chuyển khỏi lớp " + lopNguon.getMa() + " sang lớp " + lopDich.getMa()
-                + " lúc " + timeStr + formatReason(cleanReason) + ".";
+        String srcLecTitle = "Sinh viÃªn Ä‘Æ°á»£c chuyá»ƒn khá»i lá»›p";
+        String srcLecMsg = "Sinh viÃªn " + sinhVien.getHoTen() + " (" + sinhVien.getMa() + ")"
+                + " Ä‘Ã£ Ä‘Æ°á»£c chuyá»ƒn khá»i lá»›p " + lopNguon.getMa() + " sang lá»›p " + lopDich.getMa()
+                + " lÃºc " + timeStr + formatReason(cleanReason) + ".";
 
-        String tgtLecTitle = "Tiếp nhận sinh viên mới vào lớp";
-        String tgtLecMsg = "Lớp " + lopDich.getMa() + " (" + lopDich.getMonHoc().getTen() + ")"
-                + " tiếp nhận sinh viên " + sinhVien.getHoTen() + " (" + sinhVien.getMa() + ")"
-                + " được chuyển từ lớp " + lopNguon.getMa() + " lúc " + timeStr + formatReason(cleanReason) + ".";
+        String tgtLecTitle = "Tiáº¿p nháº­n sinh viÃªn má»›i vÃ o lá»›p";
+        String tgtLecMsg = "Lá»›p " + lopDich.getMa() + " (" + lopDich.getMonHoc().getTen() + ")"
+                + " tiáº¿p nháº­n sinh viÃªn " + sinhVien.getHoTen() + " (" + sinhVien.getMa() + ")"
+                + " Ä‘Æ°á»£c chuyá»ƒn tá»« lá»›p " + lopNguon.getMa() + " lÃºc " + timeStr + formatReason(cleanReason) + ".";
 
         dispatchAfterCommit(eventType + ":" + baseKey, () -> {
             if (studentUser != null) {
@@ -306,12 +311,72 @@ public class NotificationService {
         LocalDateTime effectiveTime = occurredAt != null ? occurredAt : LocalDateTime.now();
         String idempotencyKey = "grade-appeal:" + maHoSo + ":" + trangThai;
         boolean chapThuan = "CHAP_THUAN".equalsIgnoreCase(trangThai);
-        String title = "Kết quả phúc khảo môn " + tenMon + " (" + (chapThuan ? "Chấp thuận" : "Giữ nguyên điểm") + ")";
-        String message = "Hồ sơ phúc khảo " + maHoSo + " môn " + tenMon + " đã được xử lý. Kết quả: " + ketQua;
+        String title = "Káº¿t quáº£ phÃºc kháº£o mÃ´n " + tenMon + " (" + (chapThuan ? "Cháº¥p thuáº­n" : "Giá»¯ nguyÃªn Ä‘iá»ƒm") + ")";
+        String message = "Há»“ sÆ¡ phÃºc kháº£o " + maHoSo + " mÃ´n " + tenMon + " Ä‘Ã£ Ä‘Æ°á»£c xá»­ lÃ½. Káº¿t quáº£: " + ketQua;
         String targetUrl = "/diem";
 
         dispatchAfterCommit(GRADE_APPEAL_EVENT + ":" + idempotencyKey, () -> {
             send(studentUser, GRADE_APPEAL_EVENT, idempotencyKey, title, message, "HIGH", targetUrl, effectiveTime);
+        });
+    }
+
+    public void supportRequestAssigned(User handler, String maPhieu, String tieuDe, String assignerUsername) {
+        if (handler == null || handler.getId() == null) {
+            return;
+        }
+        String idempotencyKey = "support-assign:" + maPhieu + ":" + handler.getId() + ":" + System.currentTimeMillis();
+        String title = "Phân công xử lý phiếu hỗ trợ " + maPhieu;
+        String message = "Bạn được phân công xử lý phiếu " + maPhieu + " (\"" + tieuDe + "\") bởi " + assignerUsername + ".";
+        String targetUrl = "/quan-tri/yeu-cau-ho-tro";
+        LocalDateTime now = LocalDateTime.now();
+        dispatchAfterCommit(SUPPORT_REQUEST_ASSIGNED_EVENT + ":" + idempotencyKey, () -> {
+            send(handler, SUPPORT_REQUEST_ASSIGNED_EVENT, idempotencyKey, title, message, "HIGH", targetUrl, now);
+        });
+    }
+
+    public void supportRequestStatusChanged(User recipient, String maPhieu, String tieuDe,
+                                           String oldStatusDesc, String newStatusDesc, String note) {
+        if (recipient == null || recipient.getId() == null) {
+            return;
+        }
+        String idempotencyKey = "support-status:" + maPhieu + ":" + newStatusDesc + ":" + System.currentTimeMillis();
+        String title = "Phiếu hỗ trợ " + maPhieu + " đã chuyển sang " + newStatusDesc;
+        String message = "Phiếu \"" + tieuDe + "\" (" + maPhieu + ") đã chuyển trạng thái từ \""
+                + oldStatusDesc + "\" sang \"" + newStatusDesc + "\"." + (note != null && !note.isBlank() ? " Ghi chú: " + note : "");
+        String targetUrl = recipient.getRole() == Role.SINH_VIEN ? "/yeu-cau-ho-tro" : "/quan-tri/yeu-cau-ho-tro";
+        LocalDateTime now = LocalDateTime.now();
+        dispatchAfterCommit(SUPPORT_REQUEST_STATUS_EVENT + ":" + idempotencyKey, () -> {
+            send(recipient, SUPPORT_REQUEST_STATUS_EVENT, idempotencyKey, title, message, "MEDIUM", targetUrl, now);
+        });
+    }
+
+    public void supportRequestEvidenceRequested(User studentUser, String maPhieu, String tieuDe, String note) {
+        if (studentUser == null || studentUser.getId() == null) {
+            return;
+        }
+        String idempotencyKey = "support-evidence:" + maPhieu + ":" + System.currentTimeMillis();
+        String title = "Yêu cầu bổ sung minh chứng cho phiếu " + maPhieu;
+        String message = "Phiếu \"" + tieuDe + "\" (" + maPhieu + ") cần bạn bổ sung thêm minh chứng. Nội dung: " + note;
+        String targetUrl = "/yeu-cau-ho-tro";
+        LocalDateTime now = LocalDateTime.now();
+        dispatchAfterCommit(SUPPORT_REQUEST_EVIDENCE_EVENT + ":" + idempotencyKey, () -> {
+            send(studentUser, SUPPORT_REQUEST_EVIDENCE_EVENT, idempotencyKey, title, message, "HIGH", targetUrl, now);
+        });
+    }
+
+    public void supportRequestCommentAdded(User recipient, String maPhieu, String tieuDe,
+                                          String senderName, String snippet, boolean isInternal) {
+        if (recipient == null || recipient.getId() == null) {
+            return;
+        }
+        String idempotencyKey = "support-comment:" + maPhieu + ":" + System.currentTimeMillis();
+        String title = isInternal ? "[Nội bộ] Trao đổi phiếu " + maPhieu : "Phản hồi mới trên phiếu " + maPhieu;
+        String message = senderName + " đã gửi " + (isInternal ? "ghi chú nội bộ" : "phản hồi")
+                + " trên phiếu " + maPhieu + ": " + snippet;
+        String targetUrl = recipient.getRole() == Role.SINH_VIEN ? "/yeu-cau-ho-tro" : "/quan-tri/yeu-cau-ho-tro";
+        LocalDateTime now = LocalDateTime.now();
+        dispatchAfterCommit(SUPPORT_REQUEST_COMMENT_EVENT + ":" + idempotencyKey, () -> {
+            send(recipient, SUPPORT_REQUEST_COMMENT_EVENT, idempotencyKey, title, message, "NORMAL", targetUrl, now);
         });
     }
 
@@ -338,12 +403,12 @@ public class NotificationService {
 
         String eventType = "COURSE_SESSION_CANCELLED";
         String idempotencyKey = "session-cancelled:" + sectionId + ":" + ngayNghi;
-        String title = "Thông báo nghỉ học lớp " + sectionCode;
-        String subjectLabel = subjectCode.isBlank() ? subjectName : subjectCode + " — " + subjectName;
-        String message = "Lớp " + sectionCode + " (" + subjectLabel + ", " + semesterName
-                + ") tạm nghỉ buổi học ngày " + ngayNghi + " (cập nhật lúc " + formatTime(effectiveTime) + "). "
-                + "Kết quả: Buổi học tạm nghỉ" + formatReason(reason)
-                + ". Bước tiếp theo: theo dõi lịch học bù và thời khóa biểu cá nhân.";
+        String title = "ThÃ´ng bÃ¡o nghá»‰ há»c lá»›p " + sectionCode;
+        String subjectLabel = subjectCode.isBlank() ? subjectName : subjectCode + " â€” " + subjectName;
+        String message = "Lá»›p " + sectionCode + " (" + subjectLabel + ", " + semesterName
+                + ") táº¡m nghá»‰ buá»•i há»c ngÃ y " + ngayNghi + " (cáº­p nháº­t lÃºc " + formatTime(effectiveTime) + "). "
+                + "Káº¿t quáº£: Buá»•i há»c táº¡m nghá»‰" + formatReason(reason)
+                + ". BÆ°á»›c tiáº¿p theo: theo dÃµi lá»‹ch há»c bÃ¹ vÃ  thá»i khÃ³a biá»ƒu cÃ¡ nhÃ¢n.";
 
         dispatchAfterCommit(eventType + ":" + idempotencyKey, () -> {
             for (User recipient : recipients) {
@@ -365,7 +430,7 @@ public class NotificationService {
         String subjectName = section.getMonHoc() != null ? section.getMonHoc().getTen() : "";
         LocalDateTime effectiveTime = announcement.getThoiGianTao() != null ? announcement.getThoiGianTao() : LocalDateTime.now();
         String title = announcement.getTieuDe();
-        String prefix = "[Lớp " + sectionCode + (subjectName.isBlank() ? "" : " — " + subjectName) + "] ";
+        String prefix = "[Lá»›p " + sectionCode + (subjectName.isBlank() ? "" : " â€” " + subjectName) + "] ";
         String message = prefix + announcement.getNoiDung();
         if (message.length() > 1000) {
             message = message.substring(0, 997) + "...";
@@ -398,7 +463,7 @@ public class NotificationService {
         LocalDateTime effectiveTime = occurredAt != null ? occurredAt : LocalDateTime.now();
 
         String idempotencyKey = buildGradePublishedEventKey(sectionId, publicationVersion);
-        String title = "Điểm lớp học phần " + sectionCode + " đã được công bố";
+        String title = "Äiá»ƒm lá»›p há»c pháº§n " + sectionCode + " Ä‘Ã£ Ä‘Æ°á»£c cÃ´ng bá»‘";
         String message = buildGradePublishedMessage(
                 sectionCode, subjectCode, subjectName, semesterName, academicYear, effectiveTime);
         String targetUrl = "/diem";
@@ -436,15 +501,15 @@ public class NotificationService {
                 ? idempotencyKey
                 : deterministicSectionChangeKey(section.getId(), eventType, after);
         LocalDateTime occurredAt = LocalDateTime.now();
-        String title = scheduleChanged ? "Lịch lớp học phần đã thay đổi" : "Giảng viên phụ trách lớp đã thay đổi";
+        String title = scheduleChanged ? "Lá»‹ch lá»›p há»c pháº§n Ä‘Ã£ thay Ä‘á»•i" : "Giáº£ng viÃªn phá»¥ trÃ¡ch lá»›p Ä‘Ã£ thay Ä‘á»•i";
         String message = scheduleChanged
-                ? "Lịch lớp " + section.getMa() + " — " + section.getMonHoc().getTen() + " đã đổi lúc "
-                    + formatTime(occurredAt) + ": " + thuLabel(section.getThu()) + ", tiết "
-                    + section.getTietBatDau() + "-" + section.getTietKetThuc() + ", phòng " + section.getPhong()
-                    + ". Bước tiếp theo: kiểm tra lại thời khóa biểu."
-                : "Giảng viên phụ trách lớp " + section.getMa() + " — " + section.getMonHoc().getTen()
-                    + " đã được cập nhật lúc " + formatTime(occurredAt)
-                    + ". Bước tiếp theo: kiểm tra thông tin lớp học phần.";
+                ? "Lá»‹ch lá»›p " + section.getMa() + " â€” " + section.getMonHoc().getTen() + " Ä‘Ã£ Ä‘á»•i lÃºc "
+                    + formatTime(occurredAt) + ": " + thuLabel(section.getThu()) + ", tiáº¿t "
+                    + section.getTietBatDau() + "-" + section.getTietKetThuc() + ", phÃ²ng " + section.getPhong()
+                    + ". BÆ°á»›c tiáº¿p theo: kiá»ƒm tra láº¡i thá»i khÃ³a biá»ƒu."
+                : "Giáº£ng viÃªn phá»¥ trÃ¡ch lá»›p " + section.getMa() + " â€” " + section.getMonHoc().getTen()
+                    + " Ä‘Ã£ Ä‘Æ°á»£c cáº­p nháº­t lÃºc " + formatTime(occurredAt)
+                    + ". BÆ°á»›c tiáº¿p theo: kiá»ƒm tra thÃ´ng tin lá»›p há»c pháº§n.";
 
         List<User> enrolledStudents = dangKyRepository.findByLopHocPhan(
                         section.getId(), RegistrationStatus.DA_DANG_KY)
@@ -482,7 +547,7 @@ public class NotificationService {
         User lecturerUser = section.getGiangVien() != null ? section.getGiangVien().getUser() : null;
 
         String thresholdDesc = "SO_BUOI_VANG".equalsIgnoreCase(loaiNguong)
-                ? ((int) giaTriNguong + " buổi")
+                ? ((int) giaTriNguong + " buá»•i")
                 : (giaTriNguong + "%");
 
         String eventType = resolved ? ATTENDANCE_RESOLVED_EVENT : ATTENDANCE_ALERT_EVENT;
@@ -490,16 +555,16 @@ public class NotificationService {
                 + ":" + loaiNguong + ":" + soBuoiVang + "/" + tongBuoiHopLe + ":" + (resolved ? "RESOLVED" : "ALERT");
 
         String title = resolved
-                ? "Giải tỏa cảnh báo chuyên cần: " + sectionCode
-                : "Cảnh báo vắng quá ngưỡng: " + sectionCode;
+                ? "Giáº£i tá»a cáº£nh bÃ¡o chuyÃªn cáº§n: " + sectionCode
+                : "Cáº£nh bÃ¡o váº¯ng quÃ¡ ngÆ°á»¡ng: " + sectionCode;
 
         String message = resolved
-                ? "Cảnh báo chuyên cần đã được giải tỏa: Sinh viên " + student.getHoTen() + " (" + student.getMa() + ")"
-                  + " hiện có số buổi vắng là " + soBuoiVang + "/" + tongBuoiHopLe + " buổi hợp lệ (" + String.format(java.util.Locale.US, "%.1f", tyLeVang) + "%),"
-                  + " đã trở về dưới ngưỡng quy định của lớp " + sectionCode + " (" + subjectName + ")."
-                : "Sinh viên " + student.getHoTen() + " (" + student.getMa() + ")"
-                  + " đã vắng " + soBuoiVang + "/" + tongBuoiHopLe + " buổi hợp lệ (" + String.format(java.util.Locale.US, "%.1f", tyLeVang) + "%),"
-                  + " đạt/vượt ngưỡng " + thresholdDesc + " của lớp " + sectionCode + " (" + subjectName + ").";
+                ? "Cáº£nh bÃ¡o chuyÃªn cáº§n Ä‘Ã£ Ä‘Æ°á»£c giáº£i tá»a: Sinh viÃªn " + student.getHoTen() + " (" + student.getMa() + ")"
+                  + " hiá»‡n cÃ³ sá»‘ buá»•i váº¯ng lÃ  " + soBuoiVang + "/" + tongBuoiHopLe + " buá»•i há»£p lá»‡ (" + String.format(java.util.Locale.US, "%.1f", tyLeVang) + "%),"
+                  + " Ä‘Ã£ trá»Ÿ vá» dÆ°á»›i ngÆ°á»¡ng quy Ä‘á»‹nh cá»§a lá»›p " + sectionCode + " (" + subjectName + ")."
+                : "Sinh viÃªn " + student.getHoTen() + " (" + student.getMa() + ")"
+                  + " Ä‘Ã£ váº¯ng " + soBuoiVang + "/" + tongBuoiHopLe + " buá»•i há»£p lá»‡ (" + String.format(java.util.Locale.US, "%.1f", tyLeVang) + "%),"
+                  + " Ä‘áº¡t/vÆ°á»£t ngÆ°á»¡ng " + thresholdDesc + " cá»§a lá»›p " + sectionCode + " (" + subjectName + ").";
 
         String priority = resolved ? "NORMAL" : "HIGH";
         LocalDateTime now = LocalDateTime.now();
@@ -527,9 +592,9 @@ public class NotificationService {
         String key = "registration-window-closing:" + semester.getId() + ":" + semester.getDangKyDen();
         int created = 0;
         LocalDateTime occurredAt = LocalDateTime.now();
-        String title = "Đợt đăng ký học phần sắp kết thúc";
-        String message = "Đợt đăng ký " + semester.getTen() + " sẽ kết thúc ngày "
-                + semester.getDangKyDen() + ". Hãy hoàn tất kế hoạch học tập nếu cần.";
+        String title = "Äá»£t Ä‘Äƒng kÃ½ há»c pháº§n sáº¯p káº¿t thÃºc";
+        String message = "Äá»£t Ä‘Äƒng kÃ½ " + semester.getTen() + " sáº½ káº¿t thÃºc ngÃ y "
+                + semester.getDangKyDen() + ". HÃ£y hoÃ n táº¥t káº¿ hoáº¡ch há»c táº­p náº¿u cáº§n.";
         for (Student student : sinhVienRepository.findAllActiveWithUser()) {
             if (send(student.getUser(), "REGISTRATION_WINDOW_CLOSING", key,
                     title, message, "HIGH", "/dang-ky", occurredAt)) {
@@ -574,8 +639,8 @@ public class NotificationService {
                         ? event.getThoiDiem() : event.getThoiGianDangKy();
                 String reason = sectionCancelled ? cleanSectionCancelReason(event.getLyDoHuy()) : event.getLyDoHuy();
                 String title = registered
-                        ? "Đăng ký học phần thành công"
-                        : (sectionCancelled ? "Lớp học phần bị hủy" : "Đã hủy đăng ký học phần");
+                        ? "ÄÄƒng kÃ½ há»c pháº§n thÃ nh cÃ´ng"
+                        : (sectionCancelled ? "Lá»›p há»c pháº§n bá»‹ há»§y" : "ÄÃ£ há»§y Ä‘Äƒng kÃ½ há»c pháº§n");
                 String message = buildStudentRegistrationMessage(
                         registered, sectionCancelled, sectionCode, subjectCode, subjectName, semesterName, occurredAt, reason);
                 String priority = sectionCancelled ? "HIGH" : "NORMAL";
@@ -611,7 +676,7 @@ public class NotificationService {
                 String semesterName = section.getHocKy() != null ? section.getHocKy().getTen() : "";
                 String academicYear = section.getHocKy() != null ? section.getHocKy().getNamHoc() : "";
                 LocalDateTime publishedAt = section.getCongBoBangDiemLuc();
-                String title = "Điểm lớp học phần " + sectionCode + " đã được công bố";
+                String title = "Äiá»ƒm lá»›p há»c pháº§n " + sectionCode + " Ä‘Ã£ Ä‘Æ°á»£c cÃ´ng bá»‘";
                 String message = buildGradePublishedMessage(
                         sectionCode, subjectCode, subjectName, semesterName, academicYear, publishedAt);
                 if (send(studentUser, GRADES_PUBLISHED_EVENT, idempotencyKey,
@@ -635,7 +700,7 @@ public class NotificationService {
                 reconcileForUser(userId);
             }
         } catch (RuntimeException ex) {
-            log.warn("Không thể đồng bộ bù thông báo nội bộ cho userId={}: {}",
+            log.warn("KhÃ´ng thá»ƒ Ä‘á»“ng bá»™ bÃ¹ thÃ´ng bÃ¡o ná»™i bá»™ cho userId={}: {}",
                     userId, ex.getClass().getSimpleName());
         }
     }
@@ -661,7 +726,7 @@ public class NotificationService {
                 task.run();
             }
         } catch (RuntimeException ex) {
-            log.error("Không thể lưu thông báo nội bộ [{}]; giao dịch nghiệp vụ đã commit không bị ảnh hưởng: {}",
+            log.error("KhÃ´ng thá»ƒ lÆ°u thÃ´ng bÃ¡o ná»™i bá»™ [{}]; giao dá»‹ch nghiá»‡p vá»¥ Ä‘Ã£ commit khÃ´ng bá»‹ áº£nh hÆ°á»Ÿng: {}",
                     context, ex.getClass().getSimpleName());
         }
     }
@@ -714,7 +779,7 @@ public class NotificationService {
             thongBaoRepository.save(notification);
             return true;
         } catch (DataIntegrityViolationException duplicate) {
-            log.debug("Bỏ qua thông báo trùng idempotencyKey={} cho recipientId={}",
+            log.debug("Bá» qua thÃ´ng bÃ¡o trÃ¹ng idempotencyKey={} cho recipientId={}",
                     idempotencyKey, recipient.getId());
             return false;
         }
@@ -748,9 +813,9 @@ public class NotificationService {
         String semesterLabel = (academicYear == null || academicYear.isBlank())
                 ? semesterName
                 : semesterName + " (" + academicYear + ")";
-        return "Bảng điểm lớp " + sectionCode + " — " + subjectLabel + ", " + semesterLabel
-                + " đã được phê duyệt và công bố lúc " + formatTime(occurredAt)
-                + ". Bước tiếp theo: truy cập trang Kết quả học tập để xem chi tiết.";
+        return "Báº£ng Ä‘iá»ƒm lá»›p " + sectionCode + " â€” " + subjectLabel + ", " + semesterLabel
+                + " Ä‘Ã£ Ä‘Æ°á»£c phÃª duyá»‡t vÃ  cÃ´ng bá»‘ lÃºc " + formatTime(occurredAt)
+                + ". BÆ°á»›c tiáº¿p theo: truy cáº­p trang Káº¿t quáº£ há»c táº­p Ä‘á»ƒ xem chi tiáº¿t.";
     }
 
     private String buildStudentRegistrationMessage(boolean registered, boolean sectionCancelled,
@@ -762,20 +827,20 @@ public class NotificationService {
                 : subjectCode + " - " + subjectName;
         String timeStr = formatTime(occurredAt);
         if (registered) {
-            return "Bạn đã đăng ký lớp " + sectionCode + " — " + subjectLabel
-                    + ", " + semesterName + " lúc " + timeStr
-                    + ". Kết quả: Đã đăng ký. Bước tiếp theo: kiểm tra danh sách học phần đã đăng ký và thời khóa biểu.";
+            return "Báº¡n Ä‘Ã£ Ä‘Äƒng kÃ½ lá»›p " + sectionCode + " â€” " + subjectLabel
+                    + ", " + semesterName + " lÃºc " + timeStr
+                    + ". Káº¿t quáº£: ÄÃ£ Ä‘Äƒng kÃ½. BÆ°á»›c tiáº¿p theo: kiá»ƒm tra danh sÃ¡ch há»c pháº§n Ä‘Ã£ Ä‘Äƒng kÃ½ vÃ  thá»i khÃ³a biá»ƒu.";
         }
         if (sectionCancelled) {
-            return "Lớp học phần " + sectionCode + " — " + subjectLabel
-                    + ", " + semesterName + " đã bị hủy lúc " + timeStr
-                    + ". Kết quả: Trạng thái đăng ký chuyển sang Đã hủy" + formatReason(reason)
-                    + ". Bước tiếp theo: mở trang đăng ký học phần để chọn lớp thay thế.";
+            return "Lá»›p há»c pháº§n " + sectionCode + " â€” " + subjectLabel
+                    + ", " + semesterName + " Ä‘Ã£ bá»‹ há»§y lÃºc " + timeStr
+                    + ". Káº¿t quáº£: Tráº¡ng thÃ¡i Ä‘Äƒng kÃ½ chuyá»ƒn sang ÄÃ£ há»§y" + formatReason(reason)
+                    + ". BÆ°á»›c tiáº¿p theo: má»Ÿ trang Ä‘Äƒng kÃ½ há»c pháº§n Ä‘á»ƒ chá»n lá»›p thay tháº¿.";
         }
-        return "Bạn đã hủy đăng ký lớp " + sectionCode + " — " + subjectLabel
-                + ", " + semesterName + " lúc " + timeStr
-                + ". Kết quả: Đã hủy đăng ký" + formatReason(reason)
-                + ". Bước tiếp theo: kiểm tra lại thời khóa biểu hoặc đăng ký lớp học phần khác nếu cần.";
+        return "Báº¡n Ä‘Ã£ há»§y Ä‘Äƒng kÃ½ lá»›p " + sectionCode + " â€” " + subjectLabel
+                + ", " + semesterName + " lÃºc " + timeStr
+                + ". Káº¿t quáº£: ÄÃ£ há»§y Ä‘Äƒng kÃ½" + formatReason(reason)
+                + ". BÆ°á»›c tiáº¿p theo: kiá»ƒm tra láº¡i thá»i khÃ³a biá»ƒu hoáº·c Ä‘Äƒng kÃ½ lá»›p há»c pháº§n khÃ¡c náº¿u cáº§n.";
     }
 
     private boolean isSectionCancelledReason(String reason) {
@@ -801,7 +866,7 @@ public class NotificationService {
         if (reason == null || reason.isBlank()) {
             return "";
         }
-        return " (Lý do: " + reason.trim() + ")";
+        return " (LÃ½ do: " + reason.trim() + ")";
     }
 
     private String formatTime(LocalDateTime time) {
@@ -813,7 +878,7 @@ public class NotificationService {
     }
 
     private String thuLabel(int thu) {
-        return thu == 8 ? "Chủ nhật" : "Thứ " + (thu - 1);
+        return thu == 8 ? "Chá»§ nháº­t" : "Thá»© " + (thu - 1);
     }
 
     private NotificationDtos.ThongBaoDto toDto(Notification notification) {
