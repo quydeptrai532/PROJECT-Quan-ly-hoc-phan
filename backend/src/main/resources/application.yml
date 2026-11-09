@@ -25,6 +25,24 @@ spring:
       max-request-size: ${SUPPORT_MAX_REQUEST_SIZE:16MB}
 
 app:
+  notification:
+    email:
+      # QLSV-92 (TASK-OP-05): Chuẩn hóa trung tâm thông báo và email
+      # Email là kênh thông báo bổ sung được kiểm soát bật/tắt độc lập.
+      # Khi tắt email (enabled: false), thông báo in-app vẫn hoạt động đầy đủ.
+      enabled: ${NOTIFICATION_EMAIL_ENABLED:false}
+      from-address: ${NOTIFICATION_EMAIL_FROM:no-reply@university.edu.vn}
+      from-name: ${NOTIFICATION_EMAIL_FROM_NAME:Hệ thống Quản lý Đào tạo}
+      max-retries: ${NOTIFICATION_EMAIL_MAX_RETRIES:3}
+      retry-delay-seconds: ${NOTIFICATION_EMAIL_RETRY_DELAY_SECONDS:60}
+      provider: ${NOTIFICATION_EMAIL_PROVIDER:smtp}
+      host: ${SMTP_HOST:}
+      port: ${SMTP_PORT:587}
+      username: ${SMTP_USERNAME:}
+      password: ${SMTP_PASSWORD:}
+      auth: ${SMTP_AUTH:true}
+      starttls: ${SMTP_STARTTLS:true}
+      policy-note: ${NOTIFICATION_EMAIL_POLICY_NOTE:Email là kênh thông báo bổ sung được kiểm soát bật/tắt độc lập. Lỗi gửi email không rollback nghiệp vụ đã commit. Không gửi điểm cá nhân hoặc thông tin nhạy cảm qua email mà chỉ gửi thông báo hướng dẫn đăng nhập tra cứu an toàn qua hệ thống nội bộ.}
   support-request:
     # Cấu hình tập trung tạm thời cho phiếu hỗ trợ/khiếu nại sinh viên (cần chủ dự án xác nhận danh mục/chính sách tệp/SLA chính thức).
     storage-dir: ${SUPPORT_UPLOAD_DIR:./data/support-attachments}

@@ -19,6 +19,9 @@ import com.edu.registration.repository.SemesterRepository;
 import com.edu.registration.repository.RegistrationHistoryRepository;
 import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.repository.NotificationRepository;
+import com.edu.registration.dto.NotificationDtos;
+import com.edu.registration.service.email.EmailDeliveryService;
+import com.edu.registration.service.email.EmailTemplateService;
 import com.edu.registration.security.CurrentUser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,13 +34,16 @@ import org.springframework.dao.DataAccessResourceFailureException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
@@ -384,5 +390,87 @@ class NotificationServiceTest {
         assertEquals(expectedKey, captor.getValue().getIdempotencyKey());
         assertEquals("/diem", captor.getValue().getTargetUrl());
         assertFalse(captor.getValue().getMessage().contains("8.6"));
+    }
+
+    @Test
+    void testMarkRead_IsIdempotent() {
+        when(currentUser.get()).thenReturn(studentUser);
+
+        Notification unread = new Notification();
+        unread.setRecipient(studentUser);
+        unread.setTitle("Thông báo test");
+        unread.setMessage("Nội dung");
+        unread.setEventType("COURSE_REGISTRATION_CONFIRMED");
+        unread.setPriority("NORMAL");
+        unread.setTargetUrl("/hoc-phan-cua-toi");
+        unread.setCreatedAt(LocalDateTime.now().minusMinutes(5));
+        unread.setReadAt(null);
+
+        when(thongBaoRepository.findByIdAndRecipientId(1L, 10L))
+                .thenReturn(Optional.of(unread));
+        when(thongBaoRepository.save(any(Notification.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        // Lần 1: Chưa đọc -> đánh dấu đã đọc
+        NotificationDtos.ThongBaoDto result1 = thongBaoService.markRead(1L);
+        assertTrue(result1.read());
+        assertNotNull(result1.readAt());
+        LocalDateTime firstReadTime = result1.readAt();
+        verify(thongBaoRepository, times(1)).save(unread);
+
+        // Lần 2: Đã đọc -> gọi lại không đổi mốc readAt và không gọi save thêm
+        when(thongBaoRepository.findByIdAndRecipientId(1L, 10L))
+                .thenReturn(Optional.of(unread));
+        NotificationDtos.ThongBaoDto result2 = thongBaoService.markRead(1L);
+        assertTrue(result2.read());
+        assertEquals(firstReadTime, result2.readAt());
+        verify(thongBaoRepository, times(1)).save(unread);
+    }
+
+    @Test
+    void testRegistrationChanged_WithEmailDeliveryService_DispatchesBothInAppAndEmail() {
+        EmailDeliveryService mockEmailDeliveryService = org.mockito.Mockito.mock(EmailDeliveryService.class);
+        EmailTemplateService emailTemplateService = new EmailTemplateService();
+
+        NotificationService serviceWithEmail = new NotificationService(
+                thongBaoRepository,
+                dangKyRepository,
+                lichSuDangKyRepository,
+                diemRepository,
+                sinhVienRepository,
+                hocKyRepository,
+                currentUser,
+                null,
+                mockEmailDeliveryService,
+                emailTemplateService
+        );
+
+        CourseRegistration reg = new CourseRegistration();
+        reg.setId(55L);
+        reg.setSinhVien(sinhVien);
+        reg.setLopHocPhan(lopHocPhan);
+        reg.setThoiGianDangKy(LocalDateTime.now());
+        reg.setTrangThai(RegistrationStatus.DA_DANG_KY);
+
+        serviceWithEmail.registrationChanged(reg, true);
+
+        // In-app notification saved for student & lecturer
+        verify(thongBaoRepository, times(2)).save(any(Notification.class));
+
+        // Email delivery invoked safely for student and lecturer
+        verify(mockEmailDeliveryService).deliverEmailSafely(
+                eq(studentUser),
+                eq("COURSE_REGISTRATION_CONFIRMED"),
+                anyString(),
+                org.mockito.ArgumentMatchers.contains("QLSV"),
+                org.mockito.ArgumentMatchers.contains("hoc-phan-cua-toi")
+        );
+        verify(mockEmailDeliveryService).deliverEmailSafely(
+                eq(lecturerUser),
+                eq("COURSE_REGISTRATION_CONFIRMED"),
+                anyString(),
+                org.mockito.ArgumentMatchers.contains("QLSV"),
+                org.mockito.ArgumentMatchers.contains("lop-cua-toi")
+        );
     }
 }

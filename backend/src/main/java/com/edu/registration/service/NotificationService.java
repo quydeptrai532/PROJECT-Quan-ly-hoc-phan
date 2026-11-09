@@ -21,6 +21,9 @@ import com.edu.registration.repository.SemesterRepository;
 import com.edu.registration.repository.RegistrationHistoryRepository;
 import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.repository.NotificationRepository;
+import com.edu.registration.entity.NotificationEventType;
+import com.edu.registration.service.email.EmailDeliveryService;
+import com.edu.registration.service.email.EmailTemplateService;
 import com.edu.registration.security.CurrentUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,13 +76,15 @@ public class NotificationService {
     private final SemesterRepository hocKyRepository;
     private final CurrentUser currentUser;
     private final TransactionTemplate requiresNewTemplate;
+    private final EmailDeliveryService emailDeliveryService;
+    private final EmailTemplateService emailTemplateService;
 
     public NotificationService(NotificationRepository thongBaoRepository,
                            CourseRegistrationRepository dangKyRepository,
                            StudentRepository sinhVienRepository,
                            SemesterRepository hocKyRepository,
                            CurrentUser currentUser) {
-        this(thongBaoRepository, dangKyRepository, null, null, sinhVienRepository, hocKyRepository, currentUser, null);
+        this(thongBaoRepository, dangKyRepository, null, null, sinhVienRepository, hocKyRepository, currentUser, null, null, null);
     }
 
     public NotificationService(NotificationRepository thongBaoRepository,
@@ -90,7 +95,19 @@ public class NotificationService {
                            CurrentUser currentUser,
                            PlatformTransactionManager transactionManager) {
         this(thongBaoRepository, dangKyRepository, lichSuDangKyRepository, null,
-                sinhVienRepository, hocKyRepository, currentUser, transactionManager);
+                sinhVienRepository, hocKyRepository, currentUser, transactionManager, null, null);
+    }
+
+    public NotificationService(NotificationRepository thongBaoRepository,
+                           CourseRegistrationRepository dangKyRepository,
+                           RegistrationHistoryRepository lichSuDangKyRepository,
+                           GradeRepository diemRepository,
+                           StudentRepository sinhVienRepository,
+                           SemesterRepository hocKyRepository,
+                           CurrentUser currentUser,
+                           PlatformTransactionManager transactionManager) {
+        this(thongBaoRepository, dangKyRepository, lichSuDangKyRepository, diemRepository,
+                sinhVienRepository, hocKyRepository, currentUser, transactionManager, null, null);
     }
 
     @Autowired
@@ -101,7 +118,9 @@ public class NotificationService {
                            StudentRepository sinhVienRepository,
                            SemesterRepository hocKyRepository,
                            CurrentUser currentUser,
-                           PlatformTransactionManager transactionManager) {
+                           PlatformTransactionManager transactionManager,
+                           EmailDeliveryService emailDeliveryService,
+                           EmailTemplateService emailTemplateService) {
         this.thongBaoRepository = thongBaoRepository;
         this.dangKyRepository = dangKyRepository;
         this.lichSuDangKyRepository = lichSuDangKyRepository;
@@ -109,6 +128,8 @@ public class NotificationService {
         this.sinhVienRepository = sinhVienRepository;
         this.hocKyRepository = hocKyRepository;
         this.currentUser = currentUser;
+        this.emailDeliveryService = emailDeliveryService;
+        this.emailTemplateService = emailTemplateService;
         if (transactionManager != null) {
             TransactionTemplate template = new TransactionTemplate(transactionManager);
             template.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -142,8 +163,9 @@ public class NotificationService {
                 .orElseThrow(() -> ApiException.notFound("Thông báo không tồn tại"));
         if (notification.getReadAt() == null) {
             notification.setReadAt(LocalDateTime.now());
+            notification = thongBaoRepository.save(notification);
         }
-        return toDto(thongBaoRepository.save(notification));
+        return toDto(notification);
     }
 
     @Transactional
@@ -191,11 +213,18 @@ public class NotificationService {
         String lecturerMessage = "Có sinh viên " + action + " lớp " + sectionCode + " — "
                 + subjectName + " lúc " + formatTime(effectiveTime) + ".";
 
+        EmailTemplateService.EmailContent studentEmail = emailTemplateService != null
+                ? emailTemplateService.buildRegistrationEmail(registered, false, sectionCode, subjectCode, subjectName, semesterName, effectiveTime, reason)
+                : null;
+        EmailTemplateService.EmailContent lecturerEmail = emailTemplateService != null
+                ? emailTemplateService.buildLecturerRegistrationEmail(registered, sectionCode, subjectName, effectiveTime)
+                : null;
+
         dispatchAfterCommit(eventType + ":" + idempotencyKey, () -> {
-            send(studentUser, eventType, idempotencyKey, title, message, "NORMAL", targetUrl, effectiveTime);
+            send(studentUser, eventType, idempotencyKey, title, message, "NORMAL", targetUrl, effectiveTime, studentEmail);
             if (lecturerUser != null) {
                 send(lecturerUser, eventType, idempotencyKey, lecturerTitle, lecturerMessage,
-                        "NORMAL", "/lop-cua-toi", effectiveTime);
+                        "NORMAL", "/lop-cua-toi", effectiveTime, lecturerEmail);
             }
         });
     }
@@ -239,13 +268,20 @@ public class NotificationService {
                 + ") đã bị hủy lúc " + formatTime(effectiveTime) + formatReason(cleanReason)
                 + ". Bước tiếp theo: kiểm tra danh sách lớp phụ trách.";
 
+        EmailTemplateService.EmailContent studentEmail = emailTemplateService != null
+                ? emailTemplateService.buildRegistrationEmail(false, true, sectionCode, subjectCode, subjectName, semesterName, effectiveTime, cleanReason)
+                : null;
+        EmailTemplateService.EmailContent lecturerEmail = emailTemplateService != null
+                ? emailTemplateService.buildLecturerSectionCancelledEmail(sectionCode, subjectName, semesterName, effectiveTime, cleanReason)
+                : null;
+
         dispatchAfterCommit(eventType + ":section:" + section.getId(), () -> {
             for (RecipientNotice item : studentNotices) {
-                send(item.user(), eventType, item.key(), title, studentMessage, "HIGH", "/dang-ky", effectiveTime);
+                send(item.user(), eventType, item.key(), title, studentMessage, "HIGH", "/dang-ky", effectiveTime, studentEmail);
             }
             if (lecturerUser != null) {
                 send(lecturerUser, eventType, lecturerKey, title, lecturerMessage,
-                        "HIGH", "/lop-cua-toi", effectiveTime);
+                        "HIGH", "/lop-cua-toi", effectiveTime, lecturerEmail);
             }
         });
     }
@@ -439,9 +475,12 @@ public class NotificationService {
         String targetUrl = "/hoc-phan-cua-toi";
 
         String finalMessage = message;
+        EmailTemplateService.EmailContent announcementEmail = emailTemplateService != null
+                ? emailTemplateService.buildClassAnnouncementEmail(sectionCode, subjectName, title, announcement.getNoiDung(), effectiveTime)
+                : null;
         dispatchAfterCommit(CLASS_ANNOUNCEMENT_EVENT + ":" + idempotencyKey, () -> {
             sendBatchByIdempotencyKey(eligibleStudents, CLASS_ANNOUNCEMENT_EVENT, idempotencyKey,
-                    title, finalMessage, "NORMAL", targetUrl, effectiveTime);
+                    title, finalMessage, "NORMAL", targetUrl, effectiveTime, announcementEmail);
         });
     }
 
@@ -483,9 +522,12 @@ public class NotificationService {
         }
 
         List<User> recipients = List.copyOf(recipientsById.values());
+        EmailTemplateService.EmailContent gradesEmail = emailTemplateService != null
+                ? emailTemplateService.buildGradePublishedEmail(sectionCode, subjectCode, subjectName, semesterName, academicYear, effectiveTime)
+                : null;
         dispatchAfterCommit(GRADES_PUBLISHED_EVENT + ":" + idempotencyKey, () ->
                 sendBatchByIdempotencyKey(recipients, GRADES_PUBLISHED_EVENT, idempotencyKey,
-                        title, message, "HIGH", targetUrl, effectiveTime));
+                        title, message, "HIGH", targetUrl, effectiveTime, gradesEmail));
     }
 
     /** Called only when the locked section's schedule or assigned lecturer actually changes. */
@@ -734,6 +776,13 @@ public class NotificationService {
     private void sendBatchByIdempotencyKey(List<User> recipients, String eventType, String idempotencyKey,
                                            String title, String message, String priority,
                                            String targetUrl, LocalDateTime createdAt) {
+        sendBatchByIdempotencyKey(recipients, eventType, idempotencyKey, title, message, priority, targetUrl, createdAt, null);
+    }
+
+    private void sendBatchByIdempotencyKey(List<User> recipients, String eventType, String idempotencyKey,
+                                           String title, String message, String priority,
+                                           String targetUrl, LocalDateTime createdAt,
+                                           EmailTemplateService.EmailContent emailContent) {
         List<User> activeRecipients = recipients.stream()
                 .filter(u -> u != null && u.isTrangThai() && u.getId() != null)
                 .toList();
@@ -747,20 +796,47 @@ public class NotificationService {
                 continue;
             }
             saveNotification(recipient, eventType, idempotencyKey, title, message, priority, targetUrl, createdAt);
+            dispatchEmailSafely(recipient, eventType, idempotencyKey, title, message, targetUrl, createdAt, emailContent);
         }
     }
 
     private boolean send(User recipient, String eventType, String idempotencyKey, String title,
                          String message, String priority, String targetUrl, LocalDateTime createdAt) {
+        return send(recipient, eventType, idempotencyKey, title, message, priority, targetUrl, createdAt, null);
+    }
+
+    private boolean send(User recipient, String eventType, String idempotencyKey, String title,
+                         String message, String priority, String targetUrl, LocalDateTime createdAt,
+                         EmailTemplateService.EmailContent emailContent) {
         if (recipient == null || !recipient.isTrangThai()
                 || thongBaoRepository.existsByRecipientIdAndIdempotencyKey(recipient.getId(), idempotencyKey)) {
             return false;
         }
         try {
-            return saveNotification(recipient, eventType, idempotencyKey, title, message, priority, targetUrl, createdAt);
+            boolean saved = saveNotification(recipient, eventType, idempotencyKey, title, message, priority, targetUrl, createdAt);
+            if (saved) {
+                dispatchEmailSafely(recipient, eventType, idempotencyKey, title, message, targetUrl, createdAt, emailContent);
+            }
+            return saved;
         } catch (DataAccessResourceFailureException e) {
             log.warn("Failed to persist notification [{}] for recipientId={}: {}", eventType, recipient.getId(), e.getMessage());
             return false;
+        }
+    }
+
+    private void dispatchEmailSafely(User recipient, String eventType, String idempotencyKey,
+                                     String title, String message, String targetUrl, LocalDateTime createdAt,
+                                     EmailTemplateService.EmailContent emailContent) {
+        if (emailDeliveryService == null) {
+            return;
+        }
+        EmailTemplateService.EmailContent content = emailContent;
+        if (content == null && emailTemplateService != null) {
+            content = emailTemplateService.buildGenericEmail(eventType, title, message, targetUrl, createdAt);
+        }
+        if (content != null) {
+            emailDeliveryService.deliverEmailSafely(recipient, eventType, idempotencyKey,
+                    content.subject(), content.bodyHtml());
         }
     }
 
