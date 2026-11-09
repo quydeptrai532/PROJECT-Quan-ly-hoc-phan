@@ -38,6 +38,7 @@ import GradeAppealsPage from "./pages/student/GradeAppealsPage";
 import AdminGradeAppealsPage from "./pages/admin/AdminGradeAppealsPage";
 import AdminLookupPage from "./pages/admin/AdminLookupPage";
 import AdminEarlyWarningPage from "./pages/admin/AdminEarlyWarningPage";
+import LearningAnalyticsPage from "./pages/admin/LearningAnalyticsPage";
 import StudentAcademicAlertsPage from "./pages/student/StudentAcademicAlertsPage";
 
 function RootRedirect() {
@@ -286,12 +287,13 @@ export default function App() {
         }
       />
       <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/quan-tri/learning-analytics" element={<ProtectedRoute roles={["QUAN_TRI"]}><LearningAnalyticsPage /></ProtectedRoute>} />
         <Route path="/quan-tri/canh-bao-hoc-tap" element={<ProtectedRoute roles={["QUAN_TRI"]}><AdminEarlyWarningPage /></ProtectedRoute>} />
         <Route path="/quan-tri/tra-cuu-lich-su"
                element={
             <ProtectedRoute roles={["QUAN_TRI"]}><AdminLookupPage />
             </ProtectedRoute>}
-        />.
+        />
     </Routes>
   );
 }

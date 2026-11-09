@@ -59,6 +59,7 @@ const NAV = {
   ],
   QUAN_TRI: [
     { to: "/quan-tri", label: "Tổng quan", icon: LayoutDashboard },
+    { to: "/quan-tri/learning-analytics", label: "Phân tích học tập", icon: ChartNoAxesCombined },
     { to: "/quan-tri/hoc-ky", label: "Học kỳ", icon: CalendarRange },
     { to: "/quan-tri/dot-dang-ky", label: "Đợt đăng ký & Đối tượng", icon: CalendarClock },
     { to: "/quan-tri/khoa", label: "Khoa", icon: Building2 },
