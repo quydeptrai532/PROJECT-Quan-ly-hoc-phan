@@ -1070,6 +1070,17 @@ public class CourseClassService {
         String maPhong = request.phong().trim();
         Classroom phong = classroomRepository.findByMaForUpdate(maPhong)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy phòng học: " + maPhong));
+        if (phong.getTrangThai() == ClassroomStatus.BAO_TRI) {
+            throw ApiException.badRequest(
+                    "Phòng học " + phong.getMa() + " đang bảo trì, không thể xếp lịch cho lớp học phần"
+            );
+        }
+
+        if (phong.getTrangThai() == ClassroomStatus.NGUNG_SU_DUNG) {
+            throw ApiException.badRequest(
+                    "Phòng học " + phong.getMa() + " đã ngừng sử dụng, không thể xếp lịch cho lớp học phần"
+            );
+        }
 
         RoomFacts roomFacts = new RoomFacts(
                 phong.getTrangThai() == ClassroomStatus.HOAT_DONG,

@@ -25,6 +25,9 @@ import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.repository.UserRepository;
 import com.edu.registration.security.JwtService;
 import com.edu.registration.service.NotificationService;
+import com.edu.registration.entity.Classroom;
+import com.edu.registration.entity.ClassroomStatus;
+import com.edu.registration.repository.ClassroomRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -97,6 +100,7 @@ class ConcurrentRegistrationIntegrationTest {
     @Autowired private PrerequisiteSubjectRepository monTienQuyetRepository;
     @Autowired private LecturerRepository giangVienRepository;
     @Autowired private CourseClassRepository lopHocPhanRepository;
+    @Autowired private ClassroomRepository classroomRepository;
     @Autowired private CourseRegistrationRepository dangKyRepository;
     @Autowired private AuditLogRepository auditLogRepository;
     @SpyBean private NotificationRepository thongBaoRepository;
@@ -122,6 +126,21 @@ class ConcurrentRegistrationIntegrationTest {
         assertTrue(studentCount > capacity, "student-count phải lớn hơn capacity để có tranh suất");
         assertTrue(concurrency > 0, "concurrency phải lớn hơn 0");
         runId = UUID.randomUUID().toString().replace("-", "").substring(0, 10);
+
+// Tạo phòng học đang hoạt động để phục vụ test cập nhật lịch học
+        classroomRepository.saveAndFlush(new Classroom(
+                "N" + runId,
+                "Phòng kiểm thử " + runId,
+                "Nhà A",
+                1,
+                null,
+                60,
+                "LY_THUYET",
+                null,
+                ClassroomStatus.HOAT_DONG,
+                "Tốt"
+        ));
+
         Faculty khoa = new Faculty();
         khoa.setMa("T" + runId);
         khoa.setTen("Khoa concurrency test " + runId);
@@ -490,8 +509,17 @@ class ConcurrentRegistrationIntegrationTest {
         HttpHeaders headers = headersFor(admin);
         String endpoint = "/api/admin/lop-hoc-phan/" + primarySection.getId();
 
-        assertEquals(HttpStatus.OK, http.exchange(endpoint, HttpMethod.PUT,
-                new HttpEntity<>(edit, headers), String.class).getStatusCode());
+        ResponseEntity<String> response = http.exchange(
+                endpoint,
+                HttpMethod.PUT,
+                new HttpEntity<>(edit, headers),
+                String.class
+        );
+
+        assertEquals(HttpStatus.OK, response.getStatusCode(),
+                "PUT lần 1 thất bại: " + response.getBody());
+
+// Giữ nguyên PUT lần 2
         assertEquals(HttpStatus.OK, http.exchange(endpoint, HttpMethod.PUT,
                 new HttpEntity<>(edit, headers), String.class).getStatusCode());
 
