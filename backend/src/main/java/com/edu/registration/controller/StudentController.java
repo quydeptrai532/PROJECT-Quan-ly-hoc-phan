@@ -5,6 +5,7 @@ import com.edu.registration.dto.CourseClassDtos;
 import com.edu.registration.dto.RegistrationDtos;
 import com.edu.registration.dto.RegistrationPeriodDtos;
 import com.edu.registration.dto.StudentAcademicProfileDto;
+import com.edu.registration.dto.UserDtos;
 import com.edu.registration.service.RegistrationService;
 import com.edu.registration.service.RegistrationPeriodService;
 import com.edu.registration.service.GradeService;
@@ -210,6 +211,12 @@ public class StudentController {
     @PreAuthorize("hasRole('SINH_VIEN')")
     public StudentAcademicProfileDto hoSoDaoTao() {
         return studentAcademicProfileService.getMyProfile();
+    }
+
+    @GetMapping("/sinh-vien/me/lich-su-trang-thai-hoc-tap")
+    @PreAuthorize("hasRole('SINH_VIEN')")
+    public List<UserDtos.StudentAcademicStatusHistoryDto> layLichSuTrangThaiHocTapMe() {
+        return studentAcademicProfileService.getMyStatusHistory();
     }
 
     @GetMapping("/sinh-vien/me/canh-bao-dashboard")

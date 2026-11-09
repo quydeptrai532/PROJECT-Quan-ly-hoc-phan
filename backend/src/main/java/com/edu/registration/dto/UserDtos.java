@@ -1,9 +1,14 @@
 package com.edu.registration.dto;
 
+import com.edu.registration.entity.StudentAcademicStatus;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public final class UserDtos {
@@ -13,7 +18,8 @@ public final class UserDtos {
 
     public record SinhVienDto(Long id, String ma, String hoTen, String email, String soDienThoai,
                               Long khoaId, String khoaTen, Long nganhId, String nganhTen,
-                              Long lopId, String lopTen, String username, boolean trangThai) {
+                              Long lopId, String lopTen, String username, boolean trangThai,
+                              StudentAcademicStatus trangThaiHocTap, String trangThaiHocTapMoTa) {
     }
 
     public record SinhVienRequest(
@@ -28,8 +34,35 @@ public final class UserDtos {
             String matKhau) {
     }
 
+    public record CapNhatTrangThaiHocTapRequest(
+            @NotNull(message = "Trạng thái học tập mới không được để trống")
+            StudentAcademicStatus trangThaiMoi,
+            @NotNull(message = "Ngày hiệu lực không được để trống")
+            LocalDate ngayHieuLuc,
+            @NotBlank(message = "Lý do cập nhật trạng thái không được để trống")
+            @Size(max = 500, message = "Lý do không được vượt quá 500 ký tự")
+            String lyDo) {
+    }
+
+    public record StudentAcademicStatusHistoryDto(
+            Long id,
+            Long sinhVienId,
+            String sinhVienMa,
+            String sinhVienHoTen,
+            StudentAcademicStatus trangThaiTruoc,
+            String trangThaiTruocMoTa,
+            StudentAcademicStatus trangThaiSau,
+            String trangThaiSauMoTa,
+            LocalDate ngayHieuLuc,
+            String ghiChu,
+            Long nguoiThucHienId,
+            String nguoiThucHienUsername,
+            String nguoiThucHienHoTen,
+            LocalDateTime thoiDiem) {
+    }
+
     public record GiangVienDto(Long id, String ma, String hoTen, String email, String soDienThoai,
-                               Long khoaId, String khoaTen, String username, boolean trangThai) {
+                                Long khoaId, String khoaTen, String username, boolean trangThai) {
     }
 
     public record GiangVienRequest(

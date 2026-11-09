@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { BookOpen, Building2, KeyRound, Mail, Phone, Save, UserRound } from "lucide-react";
+import { BookOpen, Building2, History, KeyRound, Mail, Phone, Save, UserRound } from "lucide-react";
+import { formatDate, formatDateTime } from "../lib/format";
 import api, { getErrorMessage } from "../api/client";
-import { Alert, Badge, Field, PageHeader, Spinner } from "../components/ui";
+import { Alert, Badge, EmptyState, Field, Modal, PageHeader, Spinner } from "../components/ui";
 import { ROLE_LABEL, useAuth } from "../context/AuthContext";
 import { useApi } from "../lib/useApi";
 
@@ -213,12 +214,28 @@ export default function ProfilePage() {
 
 function StudentAcademicProfile() {
   const { data, loading, error } = useApi("/sinh-vien/me/ho-so-dao-tao");
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const { data: historyList, loading: historyLoading } = useApi(historyOpen ? "/sinh-vien/me/lich-su-trang-thai-hoc-tap" : null);
+
+  const statusTone = data?.trangThaiHocTap === "Đang học" ? "green"
+    : data?.trangThaiHocTap === "Bảo lưu" ? "amber"
+    : data?.trangThaiHocTap === "Thôi học" ? "red"
+    : data?.trangThaiHocTap === "Tốt nghiệp" ? "purple" : "slate";
 
   return (
     <section className="card p-5" aria-labelledby="academic-profile-title">
-      <div className="mb-4 flex items-center gap-2">
-        <BookOpen size={18} className="text-indigo-600" />
-        <h2 id="academic-profile-title" className="text-sm font-semibold text-slate-800">Hồ sơ đào tạo</h2>
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <BookOpen size={18} className="text-indigo-600" />
+          <h2 id="academic-profile-title" className="text-sm font-semibold text-slate-800">Hồ sơ đào tạo</h2>
+        </div>
+        <button
+          type="button"
+          onClick={() => setHistoryOpen(true)}
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800"
+        >
+          <History size={14} /> Lịch sử trạng thái
+        </button>
       </div>
       {loading ? <Spinner label="Đang tải hồ sơ đào tạo..." /> : error ? <Alert tone="error">{error}</Alert> : (
         <dl className="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
@@ -232,10 +249,67 @@ function StudentAcademicProfile() {
               ? "Chưa cập nhật"
               : `Khóa ${data.chuongTrinhKhoaNhapHoc} · Phiên bản ${data.chuongTrinhPhienBan}`}
           />
-          <AcademicField label="Trạng thái học tập" value={data.trangThaiHocTap} />
+          <AcademicField label="Trạng thái học tập" value={
+            <Badge tone={statusTone}>{data.trangThaiHocTap || "Chưa cập nhật"}</Badge>
+          } />
         </dl>
       )}
       <p className="mt-4 text-xs text-slate-500">Thông tin học vụ do phòng đào tạo quản lý và chỉ xem được.</p>
+
+      <Modal
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        title="Lịch sử trạng thái học tập"
+        size="lg"
+      >
+        {historyLoading ? (
+          <Spinner />
+        ) : !historyList || historyList.length === 0 ? (
+          <EmptyState icon={History} title="Chưa có lịch sử" description="Bạn chưa có ghi nhận thay đổi trạng thái học tập nào." />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-slate-700">
+                <tr>
+                  <th className="th">Thời điểm</th>
+                  <th className="th text-center">Trước</th>
+                  <th className="th text-center">Sau</th>
+                  <th className="th">Ngày hiệu lực</th>
+                  <th className="th">Lý do / Ghi chú</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {historyList.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50/60">
+                    <td className="td text-xs text-slate-600">{formatDateTime(item.thoiDiem)}</td>
+                    <td className="td text-center">
+                      <Badge tone={
+                        item.trangThaiTruoc === "DANG_HOC" ? "green" :
+                        item.trangThaiTruoc === "BAO_LUU" ? "amber" :
+                        item.trangThaiTruoc === "THOI_HOC" ? "red" :
+                        item.trangThaiTruoc === "TOT_NGHIEP" ? "purple" : "slate"
+                      }>
+                        {item.trangThaiTruocMoTa || (item.trangThaiTruoc || "Ban đầu")}
+                      </Badge>
+                    </td>
+                    <td className="td text-center">
+                      <Badge tone={
+                        item.trangThaiSau === "DANG_HOC" ? "green" :
+                        item.trangThaiSau === "BAO_LUU" ? "amber" :
+                        item.trangThaiSau === "THOI_HOC" ? "red" : "purple"
+                      }>
+                        {item.trangThaiSauMoTa || item.trangThaiSau}
+                      </Badge>
+                    </td>
+                    <td className="td text-xs font-medium text-slate-700">{formatDate(item.ngayHieuLuc)}</td>
+                    <td className="td text-xs text-slate-700 max-w-[250px] break-words">{item.ghiChu || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Modal>
     </section>
   );
 }
