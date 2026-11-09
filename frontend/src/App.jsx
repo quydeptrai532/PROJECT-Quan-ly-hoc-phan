@@ -23,6 +23,7 @@ import FacultyPage from "./pages/admin/FacultyPage";
 import MajorPage from "./pages/admin/MajorPage";
 import AdminClassPage from "./pages/admin/AdminClassPage";
 import SubjectPage from "./pages/admin/SubjectPage";
+import ClassroomPage from "./pages/admin/ClassroomPage";
 import CourseClassPage from "./pages/admin/CourseClassPage";
 import StudentPage from "./pages/admin/StudentPage";
 import LecturerPage from "./pages/admin/LecturerPage";
@@ -213,6 +214,15 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/quan-tri/phong-hoc"
+        element={
+          <ProtectedRoute roles={["QUAN_TRI"]}>
+            <ClassroomPage />
+          </ProtectedRoute>
+        }
+      />
+
       <Route
         path="/quan-tri/lop-hoc-phan"
         element={
