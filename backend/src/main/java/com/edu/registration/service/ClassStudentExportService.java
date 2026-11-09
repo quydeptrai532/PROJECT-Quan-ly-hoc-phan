@@ -11,6 +11,7 @@ import com.edu.registration.repository.LecturerRepository;
 import com.edu.registration.repository.CourseClassRepository;
 import com.edu.registration.security.CurrentUser;
 import com.edu.registration.util.CsvUtils;
+import com.edu.registration.util.ExportSecuritySupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -78,10 +79,11 @@ public class ClassStudentExportService {
                     .sorted(boSoSanh(thuTu))
                     .toList();
 
+            ExportSecuritySupport.validateRowCount(danhSach.size(), "danh sách sinh viên lớp học phần");
             byte[] noiDung = taoCsv(danhSach).getBytes(StandardCharsets.UTF_8);
             // Audit chỉ lưu định danh lớp và số bản ghi, không lưu dữ liệu cá nhân của sinh viên.
             audit.changes(Map.of(), Map.of("lopHocPhanId", lopHocPhanId, "maLop", lop.getMa(),
-                    "soBanGhi", danhSach.size()));
+                    "soBanGhi", danhSach.size(), "tuKhoa", tuKhoaChuan.isEmpty() ? "KHONG_LOC" : tuKhoaChuan, "sapXep", thuTu));
             log.info("Giảng viên {} xuất danh sách {} sinh viên của lớp {}",
                     giangVien.getMa(), danhSach.size(), lop.getMa());
             return new CsvFile(tenTep(lop.getMa()), noiDung, danhSach.size());
@@ -146,7 +148,7 @@ public class ClassStudentExportService {
     }
 
     private String tenTep(String maLop) {
-        return "danh-sach-sinh-vien-" + maLop.replaceAll("[^A-Za-z0-9._-]", "_") + ".csv";
+        return "danh-sach-sinh-vien-" + ExportSecuritySupport.sanitizeFilename(maLop) + ".csv";
     }
 
     public record CsvFile(String tenTep, byte[] noiDung, int soDong) {

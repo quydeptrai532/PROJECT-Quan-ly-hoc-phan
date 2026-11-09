@@ -24,6 +24,10 @@ import com.edu.registration.repository.MajorRepository;
 import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.repository.SubjectRepository;
 import com.edu.registration.security.CurrentUser;
+import org.springframework.beans.factory.annotation.Autowired;
+import com.edu.registration.util.CsvUtils;
+import com.edu.registration.util.ExportSecuritySupport;
+import java.util.Locale;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +35,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.text.Collator;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -65,6 +70,7 @@ public class StatisticsService {
     private final MajorRepository nganhRepository;
     private final CurriculumRepository chuongTrinhRepository;
     private final CurrentUser currentUser;
+    private final AuditLogService auditLogService;
 
     public StatisticsService(StudentRepository sinhVienRepository,
                              LecturerRepository giangVienRepository,
@@ -77,6 +83,25 @@ public class StatisticsService {
                              MajorRepository nganhRepository,
                              CurriculumRepository chuongTrinhRepository,
                              CurrentUser currentUser) {
+        this(sinhVienRepository, giangVienRepository, monHocRepository,
+                lopHocPhanRepository, dangKyHocPhanRepository, diemRepository,
+                hocKyService, khoaRepository, nganhRepository, chuongTrinhRepository,
+                currentUser, null);
+    }
+
+    @Autowired
+    public StatisticsService(StudentRepository sinhVienRepository,
+                             LecturerRepository giangVienRepository,
+                             SubjectRepository monHocRepository,
+                             CourseClassRepository lopHocPhanRepository,
+                             CourseRegistrationRepository dangKyHocPhanRepository,
+                             GradeRepository diemRepository,
+                             SemesterService hocKyService,
+                             FacultyRepository khoaRepository,
+                             MajorRepository nganhRepository,
+                             CurriculumRepository chuongTrinhRepository,
+                             CurrentUser currentUser,
+                             @Autowired(required = false) AuditLogService auditLogService) {
         this.sinhVienRepository = sinhVienRepository;
         this.giangVienRepository = giangVienRepository;
         this.monHocRepository = monHocRepository;
@@ -88,6 +113,7 @@ public class StatisticsService {
         this.nganhRepository = nganhRepository;
         this.chuongTrinhRepository = chuongTrinhRepository;
         this.currentUser = currentUser;
+        this.auditLogService = auditLogService;
     }
 
     public StatDtos.TongQuanDto tongQuan() {
@@ -459,17 +485,29 @@ public class StatisticsService {
     public byte[] xuatBaoCaoThongKeCsv(Long hocKyId, Long khoaId, Long nganhId,
                                        Long monHocId, Long lopHocPhanId) {
         StatDtos.DashboardKpiResponseDto report = layDashboardKpi(hocKyId, khoaId, nganhId, monHocId, lopHocPhanId);
-        StatDtos.BoLocThongKeDto b = report.boLoc();
-        StatDtos.KpiTongHopDto k = report.kpi();
+        ExportSecuritySupport.validateRowCount(report.danhSachMon().size(), "báo cáo thống kê đào tạo");
 
-        User actor = currentUser != null ? currentUser.get() : null;
-        String actorName = actor != null ? (actor.getUsername() + " (" + actor.getRole() + ")") : "QUAN_TRI";
-        String timeStr = b.thoiDiemTruyVan().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        return auditOrExecute("ADMIN_STATISTICS_EXPORTED", "DASHBOARD_KPI", hocKyId != null ? hocKyId : 0L, audit -> {
+            StatDtos.BoLocThongKeDto b = report.boLoc();
+            StatDtos.KpiTongHopDto k = report.kpi();
 
-        StringBuilder csv = new StringBuilder("\uFEFF");
-        csv.append("# =====================================================================\n");
-        csv.append("# BÁO CÁO THỐNG KÊ VÀ DASHBOARD ĐÀO TẠO (QLSV)\n");
-        csv.append("# Thời điểm tạo: ").append(timeStr).append("\n");
+            User actor = currentUser != null ? currentUser.get() : null;
+            String actorName = actor != null ? (actor.getUsername() + " (" + actor.getRole() + ")") : "QUAN_TRI";
+            String timeStr = b.thoiDiemTruyVan().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+
+            audit.changes(Map.of(), Map.of(
+                    "hocKyId", hocKyId != null ? hocKyId : "TAT_CA",
+                    "khoaId", khoaId != null ? khoaId : "TAT_CA",
+                    "nganhId", nganhId != null ? nganhId : "TAT_CA",
+                    "monHocId", monHocId != null ? monHocId : "TAT_CA",
+                    "lopHocPhanId", lopHocPhanId != null ? lopHocPhanId : "TAT_CA",
+                    "soLuongMon", report.danhSachMon().size()
+            ));
+
+            StringBuilder csv = new StringBuilder("\uFEFF");
+            csv.append("# =====================================================================\n");
+            csv.append("# BÁO CÁO THỐNG KÊ VÀ DASHBOARD ĐÀO TẠO (QLSV)\n");
+            csv.append("# Thời điểm tạo: ").append(timeStr).append(" (GMT+7)\n");
         csv.append("# Người tạo: ").append(actorName).append("\n");
         csv.append("# Học kỳ áp dụng: ").append(escapeCsv(b.tenHocKy())).append("\n");
         csv.append("# Khoa áp dụng: ").append(escapeCsv(b.tenKhoa())).append("\n");
@@ -541,32 +579,80 @@ public class StatisticsService {
         }
 
         return csv.toString().getBytes(StandardCharsets.UTF_8);
+        });
     }
 
     public byte[] xuatDanhSachLop(Long lopHocPhanId) {
+        return xuatDanhSachLopChiTiet(lopHocPhanId, null, null).noiDung();
+    }
+
+    public ClassExportResult xuatDanhSachLopChiTiet(Long lopHocPhanId, String tuKhoa, String sapXep) {
         CourseClass lop = lopHocPhanRepository.findWithDetailsById(lopHocPhanId)
                 .orElseThrow(() -> ApiException.notFound("Lớp học phần không tồn tại"));
         List<CourseRegistration> danhSach =
                 dangKyHocPhanRepository.findByLopHocPhan(lopHocPhanId, RegistrationStatus.DA_DANG_KY);
 
+        if (tuKhoa != null && !tuKhoa.trim().isEmpty()) {
+            String q = tuKhoa.trim().toLowerCase(Locale.ROOT);
+            danhSach = danhSach.stream()
+                    .filter(dk -> dk.getSinhVien() != null && (
+                            (dk.getSinhVien().getMa() != null && dk.getSinhVien().getMa().toLowerCase(Locale.ROOT).contains(q)) ||
+                            (dk.getSinhVien().getHoTen() != null && dk.getSinhVien().getHoTen().toLowerCase(Locale.ROOT).contains(q)) ||
+                            (dk.getSinhVien().getEmail() != null && dk.getSinhVien().getEmail().toLowerCase(Locale.ROOT).contains(q))
+                    ))
+                    .toList();
+        }
+
+        Comparator<CourseRegistration> comparator;
+        boolean giamDan = sapXep != null && sapXep.startsWith("-");
+        String tieuChi = sapXep != null ? sapXep.replace("-", "").trim() : "ma";
+        if ("hoTen".equalsIgnoreCase(tieuChi)) {
+            Collator viCollator = Collator.getInstance(Locale.forLanguageTag("vi"));
+            comparator = Comparator.comparing(dk -> dk.getSinhVien() != null ? dk.getSinhVien().getHoTen() : "", Comparator.nullsLast(viCollator));
+        } else {
+            comparator = Comparator.comparing(dk -> dk.getSinhVien() != null ? dk.getSinhVien().getMa() : "", Comparator.nullsLast(Comparator.naturalOrder()));
+        }
+        if (giamDan) {
+            comparator = comparator.reversed();
+        }
+        danhSach = danhSach.stream().sorted(comparator).toList();
+
+        ExportSecuritySupport.validateRowCount(danhSach.size(), "danh sách sinh viên lớp học phần");
+
         Map<Long, Grade> diemMap = danhSach.isEmpty() ? Map.of()
                 : diemRepository.findByDangKyIdIn(danhSach.stream().map(CourseRegistration::getId).toList())
                 .stream().collect(Collectors.toMap(diem -> diem.getDangKy().getId(), Function.identity()));
 
-        StringBuilder csv = new StringBuilder("\uFEFF");
-        csv.append("STT,Mã sinh viên,Họ tên,Email,Điểm quá trình,Điểm cuối kỳ,Điểm tổng kết\n");
-        int stt = 1;
-        for (CourseRegistration dangKy : danhSach) {
-            Grade diem = diemMap.get(dangKy.getId());
-            csv.append(stt++).append(',')
-                    .append(escapeCsv(dangKy.getSinhVien().getMa())).append(',')
-                    .append(escapeCsv(dangKy.getSinhVien().getHoTen())).append(',')
-                    .append(escapeCsv(dangKy.getSinhVien().getEmail())).append(',')
-                    .append(diem != null && diem.getDiemQuaTrinh() != null ? diem.getDiemQuaTrinh() : "").append(',')
-                    .append(diem != null && diem.getDiemCuoiKy() != null ? diem.getDiemCuoiKy() : "").append(',')
-                    .append(diem != null && diem.getDiemTongKet() != null ? diem.getDiemTongKet() : "").append('\n');
-        }
-        return csv.toString().getBytes(StandardCharsets.UTF_8);
+        String tenTep = "danh-sach-sinh-vien-" + ExportSecuritySupport.sanitizeFilename(lop.getMa()) + ".csv";
+        final List<CourseRegistration> finalDanhSach = danhSach;
+
+        return auditOrExecute("COURSE_STUDENT_LIST_EXPORTED", "COURSE_SECTION", lopHocPhanId, audit -> {
+            audit.changes(Map.of(), Map.of(
+                    "lopHocPhanId", lopHocPhanId,
+                    "maLop", lop.getMa(),
+                    "soBanGhi", finalDanhSach.size(),
+                    "nguoiXuat", "QUAN_TRI",
+                    "tuKhoa", tuKhoa != null && !tuKhoa.isBlank() ? tuKhoa.trim() : "KHONG_LOC",
+                    "sapXep", sapXep != null && !sapXep.isBlank() ? sapXep.trim() : "ma"
+            ));
+
+            StringBuilder csv = new StringBuilder(CsvUtils.BOM);
+            csv.append(CsvUtils.row(List.of("STT", "Mã sinh viên", "Họ tên", "Email", "Điểm quá trình", "Điểm cuối kỳ", "Điểm tổng kết")));
+            int stt = 1;
+            for (CourseRegistration dangKy : finalDanhSach) {
+                Grade diem = diemMap.get(dangKy.getId());
+                csv.append(CsvUtils.row(List.of(
+                        String.valueOf(stt++),
+                        dangKy.getSinhVien() != null && dangKy.getSinhVien().getMa() != null ? dangKy.getSinhVien().getMa() : "",
+                        dangKy.getSinhVien() != null && dangKy.getSinhVien().getHoTen() != null ? dangKy.getSinhVien().getHoTen() : "",
+                        dangKy.getSinhVien() != null && dangKy.getSinhVien().getEmail() != null ? dangKy.getSinhVien().getEmail() : "",
+                        diem != null && diem.getDiemQuaTrinh() != null ? String.valueOf(diem.getDiemQuaTrinh()) : "",
+                        diem != null && diem.getDiemCuoiKy() != null ? String.valueOf(diem.getDiemCuoiKy()) : "",
+                        diem != null && diem.getDiemTongKet() != null ? String.valueOf(diem.getDiemTongKet()) : ""
+                )));
+            }
+            return new ClassExportResult(tenTep, csv.toString().getBytes(StandardCharsets.UTF_8), finalDanhSach.size());
+        });
     }
 
     // ==========================================
@@ -702,10 +788,17 @@ public class StatisticsService {
     }
 
     private String escapeCsv(String value) {
-        if (value == null) {
-            return "";
+        return CsvUtils.cell(value);
+    }
+
+    private <T> T auditOrExecute(String action, String entityType, Object entityId,
+                                 Function<AuditLogService.AuditContext, T> operation) {
+        if (auditLogService != null) {
+            return auditLogService.execute(action, entityType, entityId, operation);
         }
-        String escaped = value.replace("\"", "\"\"");
-        return "\"" + escaped + "\"";
+        return operation.apply(new AuditLogService.AuditContext(entityId == null ? null : String.valueOf(entityId)));
+    }
+
+    public record ClassExportResult(String tenTep, byte[] noiDung, int soBanGhi) {
     }
 }

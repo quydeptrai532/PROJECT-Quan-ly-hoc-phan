@@ -19,6 +19,7 @@ import com.edu.registration.importer.ImportSecurityValidator;
 import com.edu.registration.repository.GradeRepository;
 import com.edu.registration.security.CurrentUser;
 import com.edu.registration.util.CsvUtils;
+import com.edu.registration.util.ExportSecuritySupport;
 import com.edu.registration.util.XlsxWorkbookSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -166,6 +167,7 @@ public class GradeImportService {
             ));
         }
 
+        ExportSecuritySupport.validateRowCount(templateRows.size(), "template Excel nhập điểm");
         byte[] bytes = XlsxWorkbookSupport.createGradeTemplateWorkbook(templateRows);
         String filename = "mau-nhap-diem-" + sanitizeFilenamePart(lop.getMa()) + ".xlsx";
         log.info("Giảng viên {} đã tải template .xlsx lớp {} ({} sinh viên)",
@@ -643,6 +645,10 @@ public class GradeImportService {
     }
 
     public byte[] xuatFileLoiCsv(Long lopHocPhanId, List<ValidationErrorDetail> danhSachLoi) {
+        if (lopHocPhanId != null) {
+            lopHocPhanRepository.findWithDetailsById(lopHocPhanId).ifPresent(gradeService::kiemTraQuyenSuaDiem);
+        }
+        ExportSecuritySupport.validateRowCount(danhSachLoi != null ? danhSachLoi.size() : 0, "báo cáo lỗi import điểm");
         StringBuilder sb = new StringBuilder();
         sb.append(CsvUtils.BOM);
         sb.append(CsvUtils.row(List.of("Dòng", "Mã SV", "Cột", "Cột Excel", "Giá trị nhập", "Nguyên nhân lỗi")));

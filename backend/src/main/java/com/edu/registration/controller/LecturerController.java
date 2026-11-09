@@ -15,6 +15,7 @@ import com.edu.registration.service.GradeImportService;
 import com.edu.registration.service.GradeService;
 import com.edu.registration.service.LecturerDashboardService;
 import com.edu.registration.service.StudentAcademicProfileService;
+import com.edu.registration.util.ExportSecuritySupport;
 import com.edu.registration.util.XlsxWorkbookSupport;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -215,11 +216,7 @@ public class LecturerController {
                                                         @RequestParam(required = false) String tuKhoa,
                                                         @RequestParam(required = false) String sapXep) {
         ClassStudentExportService.CsvFile tep = lopSinhVienExportService.xuatDanhSach(id, tuKhoa, sapXep);
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(new MediaType("text", "csv", StandardCharsets.UTF_8));
-        headers.setContentDisposition(ContentDisposition.attachment()
-                .filename(tep.tenTep(), StandardCharsets.UTF_8).build());
-        headers.setCacheControl(CacheControl.noStore());
+        HttpHeaders headers = ExportSecuritySupport.createSafeDownloadHeaders(tep.tenTep(), MediaType.parseMediaType("text/csv; charset=UTF-8"));
         return new ResponseEntity<>(tep.noiDung(), headers, HttpStatus.OK);
     }
 
@@ -249,11 +246,7 @@ public class LecturerController {
                  "/diem/lop-hoc-phan/{id}/template-xlsx"})
     public ResponseEntity<byte[]> taiTemplateDiemXlsx(@PathVariable Long id) {
         GradeImportService.XlsxFile tep = gradeImportService.xuatTemplateXlsx(id);
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.parseMediaType(XlsxWorkbookSupport.XLSX_MEDIA_TYPE));
-        headers.setContentDisposition(ContentDisposition.attachment()
-                .filename(tep.tenTep(), StandardCharsets.UTF_8).build());
-        headers.setCacheControl(CacheControl.noStore());
+        HttpHeaders headers = ExportSecuritySupport.createSafeDownloadHeaders(tep.tenTep(), MediaType.parseMediaType(XlsxWorkbookSupport.XLSX_MEDIA_TYPE));
         return new ResponseEntity<>(tep.noiDung(), headers, HttpStatus.OK);
     }
 
@@ -282,11 +275,8 @@ public class LecturerController {
             @PathVariable Long id,
             @RequestBody List<com.edu.registration.dto.ValidationErrorDetail> danhSachLoi) {
         byte[] csv = gradeImportService.xuatFileLoiCsv(id, danhSachLoi);
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.parseMediaType("text/csv; charset=UTF-8"));
-        headers.setContentDisposition(ContentDisposition.attachment()
-                .filename("loi-import-diem-lop-" + id + ".csv", StandardCharsets.UTF_8).build());
-        headers.setCacheControl(CacheControl.noStore());
+        String filename = "loi-import-diem-lop-" + id + ".csv";
+        HttpHeaders headers = ExportSecuritySupport.createSafeDownloadHeaders(filename, MediaType.parseMediaType("text/csv; charset=UTF-8"));
         return new ResponseEntity<>(csv, headers, HttpStatus.OK);
     }
 

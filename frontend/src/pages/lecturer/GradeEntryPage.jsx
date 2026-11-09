@@ -426,7 +426,8 @@ export default function GradeEntryPage() {
                             <ExportStudentsButton
                                 lopId={lop.id}
                                 maLop={lop.ma}
-                                soSinhVien={rows.length}
+                                soSinhVien={filteredRows.length}
+                                tuKhoa={searchQuery}
                                 siSo={rows.length}
                                 disabled={loadingSv || Boolean(svError)}
                                 loading={loadingSv}
