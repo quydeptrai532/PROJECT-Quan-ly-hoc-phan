@@ -2,14 +2,18 @@ package com.edu.registration.service;
 
 import com.edu.registration.dto.LecturerDtos;
 import com.edu.registration.dto.StudentAcademicProfileDto;
+import com.edu.registration.dto.UserDtos;
 import com.edu.registration.entity.Lecturer;
 import com.edu.registration.entity.CourseClass;
 import com.edu.registration.entity.Student;
+import com.edu.registration.entity.StudentAcademicStatus;
+import com.edu.registration.entity.StudentAcademicStatusHistory;
 import com.edu.registration.entity.RegistrationStatus;
 import com.edu.registration.exception.ApiException;
 import com.edu.registration.repository.CourseRegistrationRepository;
 import com.edu.registration.repository.LecturerRepository;
 import com.edu.registration.repository.CourseClassRepository;
+import com.edu.registration.repository.StudentAcademicStatusHistoryRepository;
 import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.security.CurrentUser;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,9 +34,11 @@ public class StudentAcademicProfileService {
     private final LecturerRepository giangVienRepository;
     private final CourseClassRepository lopHocPhanRepository;
     private final CourseRegistrationRepository dangKyHocPhanRepository;
+    private final StudentAcademicStatusHistoryRepository historyRepository;
+    private final DtoMapper mapper;
 
     public StudentAcademicProfileService(CurrentUser currentUser, StudentRepository sinhVienRepository) {
-        this(currentUser, sinhVienRepository, null, null, null);
+        this(currentUser, sinhVienRepository, null, null, null, null, null);
     }
 
     @Autowired
@@ -40,12 +46,24 @@ public class StudentAcademicProfileService {
                                          StudentRepository sinhVienRepository,
                                          LecturerRepository giangVienRepository,
                                          CourseClassRepository lopHocPhanRepository,
-                                         CourseRegistrationRepository dangKyHocPhanRepository) {
+                                         CourseRegistrationRepository dangKyHocPhanRepository,
+                                         @Autowired(required = false) StudentAcademicStatusHistoryRepository historyRepository,
+                                         @Autowired(required = false) DtoMapper mapper) {
         this.currentUser = currentUser;
         this.sinhVienRepository = sinhVienRepository;
         this.giangVienRepository = giangVienRepository;
         this.lopHocPhanRepository = lopHocPhanRepository;
         this.dangKyHocPhanRepository = dangKyHocPhanRepository;
+        this.historyRepository = historyRepository;
+        this.mapper = mapper;
+    }
+
+    public StudentAcademicProfileService(CurrentUser currentUser,
+                                         StudentRepository sinhVienRepository,
+                                         LecturerRepository giangVienRepository,
+                                         CourseClassRepository lopHocPhanRepository,
+                                         CourseRegistrationRepository dangKyHocPhanRepository) {
+        this(currentUser, sinhVienRepository, giangVienRepository, lopHocPhanRepository, dangKyHocPhanRepository, null, null);
     }
 
     @Transactional(readOnly = true)
@@ -54,6 +72,19 @@ public class StudentAcademicProfileService {
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy hồ sơ sinh viên"));
 
         return toAcademicProfileDto(student);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserDtos.StudentAcademicStatusHistoryDto> getMyStatusHistory() {
+        Student student = sinhVienRepository.findByUser(currentUser.get())
+                .orElseThrow(() -> ApiException.notFound("Không tìm thấy hồ sơ sinh viên"));
+        if (historyRepository == null || mapper == null) {
+            return List.of();
+        }
+        return historyRepository.findBySinhVienIdOrderByThoiDiemDescIdDesc(student.getId())
+                .stream()
+                .map(mapper::lichSuTrangThaiHocTap)
+                .toList();
     }
 
     /**
@@ -75,6 +106,8 @@ public class StudentAcademicProfileService {
         Student student = xacThucQuyenXemSinhVien(studentId, lopHocPhanId);
         return toAcademicProfileDto(student);
     }
+
+
 
     /**
      * List and search assigned students across the lecturer's teaching scope.
@@ -161,7 +194,7 @@ public class StudentAcademicProfileService {
                 student.getLopHanhChinh() != null ? student.getLopHanhChinh().getTen() : NOT_ASSIGNED,
                 student.getChuongTrinh() != null ? student.getChuongTrinh().getKhoaNhapHoc() : NOT_ASSIGNED,
                 student.getChuongTrinh() != null ? student.getChuongTrinh().getPhienBan() : NOT_ASSIGNED,
-                NOT_ASSIGNED);
+                student.getTrangThaiHocTap() != null ? student.getTrangThaiHocTap().getMoTa() : StudentAcademicStatus.DANG_HOC.getMoTa());
     }
 
     public LecturerDtos.StudentMinimalProfileDto toStudentMinimalProfileDto(Student student) {
@@ -179,6 +212,6 @@ public class StudentAcademicProfileService {
                 student.getLopHanhChinh() != null ? student.getLopHanhChinh().getTen() : NOT_ASSIGNED,
                 student.getChuongTrinh() != null ? student.getChuongTrinh().getKhoaNhapHoc() : NOT_ASSIGNED,
                 student.getChuongTrinh() != null ? student.getChuongTrinh().getPhienBan() : NOT_ASSIGNED,
-                NOT_ASSIGNED);
+                student.getTrangThaiHocTap() != null ? student.getTrangThaiHocTap().getMoTa() : StudentAcademicStatus.DANG_HOC.getMoTa());
     }
 }

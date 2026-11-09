@@ -59,6 +59,7 @@ public class RegistrationService {
     private final AuditLogService auditLogService;
     private final NotificationService thongBaoService;
     private final RegistrationPeriodService registrationPeriodService;
+    private final StudentAcademicStatusPolicy studentAcademicStatusPolicy;
 
     public RegistrationService(CourseRegistrationRepository dangKyHocPhanRepository,
                          RegistrationHistoryRepository lichSuDangKyRepository,
@@ -68,7 +69,7 @@ public class RegistrationService {
                          AuditLogService auditLogService, NotificationService thongBaoService) {
         this(dangKyHocPhanRepository, lichSuDangKyRepository, lopHocPhanRepository, diemRepository,
                 monTienQuyetRepository, sinhVienRepository, currentUser, hocKyService, mapper,
-                auditLogService, thongBaoService, null);
+                auditLogService, thongBaoService, null, null);
     }
 
     @Autowired
@@ -78,7 +79,8 @@ public class RegistrationService {
                          PrerequisiteSubjectRepository monTienQuyetRepository, StudentRepository sinhVienRepository,
                          CurrentUser currentUser, SemesterService hocKyService, DtoMapper mapper,
                          AuditLogService auditLogService, NotificationService thongBaoService,
-                         RegistrationPeriodService registrationPeriodService) {
+                         RegistrationPeriodService registrationPeriodService,
+                         StudentAcademicStatusPolicy studentAcademicStatusPolicy) {
         this.dangKyHocPhanRepository = dangKyHocPhanRepository;
         this.lichSuDangKyRepository = lichSuDangKyRepository;
         this.lopHocPhanRepository = lopHocPhanRepository;
@@ -91,6 +93,7 @@ public class RegistrationService {
         this.auditLogService = auditLogService;
         this.thongBaoService = thongBaoService;
         this.registrationPeriodService = registrationPeriodService;
+        this.studentAcademicStatusPolicy = studentAcademicStatusPolicy != null ? studentAcademicStatusPolicy : new StudentAcademicStatusPolicy();
     }
 
     // Serialize one student's cross-section checks; READ_COMMITTED refreshes MySQL reads after lock waits.
@@ -129,9 +132,14 @@ public class RegistrationService {
 
     private RegistrationDtos.DangKyDto dangKyTrongGiaoDich(Student sinhVien, Long lopHocPhanId,
                                                             String loaiDangKyYeuCau) {
+        if (studentAcademicStatusPolicy != null && !studentAcademicStatusPolicy.isEligibleForRegistration(sinhVien.getTrangThaiHocTap())) {
+            String reason = studentAcademicStatusPolicy.getIneligibleReason(sinhVien.getTrangThaiHocTap());
+            throw ApiException.badRequest("Không đủ điều kiện đăng ký học phần: " + reason);
+        }
         return auditLogService.execute("COURSE_REGISTRATION", "COURSE_SECTION", lopHocPhanId, audit -> {
         CourseClass lop = lopHocPhanRepository.findByIdForUpdate(lopHocPhanId)
                 .orElseThrow(() -> ApiException.notFound("Lớp học phần không tồn tại"));
+
         Semester hocKy = lop.getHocKy();
         Subject monHoc = lop.getMonHoc();
         if (lop.isDaHuy()) {
@@ -232,6 +240,7 @@ public class RegistrationService {
 
         CourseClass lop = lopHocPhanRepository.findByIdForUpdate(dangKy.getLopHocPhan().getId())
                 .orElseThrow(() -> ApiException.notFound("Lớp học phần không tồn tại"));
+
         if (registrationPeriodService != null) {
             registrationPeriodService.kiemTraQuyenHuyDangKy(sinhVien, lop.getHocKy(), null);
         } else if (!lop.getHocKy().dangMoDangKy()) {

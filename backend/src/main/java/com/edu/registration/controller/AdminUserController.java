@@ -54,6 +54,17 @@ public class AdminUserController {
         return userService.doiTrangThaiSinhVien(id, request.trangThai());
     }
 
+    @PatchMapping("/sinh-vien/{id}/trang-thai-hoc-tap")
+    public UserDtos.SinhVienDto capNhatTrangThaiHocTap(@PathVariable Long id,
+                                                      @Valid @RequestBody UserDtos.CapNhatTrangThaiHocTapRequest request) {
+        return userService.capNhatTrangThaiHocTap(id, request);
+    }
+
+    @GetMapping("/sinh-vien/{id}/lich-su-trang-thai-hoc-tap")
+    public List<UserDtos.StudentAcademicStatusHistoryDto> layLichSuTrangThaiHocTap(@PathVariable Long id) {
+        return userService.layLichSuTrangThaiHocTap(id);
+    }
+
     @GetMapping("/sinh-vien/import/template")
     public ResponseEntity<byte[]> mauImportSinhVien() {
         byte[] csv = userService.getSinhVienTemplateCsv();

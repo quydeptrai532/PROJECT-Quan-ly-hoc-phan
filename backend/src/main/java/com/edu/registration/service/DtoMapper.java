@@ -18,6 +18,7 @@ import com.edu.registration.entity.PrerequisiteSubject;
 import com.edu.registration.entity.RegistrationPeriod;
 import com.edu.registration.entity.Semester;
 import com.edu.registration.entity.Student;
+import com.edu.registration.entity.StudentAcademicStatusHistory;
 import com.edu.registration.entity.Subject;
 import com.edu.registration.entity.SubjectRelationType;
 import org.springframework.stereotype.Component;
@@ -276,7 +277,28 @@ public class DtoMapper {
                 sinhVien.getNganh() != null ? sinhVien.getNganh().getTen() : null,
                 sinhVien.getLopHanhChinh() != null ? sinhVien.getLopHanhChinh().getId() : null,
                 sinhVien.getLopHanhChinh() != null ? sinhVien.getLopHanhChinh().getTen() : null,
-                sinhVien.getUser().getUsername(), sinhVien.getUser().isTrangThai());
+                sinhVien.getUser().getUsername(), sinhVien.getUser().isTrangThai(),
+                sinhVien.getTrangThaiHocTap(),
+                sinhVien.getTrangThaiHocTap() != null ? sinhVien.getTrangThaiHocTap().getMoTa() : null);
+    }
+
+    public UserDtos.StudentAcademicStatusHistoryDto lichSuTrangThaiHocTap(StudentAcademicStatusHistory history) {
+        return new UserDtos.StudentAcademicStatusHistoryDto(
+                history.getId(),
+                history.getSinhVien() != null ? history.getSinhVien().getId() : null,
+                history.getSinhVien() != null ? history.getSinhVien().getMa() : null,
+                history.getSinhVien() != null ? history.getSinhVien().getHoTen() : null,
+                history.getTrangThaiTruoc(),
+                history.getTrangThaiTruoc() != null ? history.getTrangThaiTruoc().getMoTa() : null,
+                history.getTrangThaiSau(),
+                history.getTrangThaiSau() != null ? history.getTrangThaiSau().getMoTa() : null,
+                history.getNgayHieuLuc(),
+                history.getGhiChu(),
+                history.getNguoiThucHien() != null ? history.getNguoiThucHien().getId() : null,
+                history.getNguoiThucHien() != null ? history.getNguoiThucHien().getUsername() : null,
+                history.getNguoiThucHien() != null ? history.getNguoiThucHien().getUsername() : null,
+                history.getThoiDiem()
+        );
     }
 
     public CourseClassDtos.LichSuChuyenLopDto lichSuChuyenLop(ClassTransferHistory history) {

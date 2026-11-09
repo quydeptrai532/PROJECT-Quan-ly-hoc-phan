@@ -35,6 +35,8 @@ export default function RegisterPage() {
   const params = hocKyId ? { hocKyId } : undefined;
   const { data: lopList, loading, error: loadError, reload: reloadLop } = useApi("/lop-hoc-phan", params);
   const { data: myRegs, reload: reloadRegs } = useApi("/dang-ky/me", params);
+  const { data: studentProfile } = useApi("/sinh-vien/me/ho-so-dao-tao");
+  const isAcademicBlocked = studentProfile && studentProfile.trangThaiHocTap && studentProfile.trangThaiHocTap !== "Đang học" && studentProfile.trangThaiHocTap !== "Chưa cập nhật";
 
   const hocKy = hocKyList?.find((item) => String(item.id) === String(hocKyId));
   const registeredClassIds = useMemo(
@@ -135,6 +137,11 @@ export default function RegisterPage() {
       )}
 
       <div className="mb-4 space-y-3">
+        {isAcademicBlocked && (
+          <Alert tone="warning">
+            Trạng thái học vụ hiện tại: <strong>{studentProfile.trangThaiHocTap}</strong>. Bạn không đủ điều kiện đăng ký học phần mới theo quy chế đào tạo.
+          </Alert>
+        )}
         {message && <Alert tone="success" onClose={() => setMessage("")}>{message}</Alert>}
         {error && <Alert tone="error" onClose={() => setError("")}>{error}</Alert>}
         {loadError && <Alert tone="error">{loadError}</Alert>}
@@ -180,7 +187,7 @@ export default function RegisterPage() {
                   const isRegistered = registeredClassIds.has(lop.id);
                   const sameSubject = registeredSubjectIds.has(lop.monHocId);
                   const full = lop.conLai <= 0;
-                  const disabled = isRegistered || sameSubject || full || !hocKy?.dangMoDangKy;
+                  const disabled = isRegistered || sameSubject || full || !hocKy?.dangMoDangKy || isAcademicBlocked;
                   const percent = lop.siSoToiDa ? Math.min(100, (lop.siSoHienTai / lop.siSoToiDa) * 100) : 0;
 
                   let label = "Đăng ký";
@@ -188,6 +195,9 @@ export default function RegisterPage() {
                   if (isRegistered) {
                     label = "Đã đăng ký";
                     tone = "green";
+                  } else if (isAcademicBlocked) {
+                    label = studentProfile.trangThaiHocTap;
+                    tone = "red";
                   } else if (sameSubject) {
                     label = "Đã có môn";
                     tone = "amber";
