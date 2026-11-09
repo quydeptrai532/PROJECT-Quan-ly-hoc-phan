@@ -89,3 +89,9 @@ app:
     missing-grade-policy: ${GRADE_ANALYTICS_MISSING_POLICY:EXCLUDE_FROM_DENOMINATOR}
     official-regulation: ${GRADE_ANALYTICS_OFFICIAL_REGULATION:false}
     policy-note: ${GRADE_ANALYTICS_POLICY_NOTE:Khoảng phân bố điểm ([0.0, 4.0), [4.0, 5.0), [5.0, 6.5), [6.5, 8.0), [8.0, 10.0]) và chính sách loại bản ghi chưa có điểm tổng kết công bố khỏi mẫu số tính điểm trung bình / tỷ lệ đạt-trượt (EXCLUDE_FROM_DENOMINATOR — không tự gán 0.0) đang áp dụng theo cấu hình tập trung dự kiến và chờ Chủ dự án chốt chính thức (không phải quy chế chính thức). Ngưỡng đạt lấy từ AcademicRules.DIEM_DAT = 5.0.}
+  registration:
+    # QLSV-77 (TASK-AD-02): Cấu hình timezone và thứ tự ưu tiên đối tượng đăng ký
+    timezone: ${REGISTRATION_TIMEZONE:Asia/Ho_Chi_Minh}
+    multi-cohort-priority-policy: ${REGISTRATION_MULTI_COHORT_PRIORITY:HIGHEST_PRIORITY}
+    official-regulation: ${REGISTRATION_OFFICIAL_REGULATION:false}
+    policy-note: ${REGISTRATION_POLICY_NOTE:Chính sách thứ tự ưu tiên khi sinh viên thuộc nhiều nhóm đối tượng/đợt đăng ký khác nhau đang áp dụng cấu hình dự kiến (HIGHEST_PRIORITY - chọn đợt có thứ tự ưu tiên cao nhất hoặc đợt đang mở) và chưa có quy chế chính thức được Chủ dự án / Phòng Đào tạo phê duyệt.}

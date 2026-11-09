@@ -3,8 +3,10 @@ package com.edu.registration.controller;
 import com.edu.registration.dto.LecturerDtos;
 import com.edu.registration.dto.CourseClassDtos;
 import com.edu.registration.dto.RegistrationDtos;
+import com.edu.registration.dto.RegistrationPeriodDtos;
 import com.edu.registration.dto.StudentAcademicProfileDto;
 import com.edu.registration.service.RegistrationService;
+import com.edu.registration.service.RegistrationPeriodService;
 import com.edu.registration.service.GradeService;
 import com.edu.registration.service.CourseClassService;
 import com.edu.registration.service.CourseClassAnnouncementService;
@@ -49,6 +51,7 @@ public class StudentController {
     private final RetakeCourseService hocLaiCaiThienService;
     private final StudentTranscriptPdfService studentTranscriptPdfService;
     private final CourseClassAnnouncementService thongBaoLopHocPhanService;
+    private final RegistrationPeriodService registrationPeriodService;
 
     public StudentController(CourseClassService lopHocPhanService, RegistrationService dangKyService,
                               GradeService diemService, ClassAbsenceNoticeService thongBaoNghiService,
@@ -56,7 +59,7 @@ public class StudentController {
                               StudentDashboardService sinhVienDashboardService,
                               RetakeCourseService hocLaiCaiThienService) {
         this(lopHocPhanService, dangKyService, diemService, thongBaoNghiService,
-                studentAcademicProfileService, sinhVienDashboardService, hocLaiCaiThienService, null, null);
+                studentAcademicProfileService, sinhVienDashboardService, hocLaiCaiThienService, null, null, null);
     }
 
     public StudentController(CourseClassService lopHocPhanService, RegistrationService dangKyService,
@@ -67,7 +70,7 @@ public class StudentController {
                               StudentTranscriptPdfService studentTranscriptPdfService) {
         this(lopHocPhanService, dangKyService, diemService, thongBaoNghiService,
                 studentAcademicProfileService, sinhVienDashboardService, hocLaiCaiThienService,
-                studentTranscriptPdfService, null);
+                studentTranscriptPdfService, null, null);
     }
 
     @Autowired
@@ -77,7 +80,8 @@ public class StudentController {
                               StudentDashboardService sinhVienDashboardService,
                               RetakeCourseService hocLaiCaiThienService,
                               StudentTranscriptPdfService studentTranscriptPdfService,
-                              CourseClassAnnouncementService thongBaoLopHocPhanService) {
+                              CourseClassAnnouncementService thongBaoLopHocPhanService,
+                              @Autowired(required = false) RegistrationPeriodService registrationPeriodService) {
         this.lopHocPhanService = lopHocPhanService;
         this.dangKyService = dangKyService;
         this.diemService = diemService;
@@ -87,6 +91,7 @@ public class StudentController {
         this.hocLaiCaiThienService = hocLaiCaiThienService;
         this.studentTranscriptPdfService = studentTranscriptPdfService;
         this.thongBaoLopHocPhanService = thongBaoLopHocPhanService;
+        this.registrationPeriodService = registrationPeriodService;
     }
 
     @GetMapping("/lop-hoc-phan")
@@ -132,6 +137,16 @@ public class StudentController {
     @PreAuthorize("hasRole('SINH_VIEN')")
     public List<RegistrationDtos.DangKyDto> dangKyCuaToi(@RequestParam(required = false) Long hocKyId) {
         return dangKyService.danhSachCuaToi(hocKyId);
+    }
+
+    @GetMapping("/dang-ky/dot-hien-tai")
+    @PreAuthorize("hasRole('SINH_VIEN')")
+    public RegistrationPeriodDtos.TrangThaiDangKySinhVienDto layTrangThaiDotDangKyCuaToi(
+            @RequestParam(required = false) Long hocKyId) {
+        if (registrationPeriodService == null) {
+            return null;
+        }
+        return registrationPeriodService.layTrangThaiDangKySinhVien(hocKyId);
     }
 
     @GetMapping("/dang-ky/me/lich-su")

@@ -21,6 +21,7 @@ import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.security.CurrentUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -57,6 +58,7 @@ public class RegistrationService {
     private final DtoMapper mapper;
     private final AuditLogService auditLogService;
     private final NotificationService thongBaoService;
+    private final RegistrationPeriodService registrationPeriodService;
 
     public RegistrationService(CourseRegistrationRepository dangKyHocPhanRepository,
                          RegistrationHistoryRepository lichSuDangKyRepository,
@@ -64,6 +66,19 @@ public class RegistrationService {
                          PrerequisiteSubjectRepository monTienQuyetRepository, StudentRepository sinhVienRepository,
                          CurrentUser currentUser, SemesterService hocKyService, DtoMapper mapper,
                          AuditLogService auditLogService, NotificationService thongBaoService) {
+        this(dangKyHocPhanRepository, lichSuDangKyRepository, lopHocPhanRepository, diemRepository,
+                monTienQuyetRepository, sinhVienRepository, currentUser, hocKyService, mapper,
+                auditLogService, thongBaoService, null);
+    }
+
+    @Autowired
+    public RegistrationService(CourseRegistrationRepository dangKyHocPhanRepository,
+                         RegistrationHistoryRepository lichSuDangKyRepository,
+                         CourseClassRepository lopHocPhanRepository, GradeRepository diemRepository,
+                         PrerequisiteSubjectRepository monTienQuyetRepository, StudentRepository sinhVienRepository,
+                         CurrentUser currentUser, SemesterService hocKyService, DtoMapper mapper,
+                         AuditLogService auditLogService, NotificationService thongBaoService,
+                         RegistrationPeriodService registrationPeriodService) {
         this.dangKyHocPhanRepository = dangKyHocPhanRepository;
         this.lichSuDangKyRepository = lichSuDangKyRepository;
         this.lopHocPhanRepository = lopHocPhanRepository;
@@ -75,6 +90,7 @@ public class RegistrationService {
         this.mapper = mapper;
         this.auditLogService = auditLogService;
         this.thongBaoService = thongBaoService;
+        this.registrationPeriodService = registrationPeriodService;
     }
 
     // Serialize one student's cross-section checks; READ_COMMITTED refreshes MySQL reads after lock waits.
@@ -119,7 +135,9 @@ public class RegistrationService {
         Semester hocKy = lop.getHocKy();
         Subject monHoc = lop.getMonHoc();
 
-        if (!hocKy.dangMoDangKy()) {
+        if (registrationPeriodService != null) {
+            registrationPeriodService.kiemTraQuyenDangKy(sinhVien, hocKy, null);
+        } else if (!hocKy.dangMoDangKy()) {
             throw ApiException.badRequest("Hiện không trong thời gian đăng ký của " + hocKy.getTen());
         }
 
@@ -211,7 +229,9 @@ public class RegistrationService {
 
         CourseClass lop = lopHocPhanRepository.findByIdForUpdate(dangKy.getLopHocPhan().getId())
                 .orElseThrow(() -> ApiException.notFound("Lớp học phần không tồn tại"));
-        if (!lop.getHocKy().dangMoDangKy()) {
+        if (registrationPeriodService != null) {
+            registrationPeriodService.kiemTraQuyenHuyDangKy(sinhVien, lop.getHocKy(), null);
+        } else if (!lop.getHocKy().dangMoDangKy()) {
             throw ApiException.badRequest("Đã hết thời gian hủy đăng ký của " + lop.getHocKy().getTen());
         }
 

@@ -3,6 +3,7 @@ package com.edu.registration.service;
 import com.edu.registration.dto.CatalogDtos;
 import com.edu.registration.dto.CourseClassDtos;
 import com.edu.registration.dto.RegistrationDtos;
+import com.edu.registration.dto.RegistrationPeriodDtos;
 import com.edu.registration.dto.UserDtos;
 import com.edu.registration.entity.AcademicCohort;
 import com.edu.registration.entity.AdministrativeClass;
@@ -13,11 +14,14 @@ import com.edu.registration.entity.Grade;
 import com.edu.registration.entity.Lecturer;
 import com.edu.registration.entity.Major;
 import com.edu.registration.entity.PrerequisiteSubject;
+import com.edu.registration.entity.RegistrationPeriod;
 import com.edu.registration.entity.Semester;
 import com.edu.registration.entity.Student;
 import com.edu.registration.entity.Subject;
 import com.edu.registration.entity.SubjectRelationType;
 import org.springframework.stereotype.Component;
+
+import java.time.LocalDateTime;
 
 @Component
 public class DtoMapper {
@@ -126,6 +130,85 @@ public class DtoMapper {
         return new CatalogDtos.HocKyDto(hocKy.getId(), hocKy.getTen(), hocKy.getNamHoc(),
                 hocKy.getNgayBatDau(), hocKy.getNgayKetThuc(), hocKy.getDangKyTu(), hocKy.getDangKyDen(),
                 hocKy.getSoTinChiToiThieu(), hocKy.getSoTinChiToiDa(), hocKy.dangMoDangKy());
+    }
+
+    public RegistrationPeriodDtos.DotDangKyDto dotDangKy(RegistrationPeriod dot, LocalDateTime now) {
+        LocalDateTime at = now != null ? now : LocalDateTime.now();
+        boolean dangMo = dot.dangMo(at);
+        String trangThaiHienThi;
+        if (dot.isDongSom()) {
+            trangThaiHienThi = "DONG_SOM";
+        } else if (!dot.isDangHieuLuc()) {
+            trangThaiHienThi = "DA_DONG";
+        } else if (at.isBefore(dot.getThoiGianBatDau())) {
+            trangThaiHienThi = "SAP_MO";
+        } else if (at.isAfter(dot.getThoiGianKetThuc())) {
+            trangThaiHienThi = "DA_DONG";
+        } else {
+            trangThaiHienThi = "DANG_MO";
+        }
+
+        StringBuilder doiTuong = new StringBuilder();
+        if (dot.laToanTruong()) {
+            doiTuong.append("Toàn trường");
+        } else {
+            java.util.List<String> parts = new java.util.ArrayList<>();
+            if (dot.getKhoaHoc() != null) {
+                parts.add("Khóa " + dot.getKhoaHoc().getMa());
+            } else if (dot.getKhoaNhapHoc() != null && !dot.getKhoaNhapHoc().isBlank()) {
+                parts.add("Khóa " + dot.getKhoaNhapHoc());
+            }
+            if (dot.getNganh() != null) {
+                parts.add("Ngành " + dot.getNganh().getMa() + " - " + dot.getNganh().getTen());
+            }
+            if (dot.getLopHanhChinh() != null) {
+                parts.add("Lớp " + dot.getLopHanhChinh().getMa());
+            }
+            if (dot.getNhomDoiTuong() != null && !dot.getNhomDoiTuong().isBlank()
+                    && !dot.getNhomDoiTuong().equalsIgnoreCase("TOAN_TRUONG")) {
+                parts.add("Nhóm: " + dot.getNhomDoiTuong());
+            }
+            doiTuong.append(String.join(", ", parts));
+        }
+
+        return new RegistrationPeriodDtos.DotDangKyDto(
+                dot.getId(),
+                dot.getHocKy() != null ? dot.getHocKy().getId() : null,
+                dot.getHocKy() != null ? dot.getHocKy().getTen() : null,
+                dot.getHocKy() != null ? dot.getHocKy().getNamHoc() : null,
+                dot.getMaDot(),
+                dot.getTenDot(),
+                dot.getLoaiDot(),
+                dot.getKhoaHoc() != null ? dot.getKhoaHoc().getId() : null,
+                dot.getKhoaHoc() != null ? dot.getKhoaHoc().getMa() : null,
+                dot.getKhoaHoc() != null ? dot.getKhoaHoc().getTen() : null,
+                dot.getKhoaNhapHoc(),
+                dot.getNganh() != null ? dot.getNganh().getId() : null,
+                dot.getNganh() != null ? dot.getNganh().getMa() : null,
+                dot.getNganh() != null ? dot.getNganh().getTen() : null,
+                dot.getLopHanhChinh() != null ? dot.getLopHanhChinh().getId() : null,
+                dot.getLopHanhChinh() != null ? dot.getLopHanhChinh().getMa() : null,
+                dot.getLopHanhChinh() != null ? dot.getLopHanhChinh().getTen() : null,
+                dot.getNhomDoiTuong(),
+                dot.getThuTuUuTien(),
+                dot.getThoiGianBatDau(),
+                dot.getThoiGianKetThuc(),
+                dot.isDangHieuLuc(),
+                dot.isDongSom(),
+                dot.getThoiDiemDongSom(),
+                dot.getLyDoDongSom(),
+                dot.getThoiGianKetThucGoc(),
+                dot.getLyDoDieuChinh(),
+                dangMo,
+                trangThaiHienThi,
+                doiTuong.toString(),
+                dot.getNguoiTaoId(),
+                dot.getNguoiTaoUsername(),
+                dot.getTaoLuc(),
+                dot.getNguoiCapNhatId(),
+                dot.getNguoiCapNhatUsername(),
+                dot.getCapNhatLuc(),
+                dot.getGhiChu());
     }
 
     public CourseClassDtos.LopHocPhanDto lopHocPhan(CourseClass lop) {

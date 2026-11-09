@@ -200,3 +200,19 @@ Gồm: đăng nhập, dashboard sinh viên, đăng ký học phần, điểm & G
 - Lệnh `cd backend && ./mvnw test`: 42/42 tests đạt (23 unit + 19 integration, H2).
 - Lệnh `cd frontend && npm run build`: đạt.
 - Chưa chạy E2E Playwright cho thay đổi Analytics hoặc database MySQL; E2E tập trung UI và MySQL không được cấu hình trong lần kiểm tra này.
+
+## 13. QLSV-77: Cấu hình đối tượng đăng ký và điều chỉnh đợt (TASK-AD-02)
+
+- **Phạm vi kiểm thử**:
+  - Cấu hình đợt đăng ký theo khóa, ngành, lớp hành chính hoặc nhóm đối tượng.
+  - Thứ tự ưu tiên và khoảng thời gian riêng cho từng nhóm đối tượng.
+  - Kiểm tra biên thời gian theo múi giờ Asia/Ho_Chi_Minh (UTC+7).
+  - Từ chối nghiêm ngặt ở backend đối với sinh viên ngoài đối tượng hoặc ngoài khung giờ mở đăng ký (kể cả gọi API trực tiếp).
+  - Thao tác điều chỉnh đợt: Gia hạn (/gia-han), Đóng sớm (/dong-som), Mở đợt bổ sung (/mo-bo-sung), Xóa đợt.
+  - Ghi nhận đầy đủ nhật ký Audit Log kèm lý do bắt buộc cho mọi thao tác điều chỉnh (REGISTRATION_PERIOD_EXTENDED, REGISTRATION_PERIOD_CLOSED_EARLY, REGISTRATION_PERIOD_SUPPLEMENTAL_OPENED, REGISTRATION_PERIOD_DELETED).
+  - Bảo toàn 100% dữ liệu đăng ký và lịch sử đăng ký của sinh viên qua các lần điều chỉnh cấu hình đợt.
+  - Xử lý xung đột đa nhóm đối tượng: áp dụng chính sách cấu hình HIGHEST_PRIORITY và công khai trạng thái chinhSachUuTienDaChot: false chờ quyết định chính thức từ Hội đồng Đào tạo.
+- **Tự động hóa**:
+  - Integration Test: RegistrationPeriodIntegrationTest bao phủ toàn bộ luồng tạo đợt, giới hạn đối tượng, từ chối backend, đăng ký thành công cho đối tượng hợp lệ, gia hạn, đóng sớm, từ chối sau đóng sớm, mở đợt bổ sung và audit log.
+  - Kết quả kiểm thử backend: 106/106 tests PASS trên H2.
+  - Kết quả frontend build: Vite build thành công không lỗi (0 warning/error).

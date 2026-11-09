@@ -8,6 +8,7 @@ import {
   Building2,
   CalendarCheck,
   CalendarDays,
+  CalendarClock,
   CalendarRange,
   ClipboardList,
   ChartNoAxesCombined,
@@ -54,6 +55,7 @@ const NAV = {
   QUAN_TRI: [
     { to: "/quan-tri", label: "Tổng quan", icon: LayoutDashboard },
     { to: "/quan-tri/hoc-ky", label: "Học kỳ", icon: CalendarRange },
+    { to: "/quan-tri/dot-dang-ky", label: "Đợt đăng ký & Đối tượng", icon: CalendarClock },
     { to: "/quan-tri/khoa", label: "Khoa", icon: Building2 },
     { to: "/quan-tri/nganh", label: "Ngành", icon: Network },
     { to: "/quan-tri/lop-hanh-chinh", label: "Lớp hành chính", icon: Users },
