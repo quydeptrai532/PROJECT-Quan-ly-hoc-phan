@@ -20,6 +20,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import com.edu.registration.util.ExportSecuritySupport;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -199,11 +200,7 @@ public class StudentController {
     @PreAuthorize("hasRole('SINH_VIEN')")
     public ResponseEntity<byte[]> xuatBangDiemPdf(@RequestParam(required = false) Long hocKyId) {
         StudentTranscriptPdfService.PdfFile tep = studentTranscriptPdfService.xuatBangDiemPdf(hocKyId);
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_PDF);
-        headers.setContentDisposition(ContentDisposition.attachment()
-                .filename(tep.tenTep(), StandardCharsets.UTF_8).build());
-        headers.setCacheControl(CacheControl.noStore());
+        HttpHeaders headers = ExportSecuritySupport.createSafeDownloadHeaders(tep.tenTep(), MediaType.APPLICATION_PDF);
         return new ResponseEntity<>(tep.noiDung(), headers, HttpStatus.OK);
     }
 

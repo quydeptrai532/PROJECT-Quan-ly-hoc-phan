@@ -22,6 +22,7 @@ import com.edu.registration.repository.MajorRepository;
 import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.repository.UserRepository;
 import com.edu.registration.util.CsvUtils;
+import com.edu.registration.util.ExportSecuritySupport;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -818,6 +819,7 @@ public class UserImportService implements ImportPipelineContract<UserDtos.UserIm
     // --- ERROR REPORT CSV ---
 
     public byte[] xuatFileLoiCsv(List<UserDtos.UserImportRowDetailDto> danhSachLoi) {
+        ExportSecuritySupport.validateRowCount(danhSachLoi != null ? danhSachLoi.size() : 0, "báo cáo lỗi import người dùng");
         StringBuilder sb = new StringBuilder();
         sb.append(CsvUtils.BOM);
         sb.append(CsvUtils.row(List.of("Dòng", "Mã", "Họ tên", "Trường lỗi", "Giá trị nhập", "Nguyên nhân lỗi")));

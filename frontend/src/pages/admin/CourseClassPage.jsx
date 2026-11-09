@@ -52,6 +52,39 @@ const EMPTY_FORM = {
   siSoToiDa: "40",
 };
 
+async function docThongBaoLoi(err) {
+  const data = err?.response?.data;
+  if (data instanceof Blob) {
+    try {
+      const parsed = JSON.parse(await data.text());
+      if (parsed?.message) return parsed.message;
+    } catch {
+      // Dùng thông báo mặc định
+    }
+  }
+  return getErrorMessage(err);
+}
+
+function layTenTepTuHeader(headers, macDinh) {
+  const disposition = headers?.["content-disposition"] || headers?.["Content-Disposition"];
+  if (!disposition) return macDinh;
+
+  const utf8Match = disposition.match(/filename\*=UTF-8''([^;\s]+)/i);
+  if (utf8Match?.[1]) {
+    try {
+      return decodeURIComponent(utf8Match[1]);
+    } catch {
+      return utf8Match[1];
+    }
+  }
+
+  const asciiMatch = disposition.match(/filename="?([^";]+)"?/i);
+  if (asciiMatch?.[1]) {
+    return asciiMatch[1].trim();
+  }
+  return macDinh;
+}
+
 export default function CourseClassPage() {
   const [searchParams] = useSearchParams();
   const confirm = useConfirm();
@@ -67,6 +100,8 @@ export default function CourseClassPage() {
   const [message, setMessage] = useState("");
   const [warning, setWarning] = useState("");
   const [actionError, setActionError] = useState("");
+  const [actionSuccess, setActionSuccess] = useState("");
+  const [exportingClassId, setExportingClassId] = useState(null);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -412,18 +447,25 @@ export default function CourseClassPage() {
 
   const taiCsv = async (row) => {
     setActionError("");
+    setActionSuccess("");
+    setExportingClassId(row.id);
     try {
       const response = await api.get(`/admin/lop-hoc-phan/${row.id}/csv`, { responseType: "blob" });
+      const defaultFilename = `danh-sach-sinh-vien-${row.ma}.csv`;
+      const tenTep = layTenTepTuHeader(response.headers, defaultFilename);
       const url = window.URL.createObjectURL(new Blob([response.data], { type: "text/csv;charset=utf-8" }));
       const link = document.createElement("a");
       link.href = url;
-      link.download = `lop-${row.ma}.csv`;
+      link.download = tenTep;
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
+      setActionSuccess(`Đã xuất danh sách lớp ${row.ma} thành công (${tenTep})`);
     } catch (err) {
-      setActionError(getErrorMessage(err));
+      setActionError(await docThongBaoLoi(err));
+    } finally {
+      setExportingClassId(null);
     }
   };
 
@@ -456,6 +498,7 @@ export default function CourseClassPage() {
       <div className="mb-4 space-y-3">
         {message && <Alert tone="success" onClose={() => setMessage("")}>{message}</Alert>}
         {warning && <Alert tone="warning" onClose={() => setWarning("")}>{warning}</Alert>}
+        {actionSuccess && <Alert tone="success" onClose={() => setActionSuccess("")}>{actionSuccess}</Alert>}
         {actionError && <Alert tone="error" onClose={() => setActionError("")}>{actionError}</Alert>}
         {error && <Alert tone="error">{error}</Alert>}
       </div>
@@ -717,11 +760,12 @@ export default function CourseClassPage() {
                           )}
                           <button
                             type="button"
-                            className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100"
+                            className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 disabled:opacity-50"
+                            disabled={exportingClassId === row.id}
                             onClick={() => taiCsv(row)}
-                            title="Xuất danh sách CSV"
+                            title={exportingClassId === row.id ? "Đang xuất CSV..." : "Xuất danh sách CSV"}
                           >
-                            <Download size={15} />
+                            <Download size={15} className={exportingClassId === row.id ? "animate-pulse text-indigo-600" : ""} />
                           </button>
                           <button
                             type="button"

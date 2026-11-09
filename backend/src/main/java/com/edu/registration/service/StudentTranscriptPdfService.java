@@ -7,6 +7,7 @@ import com.edu.registration.entity.User;
 import com.edu.registration.exception.ApiException;
 import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.security.CurrentUser;
+import com.edu.registration.util.ExportSecuritySupport;
 import com.lowagie.text.Document;
 import com.lowagie.text.DocumentException;
 import com.lowagie.text.Element;
@@ -51,7 +52,7 @@ public class StudentTranscriptPdfService {
     private static final Logger log = LoggerFactory.getLogger(StudentTranscriptPdfService.class);
     private static final String NOT_ASSIGNED = "Chưa cập nhật";
     private static final DateTimeFormatter ISSUE_TIME_FORMATTER =
-            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss '(GMT+7)'");
 
     private static final String FONT_REGULAR_RESOURCE = "liberation/LiberationSans-Regular.ttf";
     private static final String FONT_BOLD_RESOURCE = "liberation/LiberationSans-Bold.ttf";
@@ -76,6 +77,7 @@ public class StudentTranscriptPdfService {
     private final GradeService diemService;
     private final String donViPhatHanh;
     private final Clock clock;
+    private final AuditLogService auditLogService;
 
     @Autowired
     public StudentTranscriptPdfService(
@@ -83,9 +85,10 @@ public class StudentTranscriptPdfService {
             StudentRepository sinhVienRepository,
             StudentAcademicProfileService studentAcademicProfileService,
             GradeService diemService,
-            @Value("${app.export.bang-diem.don-vi-phat-hanh:}") String donViPhatHanh) {
+            @Value("${app.export.bang-diem.don-vi-phat-hanh:}") String donViPhatHanh,
+            @Autowired(required = false) AuditLogService auditLogService) {
         this(currentUser, sinhVienRepository, studentAcademicProfileService, diemService,
-                donViPhatHanh, Clock.systemDefaultZone());
+                donViPhatHanh, Clock.systemDefaultZone(), auditLogService);
     }
 
     StudentTranscriptPdfService(
@@ -95,21 +98,52 @@ public class StudentTranscriptPdfService {
             GradeService diemService,
             String donViPhatHanh,
             Clock clock) {
+        this(currentUser, sinhVienRepository, studentAcademicProfileService, diemService,
+                donViPhatHanh, clock, null);
+    }
+
+    StudentTranscriptPdfService(
+            CurrentUser currentUser,
+            StudentRepository sinhVienRepository,
+            StudentAcademicProfileService studentAcademicProfileService,
+            GradeService diemService,
+            String donViPhatHanh,
+            Clock clock,
+            AuditLogService auditLogService) {
         this.currentUser = currentUser;
         this.sinhVienRepository = sinhVienRepository;
         this.studentAcademicProfileService = studentAcademicProfileService;
         this.diemService = diemService;
         this.donViPhatHanh = donViPhatHanh == null || donViPhatHanh.isBlank() ? null : donViPhatHanh.trim();
         this.clock = clock;
+        this.auditLogService = auditLogService;
     }
 
     public PdfFile xuatBangDiemPdf(Long hocKyId) {
         RegistrationDtos.BangDiemPdfDto duLieu = layDuLieuBangDiem(hocKyId);
-        byte[] noiDung = taoFilePdf(duLieu);
-        String tenTep = taoTenTep(duLieu.sinhVien().maSinhVien(), hocKyId);
-        log.info("Sinh viên {} xuất bảng điểm PDF ({} học phần đã công bố, hocKyId={})",
-                duLieu.sinhVien().maSinhVien(), duLieu.tongSoMonDaCongBo(), hocKyId);
-        return new PdfFile(tenTep, noiDung, duLieu.tongSoMonDaCongBo(), duLieu);
+        ExportSecuritySupport.validateRowCount(duLieu.tongSoMonDaCongBo(), 5000, "bảng điểm sinh viên PDF");
+
+        Student sv = laySinhVienHienTai();
+        return auditOrExecute("STUDENT_TRANSCRIPT_EXPORTED", "STUDENT_TRANSCRIPT", sv.getId(), audit -> {
+            audit.changes(Map.of(), Map.of(
+                    "maSinhVien", duLieu.sinhVien().maSinhVien(),
+                    "hocKyId", hocKyId != null ? hocKyId : "TAT_CA",
+                    "soMonDaCongBo", duLieu.tongSoMonDaCongBo()
+            ));
+            byte[] noiDung = taoFilePdf(duLieu);
+            String tenTep = taoTenTep(duLieu.sinhVien().maSinhVien(), hocKyId);
+            log.info("Sinh viên {} xuất bảng điểm PDF ({} học phần đã công bố, hocKyId={})",
+                    duLieu.sinhVien().maSinhVien(), duLieu.tongSoMonDaCongBo(), hocKyId);
+            return new PdfFile(tenTep, noiDung, duLieu.tongSoMonDaCongBo(), duLieu);
+        });
+    }
+
+    private <T> T auditOrExecute(String action, String entityType, Object entityId,
+                                 Function<AuditLogService.AuditContext, T> operation) {
+        if (auditLogService != null) {
+            return auditLogService.execute(action, entityType, entityId, operation);
+        }
+        return operation.apply(new AuditLogService.AuditContext(entityId == null ? null : String.valueOf(entityId)));
     }
 
     public RegistrationDtos.BangDiemPdfDto layDuLieuBangDiem(Long hocKyId) {
@@ -467,8 +501,7 @@ public class StudentTranscriptPdfService {
     }
 
     private static String taoTenTep(String maSinhVien, Long hocKyId) {
-        String maAnToan = (maSinhVien == null || maSinhVien.isBlank() ? "sinh-vien" : maSinhVien)
-                .replaceAll("[^A-Za-z0-9._-]", "_");
+        String maAnToan = ExportSecuritySupport.sanitizeFilename(maSinhVien == null || maSinhVien.isBlank() ? "sinh-vien" : maSinhVien);
         if (hocKyId != null) {
             return "bang-diem-" + maAnToan + "-hk" + hocKyId + ".pdf";
         }

@@ -39,6 +39,39 @@ import api, { getErrorMessage } from "../../api/client";
 const BUCKET_COLORS = ["#f43f5e", "#f59e0b", "#3b82f6", "#6366f1", "#10b981"];
 const GPA_COLORS = ["#10b981", "#3b82f6", "#6366f1", "#f59e0b", "#f43f5e"];
 
+async function docThongBaoLoi(err) {
+  const data = err?.response?.data;
+  if (data instanceof Blob) {
+    try {
+      const parsed = JSON.parse(await data.text());
+      if (parsed?.message) return parsed.message;
+    } catch {
+      // Dùng thông báo mặc định
+    }
+  }
+  return getErrorMessage(err);
+}
+
+function layTenTepTuHeader(headers, macDinh) {
+  const disposition = headers?.["content-disposition"] || headers?.["Content-Disposition"];
+  if (!disposition) return macDinh;
+
+  const utf8Match = disposition.match(/filename\*=UTF-8''([^;\s]+)/i);
+  if (utf8Match?.[1]) {
+    try {
+      return decodeURIComponent(utf8Match[1]);
+    } catch {
+      return utf8Match[1];
+    }
+  }
+
+  const asciiMatch = disposition.match(/filename="?([^";]+)"?/i);
+  if (asciiMatch?.[1]) {
+    return asciiMatch[1].trim();
+  }
+  return macDinh;
+}
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const { data: hocKyList } = useApi("/hoc-ky");
@@ -49,6 +82,8 @@ export default function DashboardPage() {
   const [khoaId, setKhoaId] = useState("");
   const [nganhId, setNganhId] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [exportSuccess, setExportSuccess] = useState("");
+  const [exportError, setExportError] = useState("");
   const [showKpiModal, setShowKpiModal] = useState(false);
 
   useEffect(() => {
@@ -141,6 +176,8 @@ export default function DashboardPage() {
   const handleExportCsv = async () => {
     try {
       setExporting(true);
+      setExportSuccess("");
+      setExportError("");
       const searchParams = new URLSearchParams();
       if (hocKyId) searchParams.set("hocKyId", hocKyId);
       if (khoaId) searchParams.set("khoaId", khoaId);
@@ -150,18 +187,20 @@ export default function DashboardPage() {
         responseType: "blob",
       });
 
+      const defaultFilename = `bao-cao-thong-ke-dao-tao-${new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)}.csv`;
+      const tenTep = layTenTepTuHeader(res.headers, defaultFilename);
       const blob = new Blob([res.data], { type: "text/csv;charset=utf-8;" });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-      link.setAttribute("download", `bao-cao-thong-ke-dao-tao-${timestamp}.csv`);
+      link.setAttribute("download", tenTep);
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
+      setExportSuccess(`Đã xuất báo cáo thống kê đào tạo thành công (${tenTep})`);
     } catch (err) {
-      alert("Không thể xuất file báo cáo: " + getErrorMessage(err));
+      setExportError(await docThongBaoLoi(err));
     } finally {
       setExporting(false);
     }
@@ -169,6 +208,10 @@ export default function DashboardPage() {
 
   return (
     <div>
+      <div className="mb-4 space-y-2">
+        {exportSuccess && <Alert tone="success" onClose={() => setExportSuccess("")}>{exportSuccess}</Alert>}
+        {exportError && <Alert tone="error" onClose={() => setExportError("")}>{exportError}</Alert>}
+      </div>
       <PageHeader
         icon={LayoutDashboard}
         title="Tổng quan đào tạo"

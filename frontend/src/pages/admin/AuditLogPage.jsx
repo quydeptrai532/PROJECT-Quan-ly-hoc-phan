@@ -39,6 +39,9 @@ const ACTIONS = {
   LECTURER_IMPORTED_CSV: "Import giảng viên từ CSV",
   COURSE_REGISTRATION: "Đăng ký học phần",
   COURSE_REGISTRATION_CANCELLED: "Hủy đăng ký học phần",
+  COURSE_STUDENT_LIST_EXPORTED: "Xuất danh sách sinh viên lớp học phần",
+  STUDENT_TRANSCRIPT_EXPORTED: "Xuất bảng điểm PDF sinh viên",
+  ADMIN_STATISTICS_EXPORTED: "Xuất báo cáo thống kê quản trị",
 };
 
 const FIELDS = {
@@ -78,6 +81,11 @@ const FIELDS = {
   dangKyId: "Đăng ký ID",
   lopHocPhanId: "Lớp học phần ID",
   active: "Tài khoản hoạt động",
+  dinhDang: "Định dạng",
+  tongSoDong: "Tổng số dòng",
+  tuKhoa: "Từ khóa tìm kiếm",
+  sapXep: "Sắp xếp",
+  tenTep: "Tên tệp",
   maMon: "Mã môn học",
   tenMon: "Tên môn học",
   soTinChi: "Số tín chỉ",
