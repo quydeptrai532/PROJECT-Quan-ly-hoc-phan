@@ -18,3 +18,12 @@ spring:
 app:
   seed:
     enabled: true
+  rate-limiting:
+    enabled: true
+    strategy: IN_MEMORY
+    login:
+      capacity: 10000
+      window-seconds: 60
+    api:
+      capacity: 50000
+      window-seconds: 60

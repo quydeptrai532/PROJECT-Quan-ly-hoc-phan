@@ -168,3 +168,25 @@ app:
   room-policy:
     hoat-dong: ${ROOM_POLICY_HOAT_DONG:BAT_BUOC}
     suc-chua: ${ROOM_POLICY_SUC_CHUA:CANH_BAO}
+
+  rate-limiting:
+    # QLSV-94 (TASK-OP-07): Cau hinh rate limiting
+    enabled: ${RATE_LIMITING_ENABLED:true}
+    strategy: ${RATE_LIMITING_STRATEGY:IN_MEMORY}
+    login:
+      capacity: ${RATE_LIMIT_LOGIN_CAPACITY:10}
+      window-seconds: ${RATE_LIMIT_LOGIN_WINDOW_SECONDS:60}
+    api:
+      capacity: ${RATE_LIMIT_API_CAPACITY:120}
+      window-seconds: ${RATE_LIMIT_API_WINDOW_SECONDS:60}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+    tagsSorter: alpha
+    tryItOutEnabled: true
+    displayRequestDuration: true
