@@ -87,6 +87,36 @@ export default function CourseClassPage() {
   const [gradeDetailLoading, setGradeDetailLoading] = useState(false);
   const [gradeDetailError, setGradeDetailError] = useState("");
 
+  // Impact survey & cancellation modal (QLSV-79)
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelSurveyRow, setCancelSurveyRow] = useState(null);
+  const [cancelSurveyData, setCancelSurveyData] = useState(null);
+  const [cancelSurveyLoading, setCancelSurveyLoading] = useState(false);
+  const [cancelSurveyError, setCancelSurveyError] = useState("");
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+
+  // Student transfer modal (QLSV-79)
+  const [transferModalOpen, setTransferModalOpen] = useState(false);
+  const [transferSourceRow, setTransferSourceRow] = useState(null);
+  const [transferTargetClasses, setTransferTargetClasses] = useState([]);
+  const [transferTargetClassId, setTransferTargetClassId] = useState("");
+  const [transferStudents, setTransferStudents] = useState([]);
+  const [transferSelectedStudentIds, setTransferSelectedStudentIds] = useState([]);
+  const [transferCheckResults, setTransferCheckResults] = useState(null);
+  const [transferChecking, setTransferChecking] = useState(false);
+  const [transferReason, setTransferReason] = useState("");
+  const [transferSubmitting, setTransferSubmitting] = useState(false);
+  const [transferError, setTransferError] = useState("");
+
+  // Transfer history modal (QLSV-79)
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [historyRow, setHistoryRow] = useState(null);
+  const [historyList, setHistoryList] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState("");
+
+
   useEffect(() => {
     if (!hocKyId && hocKyList?.length) {
       setHocKyId(String(hocKyList[0].id));
@@ -455,7 +485,21 @@ export default function CourseClassPage() {
                   const statusMeta = GRADE_SHEET_STATUS_META[row.trangThaiBangDiem] || GRADE_SHEET_STATUS_META.NHAP;
                   return (
                     <tr key={row.id} className="hover:bg-slate-50/60">
-                      <td className="td font-medium text-slate-900">{row.ma}</td>
+                      <td className="td font-medium text-slate-900">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span>{row.ma}</span>
+                          {row.daHuy && (
+                            <Badge tone="rose" title={`Đã hủy lúc ${formatDateTime(row.thoiGianHuy)} - Lý do: ${row.lyDoHuy || "Không ghi"}`}>
+                              Đã hủy
+                            </Badge>
+                          )}
+                        </div>
+                        {row.daHuy && row.lyDoHuy && (
+                          <p className="text-[11px] text-rose-600 truncate max-w-[160px]" title={row.lyDoHuy}>
+                            Lý do: {row.lyDoHuy}
+                          </p>
+                        )}
+                      </td>
                       <td className="td">
                         <p className="font-medium text-slate-800">{row.tenMon}</p>
                         <p className="text-xs text-slate-500">

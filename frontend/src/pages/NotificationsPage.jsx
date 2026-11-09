@@ -20,6 +20,7 @@ const EVENT_TYPE_LABELS = {
   REGISTRATION_WINDOW_CLOSING: "Nhắc hạn đăng ký",
   GRADES_PUBLISHED: "Công bố điểm lớp học phần",
   CLASS_ANNOUNCEMENT: "Thông báo lớp học phần",
+  CLASS_STUDENT_TRANSFERRED: "Chuyển sinh viên sang lớp khác",
 };
 
 export default function NotificationsPage() {

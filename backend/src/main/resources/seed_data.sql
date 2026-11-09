@@ -122,6 +122,11 @@ CREATE TABLE IF NOT EXISTS lop_hoc_phan (
     nguoi_cong_bo_bang_diem_id BIGINT,
     nguong_so_buoi_vang INT,
     nguong_ty_le_vang DOUBLE,
+    da_huy BOOLEAN NOT NULL DEFAULT FALSE,
+    thoi_gian_huy DATETIME(6),
+    ly_do_huy VARCHAR(500),
+    nguoi_huy_id BIGINT,
+    nguoi_huy_username VARCHAR(100),
     CONSTRAINT fk_lhp_mon FOREIGN KEY (mon_hoc_id) REFERENCES mon_hoc(id),
     CONSTRAINT fk_lhp_hk FOREIGN KEY (hoc_ky_id) REFERENCES hoc_ky(id),
     CONSTRAINT fk_lhp_gv FOREIGN KEY (giang_vien_id) REFERENCES giang_vien(id)

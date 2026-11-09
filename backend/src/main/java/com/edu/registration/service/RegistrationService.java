@@ -134,6 +134,9 @@ public class RegistrationService {
                 .orElseThrow(() -> ApiException.notFound("Lớp học phần không tồn tại"));
         Semester hocKy = lop.getHocKy();
         Subject monHoc = lop.getMonHoc();
+        if (lop.isDaHuy()) {
+            throw ApiException.badRequest("Lớp học phần " + lop.getMa() + " đã bị hủy, không tiếp nhận đăng ký mới");
+        }
 
         if (registrationPeriodService != null) {
             registrationPeriodService.kiemTraQuyenDangKy(sinhVien, hocKy, null);
@@ -354,6 +357,9 @@ public class RegistrationService {
                         .orElseThrow(() -> ApiException.notFound("Lớp học phần không tồn tại")));
         Semester hocKy = lop.getHocKy();
         Subject monHoc = lop.getMonHoc();
+        if (lop.isDaHuy()) {
+            throw ApiException.badRequest("Lớp học phần " + lop.getMa() + " đã bị hủy, không tiếp nhận đăng ký mới");
+        }
         String khoaSinhVien = xacDinhKhoaSinhVien(sinhVien);
 
         List<PrerequisiteSubject> danhSachQuanHe = monTienQuyetRepository.findByMonHocIdOrderByIdAsc(monHoc.getId());
