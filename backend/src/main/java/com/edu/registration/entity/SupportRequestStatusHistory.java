@@ -30,12 +30,22 @@ public class SupportRequestStatusHistory {
     private SupportRequest yeuCau;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "loai_thay_doi", nullable = false, length = 40, updatable = false)
+    private SupportRequestChangeType loaiThayDoi = SupportRequestChangeType.TRANG_THAI;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "trang_thai_cu", length = 40, updatable = false)
     private SupportRequestStatus trangThaiCu;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "trang_thai_moi", nullable = false, length = 40, updatable = false)
     private SupportRequestStatus trangThaiMoi;
+
+    @Column(name = "gia_tri_cu", length = 500, updatable = false)
+    private String giaTriCu;
+
+    @Column(name = "gia_tri_moi", length = 500, updatable = false)
+    private String giaTriMoi;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "nguoi_thuc_hien_user_id", nullable = false, updatable = false)
@@ -70,6 +80,14 @@ public class SupportRequestStatusHistory {
         this.yeuCau = yeuCau;
     }
 
+    public SupportRequestChangeType getLoaiThayDoi() {
+        return loaiThayDoi;
+    }
+
+    public void setLoaiThayDoi(SupportRequestChangeType loaiThayDoi) {
+        this.loaiThayDoi = loaiThayDoi;
+    }
+
     public SupportRequestStatus getTrangThaiCu() {
         return trangThaiCu;
     }
@@ -84,6 +102,22 @@ public class SupportRequestStatusHistory {
 
     public void setTrangThaiMoi(SupportRequestStatus trangThaiMoi) {
         this.trangThaiMoi = trangThaiMoi;
+    }
+
+    public String getGiaTriCu() {
+        return giaTriCu;
+    }
+
+    public void setGiaTriCu(String giaTriCu) {
+        this.giaTriCu = giaTriCu;
+    }
+
+    public String getGiaTriMoi() {
+        return giaTriMoi;
+    }
+
+    public void setGiaTriMoi(String giaTriMoi) {
+        this.giaTriMoi = giaTriMoi;
     }
 
     public User getNguoiThucHien() {

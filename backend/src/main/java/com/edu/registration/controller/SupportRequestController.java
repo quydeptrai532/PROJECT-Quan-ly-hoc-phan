@@ -101,14 +101,18 @@ public class SupportRequestController {
     @GetMapping("/yeu-cau-ho-tro")
     @PreAuthorize("hasAnyRole('SINH_VIEN','QUAN_TRI')")
     public Page<SupportRequestDtos.YeuCauTomTatDto> danhSachTheoVaiTro(
+            @RequestParam(required = false) String scope,
             @RequestParam(required = false) String trangThai,
             @RequestParam(required = false) String loaiYeuCau,
+            @RequestParam(required = false) String mucUuTien,
+            @RequestParam(required = false) String slaStatus,
+            @RequestParam(required = false) Long handlerUserId,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         User actor = currentUser.get();
         if (actor.getRole() == Role.QUAN_TRI) {
-            return yeuCauHoTroService.danhSachQuanTri(trangThai, loaiYeuCau, keyword, page, size);
+            return yeuCauHoTroService.danhSachHangDoi(scope, trangThai, loaiYeuCau, mucUuTien, slaStatus, handlerUserId, keyword, page, size);
         }
         return yeuCauHoTroService.danhSachCuaToi(trangThai, loaiYeuCau, keyword, page, size);
     }
@@ -116,12 +120,95 @@ public class SupportRequestController {
     @GetMapping("/admin/yeu-cau-ho-tro")
     @PreAuthorize("hasRole('QUAN_TRI')")
     public Page<SupportRequestDtos.YeuCauTomTatDto> danhSachQuanTri(
+            @RequestParam(required = false) String scope,
             @RequestParam(required = false) String trangThai,
             @RequestParam(required = false) String loaiYeuCau,
+            @RequestParam(required = false) String mucUuTien,
+            @RequestParam(required = false) String slaStatus,
+            @RequestParam(required = false) Long handlerUserId,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "15") int size) {
-        return yeuCauHoTroService.danhSachQuanTri(trangThai, loaiYeuCau, keyword, page, size);
+        return yeuCauHoTroService.danhSachHangDoi(scope, trangThai, loaiYeuCau, mucUuTien, slaStatus, handlerUserId, keyword, page, size);
+    }
+
+    @GetMapping("/admin/yeu-cau-ho-tro/queue")
+    @PreAuthorize("hasRole('QUAN_TRI')")
+    public Page<SupportRequestDtos.YeuCauTomTatDto> hangDoiXuLy(
+            @RequestParam(required = false) String scope,
+            @RequestParam(required = false) String trangThai,
+            @RequestParam(required = false) String loaiYeuCau,
+            @RequestParam(required = false) String mucUuTien,
+            @RequestParam(required = false) String slaStatus,
+            @RequestParam(required = false) Long handlerUserId,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "15") int size) {
+        return yeuCauHoTroService.danhSachHangDoi(scope, trangThai, loaiYeuCau, mucUuTien, slaStatus, handlerUserId, keyword, page, size);
+    }
+
+    @GetMapping("/admin/yeu-cau-ho-tro/queue/summary")
+    @PreAuthorize("hasRole('QUAN_TRI')")
+    public SupportRequestDtos.SupportRequestSlaSummaryDto tomTatHangDoi() {
+        return yeuCauHoTroService.tomTatHangDoi();
+    }
+
+    @GetMapping("/admin/yeu-cau-ho-tro/handlers")
+    @PreAuthorize("hasRole('QUAN_TRI')")
+    public List<SupportRequestDtos.HandlerUserDto> danhSachNguoiXuLy() {
+        return yeuCauHoTroService.danhSachNhanVienXuLy();
+    }
+
+    @PatchMapping("/admin/yeu-cau-ho-tro/{id}/phan-cong")
+    @PreAuthorize("hasRole('QUAN_TRI')")
+    public SupportRequestDtos.YeuCauChiTietDto phanCong(
+            @PathVariable Long id,
+            @Valid @RequestBody SupportRequestDtos.PhanCongRequest request) {
+        return yeuCauHoTroService.phanCong(id, request);
+    }
+
+    @PatchMapping("/admin/yeu-cau-ho-tro/{id}/triage")
+    @PreAuthorize("hasRole('QUAN_TRI')")
+    public SupportRequestDtos.YeuCauChiTietDto dieuChinh(
+            @PathVariable Long id,
+            @Valid @RequestBody SupportRequestDtos.DieuChinhYeuCauRequest request) {
+        return yeuCauHoTroService.dieuChinh(id, request);
+    }
+
+    @PostMapping("/admin/yeu-cau-ho-tro/{id}/yeu-cau-minh-chung")
+    @PreAuthorize("hasRole('QUAN_TRI')")
+    public SupportRequestDtos.YeuCauChiTietDto yeuCauMinhChung(
+            @PathVariable Long id,
+            @Valid @RequestBody SupportRequestDtos.YeuCauMinhChungRequest request) {
+        return yeuCauHoTroService.yeuCauMinhChung(id, request);
+    }
+
+    @PostMapping(value = "/yeu-cau-ho-tro/{id}/bo-sung-minh-chung", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('SINH_VIEN')")
+    public SupportRequestDtos.YeuCauChiTietDto boSungMinhChungMultipart(
+            @PathVariable Long id,
+            @RequestPart(value = "payload", required = false) @Valid SupportRequestDtos.BoSungMinhChungRequest payload,
+            @RequestParam(value = "noiDung", required = false) String noiDung,
+            @RequestPart(value = "files", required = false) List<MultipartFile> files,
+            @RequestPart(value = "file", required = false) MultipartFile singleFile) {
+
+        SupportRequestDtos.BoSungMinhChungRequest effectiveRequest = payload != null
+                ? payload
+                : new SupportRequestDtos.BoSungMinhChungRequest(noiDung);
+
+        List<MultipartFile> combinedFiles = new ArrayList<>();
+        if (files != null) combinedFiles.addAll(files);
+        if (singleFile != null) combinedFiles.add(singleFile);
+
+        return yeuCauHoTroService.boSungMinhChung(id, effectiveRequest, combinedFiles);
+    }
+
+    @PostMapping(value = "/yeu-cau-ho-tro/{id}/bo-sung-minh-chung", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('SINH_VIEN')")
+    public SupportRequestDtos.YeuCauChiTietDto boSungMinhChungJson(
+            @PathVariable Long id,
+            @Valid @RequestBody SupportRequestDtos.BoSungMinhChungRequest request) {
+        return yeuCauHoTroService.boSungMinhChung(id, request, List.of());
     }
 
     @GetMapping({"/yeu-cau-ho-tro/{id}", "/admin/yeu-cau-ho-tro/{id}"})

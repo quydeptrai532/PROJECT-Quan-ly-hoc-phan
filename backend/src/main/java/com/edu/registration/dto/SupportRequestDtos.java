@@ -1,6 +1,7 @@
 package com.edu.registration.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
@@ -33,8 +34,13 @@ public final class SupportRequestDtos {
     public record ThemTraoDoiRequest(
             @NotBlank(message = "Nội dung trao đổi không được để trống")
             @Size(min = 1, max = 2000, message = "Nội dung trao đổi phải từ 1 đến 2000 ký tự")
-            String noiDung
+            String noiDung,
+
+            Boolean isNoiBo
     ) {
+        public ThemTraoDoiRequest(String noiDung) {
+            this(noiDung, false);
+        }
     }
 
     public record DoiTrangThaiRequest(
@@ -44,6 +50,42 @@ public final class SupportRequestDtos {
 
             @Size(max = 500, message = "Ghi chú xử lý tối đa 500 ký tự")
             String ghiChu
+    ) {
+    }
+
+    public record PhanCongRequest(
+            @NotNull(message = "Mã người xử lý không được để trống")
+            Long handlerUserId,
+
+            @Size(max = 500, message = "Ghi chú phân công tối đa 500 ký tự")
+            String ghiChu
+    ) {
+    }
+
+    public record DieuChinhYeuCauRequest(
+            String loaiYeuCau,
+            String mucUuTien,
+            LocalDateTime hanXuLy,
+
+            @NotBlank(message = "Lý do điều chỉnh không được để trống")
+            @Size(min = 3, max = 500, message = "Lý do điều chỉnh phải từ 3 đến 500 ký tự")
+            String ghiChu
+    ) {
+    }
+
+    public record YeuCauMinhChungRequest(
+            @NotBlank(message = "Nội dung yêu cầu bổ sung không được để trống")
+            @Size(min = 5, max = 1000, message = "Nội dung yêu cầu phải từ 5 đến 1000 ký tự")
+            String noiDung,
+
+            LocalDateTime hanBoSung
+    ) {
+    }
+
+    public record BoSungMinhChungRequest(
+            @NotBlank(message = "Nội dung giải trình không được để trống")
+            @Size(min = 5, max = 2000, message = "Nội dung giải trình phải từ 5 đến 2000 ký tự")
+            String noiDung
     ) {
     }
 
@@ -89,13 +131,26 @@ public final class SupportRequestDtos {
     ) {
     }
 
+    public record HandlerUserDto(
+            Long id,
+            String username,
+            String hoTen,
+            String role
+    ) {
+    }
+
     public record DanhMucHoTroDto(
             List<DanhMucMucDto> loaiYeuCau,
             List<DanhMucMucDto> trangThai,
+            List<DanhMucMucDto> mucUuTien,
             ChinhSachTepDto chinhSachTep,
             List<MonHocLienQuanDto> monHoc,
             List<HocKyLienQuanDto> hocKy,
-            List<DiemLienQuanDto> diemCuaToi
+            List<DiemLienQuanDto> diemCuaToi,
+            List<HandlerUserDto> danhSachNguoiXuLy,
+            boolean officialSlaEnabled,
+            String slaPolicyNote,
+            String workingCalendarNote
     ) {
     }
 
@@ -115,21 +170,74 @@ public final class SupportRequestDtos {
             String tenHienThiNguoiGui,
             String vaiTroNguoiGui,
             String noiDung,
+            boolean congKhai,
+            boolean isNoiBo,
             LocalDateTime createdAt
     ) {
     }
 
     public record LichSuTrangThaiDto(
             Long id,
+            String loaiThayDoi,
+            String tenLoaiThayDoi,
             String trangThaiCu,
             String tenTrangThaiCu,
             String trangThaiMoi,
             String tenTrangThaiMoi,
+            String giaTriCu,
+            String giaTriMoi,
             Long nguoiThucHienId,
             String tenNguoiThucHien,
             String vaiTroNguoiThucHien,
             String ghiChu,
             LocalDateTime thoiDiem
+    ) {
+    }
+
+    public record TrangThaiSlaThoiGianDto(
+            String trangThai,
+            String tenTrangThai,
+            LocalDateTime thoiDiemBatDau,
+            LocalDateTime thoiDiemKetThuc,
+            long thoiGianPhutLich,
+            long thoiGianPhutLamViec,
+            boolean tamDungSla
+    ) {
+    }
+
+    public record SupportRequestSlaDetailDto(
+            LocalDateTime targetDueAt,
+            boolean isOverdue,
+            String slaStatus,
+            String tenSlaStatus,
+            LocalDateTime firstResponseAt,
+            Long firstResponseWorkingMinutes,
+            LocalDateTime resolvedAt,
+            long activeWorkingMinutes,
+            long pausedWorkingMinutes,
+            Long remainingWorkingMinutes,
+            Long overdueWorkingMinutes,
+            List<TrangThaiSlaThoiGianDto> thoiGianTheoTrangThai,
+            boolean officialSlaEnabled,
+            String slaNote
+    ) {
+    }
+
+    public record SupportRequestSlaSummaryDto(
+            long totalInQueue,
+            long unassignedCount,
+            long myAssignedCount,
+            long inProgressCount,
+            long awaitingStudentCount,
+            long overdueCount,
+            long nearingDueCount,
+            long resolvedCount,
+            double avgFirstResponseWorkingHours,
+            double avgResolveWorkingHours,
+            double onTimeResolutionRate,
+            boolean officialSlaEnabled,
+            String slaNote,
+            String workingCalendarNote
     ) {
     }
 
@@ -144,10 +252,19 @@ public final class SupportRequestDtos {
             String tieuDe,
             String trangThai,
             String tenTrangThai,
+            String mucUuTien,
+            String tenMucUuTien,
+            LocalDateTime hanXuLy,
             MonHocLienQuanDto monHoc,
             DiemLienQuanDto diem,
             HocKyLienQuanDto hocKy,
+            Long nguoiXuLyId,
             String nguoiXuLyUsername,
+            String nguoiXuLyHoTen,
+            String slaStatus,
+            String tenSlaStatus,
+            boolean isOverdue,
+            boolean yeuCauBoSungMinhChung,
             LocalDateTime createdAt,
             LocalDateTime updatedAt
     ) {
@@ -165,10 +282,18 @@ public final class SupportRequestDtos {
             String noiDungGoc,
             String trangThai,
             String tenTrangThai,
+            String mucUuTien,
+            String tenMucUuTien,
+            LocalDateTime hanXuLy,
             MonHocLienQuanDto monHoc,
             DiemLienQuanDto diem,
             HocKyLienQuanDto hocKy,
+            Long nguoiXuLyId,
             String nguoiXuLyUsername,
+            String nguoiXuLyHoTen,
+            boolean yeuCauBoSungMinhChung,
+            String noiDungYeuCauMinhChung,
+            SupportRequestSlaDetailDto sla,
             LocalDateTime createdAt,
             LocalDateTime updatedAt,
             boolean coThePhanHoi,
