@@ -421,7 +421,7 @@ public class GradeService {
     public RegistrationDtos.TrangThaiBangDiemDto pheDuyetBangDiem(Long lopHocPhanId) {
         return executeAudited("GRADE_SHEET_APPROVED", "GRADE_SHEET", lopHocPhanId, audit -> {
             CourseClass lop = layLopDeCapNhatBangDiem(lopHocPhanId);
-            User actor = kiemTraQuyenDuyetBangDiem("Chỉ người có quyền phê duyệt của Phòng Đào tạo (QUAN_TRI) mới được duyệt bảng điểm");
+            User actor = kiemTraQuyenDuyetBangDiem("Chỉ người có quyền phê duyệt của Phòng Đào tạo mới được duyệt bảng điểm");
 
             GradeSheetStatus trangThaiCu = lop.getTrangThaiBangDiemHieuLuc();
             if (trangThaiCu == GradeSheetStatus.DA_CONG_BO || trangThaiCu == GradeSheetStatus.DA_KHOA) {
@@ -496,13 +496,20 @@ public class GradeService {
             Map<String, Object> before = gradeSheetAuditSnapshot(
                     lop, trangThaiCu, activeRegistrations.size(), eligible.size());
 
+            boolean congBoMoi = trangThaiCu != GradeSheetStatus.DA_CONG_BO
+                    || lop.getCongBoBangDiemLuc() == null;
+
             LocalDateTime publishedAt = lop.getCongBoBangDiemLuc() != null
                     ? lop.getCongBoBangDiemLuc()
                     : LocalDateTime.now();
+
             int version = Math.max(1, lop.getPhienBanCongBo());
 
-            if (trangThaiCu != GradeSheetStatus.DA_CONG_BO || lop.getCongBoBangDiemLuc() == null) {
+            if (congBoMoi) {
+                // Mỗi lần công bố mới phải có phiên bản mới để không dùng lại idempotency key cũ.
+                version = Math.max(1, lop.getPhienBanCongBo() + 1);
                 publishedAt = LocalDateTime.now();
+
                 lop.setTrangThaiBangDiem(GradeSheetStatus.DA_CONG_BO);
                 lop.setPhienBanCongBo(version);
                 lop.setCongBoBangDiemLuc(publishedAt);
@@ -512,7 +519,10 @@ public class GradeService {
                 lop.tangPhienBanBangDiem();
                 lopHocPhanRepository.save(lop);
 
-                ghiLichSuChuyenTrangThai(lop, "CONG_BO", trangThaiCu, GradeSheetStatus.DA_CONG_BO, null, actor, publishedAt);
+                ghiLichSuChuyenTrangThai(
+                        lop, "CONG_BO", trangThaiCu, GradeSheetStatus.DA_CONG_BO,
+                        null, actor, publishedAt
+                );
             }
 
             Map<String, Object> after = gradeSheetAuditSnapshot(
@@ -560,14 +570,18 @@ public class GradeService {
                     lop, trangThaiCu, activeRegistrations.size(), eligible.size());
 
             LocalDateTime now = LocalDateTime.now();
+            boolean vuaCongBo = lop.getCongBoBangDiemLuc() == null;
             int version = Math.max(1, lop.getPhienBanCongBo());
-            boolean vuaCongBo = false;
-            if (lop.getCongBoBangDiemLuc() == null) {
+
+            if (vuaCongBo) {
+                // Khóa trực tiếp từ DA_DUYET cũng là một lần công bố mới.
+                version = Math.max(1, lop.getPhienBanCongBo() + 1);
+
                 lop.setCongBoBangDiemLuc(now);
                 lop.setNguoiCongBoBangDiemId(actor != null ? actor.getId() : null);
                 lop.setPhienBanCongBo(version);
-                vuaCongBo = true;
             }
+
             lop.setTrangThaiBangDiem(GradeSheetStatus.DA_KHOA);
             lop.setKhoaBangDiemLuc(now);
             lop.setNguoiKhoaBangDiemId(actor != null ? actor.getId() : null);

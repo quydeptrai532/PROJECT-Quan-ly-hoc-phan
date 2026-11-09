@@ -107,3 +107,6 @@ app:
     auto-apply-grade-change: ${GRADE_APPEAL_AUTO_APPLY_GRADE_CHANGE:true}
     official-regulation: ${GRADE_APPEAL_OFFICIAL_REGULATION:false}
     sla-note: ${GRADE_APPEAL_SLA_NOTE:Thời hạn tiếp nhận hồ sơ phúc khảo (dự kiến 15 ngày kể từ ngày công bố điểm) và quy trình xử lý SLA đang áp dụng theo cấu hình tập trung dự kiến, chưa phải quy chế chính thức của Nhà trường và chờ Chủ dự án / Phòng Đào tạo phê duyệt.}
+  room-policy:
+    hoat-dong: ${ROOM_POLICY_HOAT_DONG:BAT_BUOC}
+    suc-chua: ${ROOM_POLICY_SUC_CHUA:CANH_BAO}

@@ -25,6 +25,8 @@ import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.repository.UserRepository;
 import com.edu.registration.security.JwtService;
 import com.edu.registration.service.NotificationService;
+import com.edu.registration.entity.Room;
+import com.edu.registration.repository.RoomRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -97,6 +99,7 @@ class ConcurrentRegistrationIntegrationTest {
     @Autowired private PrerequisiteSubjectRepository monTienQuyetRepository;
     @Autowired private LecturerRepository giangVienRepository;
     @Autowired private CourseClassRepository lopHocPhanRepository;
+    @Autowired private RoomRepository phongRepository;
     @Autowired private CourseRegistrationRepository dangKyRepository;
     @Autowired private AuditLogRepository auditLogRepository;
     @SpyBean private NotificationRepository thongBaoRepository;
@@ -122,6 +125,13 @@ class ConcurrentRegistrationIntegrationTest {
         assertTrue(studentCount > capacity, "student-count phải lớn hơn capacity để có tranh suất");
         assertTrue(concurrency > 0, "concurrency phải lớn hơn 0");
         runId = UUID.randomUUID().toString().replace("-", "").substring(0, 10);
+        // Tạo phòng học để phục vụ kiểm thử thay đổi phòng theo AD-06
+        Room room = new Room();
+        room.setMa("N" + runId);
+        room.setSucChua(Math.max(capacity, studentCount));
+        room.setHoatDong(true);
+        phongRepository.saveAndFlush(room);
+
         Faculty khoa = new Faculty();
         khoa.setMa("T" + runId);
         khoa.setTen("Khoa concurrency test " + runId);
