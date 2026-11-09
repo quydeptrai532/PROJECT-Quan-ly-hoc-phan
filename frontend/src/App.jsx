@@ -40,6 +40,8 @@ import AdminLookupPage from "./pages/admin/AdminLookupPage";
 import AdminEarlyWarningPage from "./pages/admin/AdminEarlyWarningPage";
 import LearningAnalyticsPage from "./pages/admin/LearningAnalyticsPage";
 import StudentAcademicAlertsPage from "./pages/student/StudentAcademicAlertsPage";
+import VerifyTranscriptPage from "./pages/public/VerifyTranscriptPage";
+import AdminVerifiableTranscriptsPage from "./pages/admin/AdminVerifiableTranscriptsPage";
 
 function RootRedirect() {
   const { user } = useAuth();
@@ -50,6 +52,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/xac-thuc-bang-diem" element={<VerifyTranscriptPage />} />
+      <Route path="/xac-thuc-bang-diem/:code" element={<VerifyTranscriptPage />} />
       <Route path="/" element={<RootRedirect />} />
 
       <Route
@@ -268,6 +272,7 @@ export default function App() {
       <Route path="/quan-tri/chuong-trinh-dao-tao" element={<ProtectedRoute roles={["QUAN_TRI"]}><CurriculumPage /></ProtectedRoute>} />
       <Route path="/quan-tri/yeu-cau-ho-tro" element={<ProtectedRoute roles={["QUAN_TRI"]}><AdminSupportRequestsPage /></ProtectedRoute>} />
       <Route path="/quan-tri/phuc-khao" element={<ProtectedRoute roles={["QUAN_TRI"]}><AdminGradeAppealsPage /></ProtectedRoute>} />
+      <Route path="/quan-tri/bang-diem-xac-thuc" element={<ProtectedRoute roles={["QUAN_TRI"]}><AdminVerifiableTranscriptsPage /></ProtectedRoute>} />
 
       <Route
         path="/ho-so"

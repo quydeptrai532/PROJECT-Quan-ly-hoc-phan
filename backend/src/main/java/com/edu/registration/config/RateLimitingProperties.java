@@ -20,6 +20,7 @@ public class RateLimitingProperties {
     private Strategy strategy = Strategy.IN_MEMORY;
     private EndpointLimit login = new EndpointLimit(10, 60);
     private EndpointLimit api = new EndpointLimit(120, 60);
+    private EndpointLimit verify = new EndpointLimit(20, 60);
 
     public static class EndpointLimit {
         private long capacity;
@@ -76,6 +77,14 @@ public class RateLimitingProperties {
 
     public EndpointLimit getApi() {
         return api;
+    }
+
+    public EndpointLimit getVerify() {
+        return verify;
+    }
+
+    public void setVerify(EndpointLimit verify) {
+        this.verify = verify;
     }
 
     public void setApi(EndpointLimit api) {

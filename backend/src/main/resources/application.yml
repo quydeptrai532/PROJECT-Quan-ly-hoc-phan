@@ -213,6 +213,16 @@ app:
     api:
       capacity: ${RATE_LIMIT_API_CAPACITY:120}
       window-seconds: ${RATE_LIMIT_API_WINDOW_SECONDS:60}
+    verify:
+      capacity: ${RATE_LIMIT_VERIFY_CAPACITY:20}
+      window-seconds: ${RATE_LIMIT_VERIFY_WINDOW_SECONDS:60}
+
+  verifiable-transcript:
+    # QLSV-99 (TASK-OP-12): Bang diem dien tu xac thuc
+    enabled: ${VERIFIABLE_TRANSCRIPT_ENABLED:true}
+    verification-base-url: ${VERIFIABLE_TRANSCRIPT_BASE_URL:https://daotao.edu.vn}
+    max-public-lookup-per-minute: ${VERIFIABLE_TRANSCRIPT_MAX_LOOKUP_PER_MIN:20}
+    qr-code-size: ${VERIFIABLE_TRANSCRIPT_QR_SIZE:150}
 
 springdoc:
   api-docs:

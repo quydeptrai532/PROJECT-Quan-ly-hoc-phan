@@ -15,7 +15,7 @@ public final class SecretSanitizer {
             Pattern.compile("eyJ[A-Za-z0-9\\-_=]+\\.[A-Za-z0-9\\-_=]+\\.[A-Za-z0-9\\-_=]+");
 
     private static final Pattern PASSWORD_KEY_VALUE_PATTERN =
-            Pattern.compile("(?i)\\b(password|passwd|pwd|secret|api[_-]?key|access[_-]?token)\\b\\s*[:=]\\s*[\"']?([^\\s,\"'>]+)[\"']?");
+            Pattern.compile("(?i)\\b(password|passwd|pwd|secret|api[_-]?key|access[_-]?token|ma[_-]?xac[_-]?minh|verification[_-]?code)\\b\\s*[:=]\\s*[\"']?([^\\s,\"'>]+)[\"']?");
 
     private static final Pattern DB_CREDENTIAL_PATTERN =
             Pattern.compile("(?i)(jdbc:[^:]+://)([^:]+):([^@]+)@");
@@ -41,6 +41,7 @@ public final class SecretSanitizer {
         cleaned = PASSWORD_KEY_VALUE_PATTERN.matcher(cleaned).replaceAll("$1=***REDACTED***");
         cleaned = DB_CREDENTIAL_PATTERN.matcher(cleaned).replaceAll("$1$2:***REDACTED***@");
         cleaned = PERSONAL_GRADE_PATTERN.matcher(cleaned).replaceAll("$1=***GRADE_REDACTED***");
+        cleaned = Pattern.compile("(?i)\\bVT-[0-9A-Z]{4}(-[0-9A-Z]{4}){7}\\b").matcher(cleaned).replaceAll("VT-***CODE_REDACTED***");
 
         if (cleaned.length() > maxLength) {
             return cleaned.substring(0, maxLength - 3) + "...";

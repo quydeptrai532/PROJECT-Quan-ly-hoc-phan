@@ -28,6 +28,7 @@ import {
   UserRound,
   Users,
   ShieldAlert,
+  ShieldCheck,
   X,
 } from "lucide-react";
 import { ROLE_LABEL, useAuth } from "../context/AuthContext";
@@ -71,6 +72,7 @@ const NAV = {
     { to: "/quan-tri/phong-hoc", label: "Phòng học", icon: DoorOpen },
     { to: "/quan-tri/lop-hoc-phan", label: "Lớp học phần & Duyệt điểm", icon: Layers },
     { to: "/quan-tri/phuc-khao", label: "Phúc khảo điểm", icon: FileCheck },
+    { to: "/quan-tri/bang-diem-xac-thuc", label: "Bảng điểm xác thực", icon: ShieldCheck },
     { to: "/quan-tri/sinh-vien", label: "Sinh viên", icon: UserRound },
     { to: "/quan-tri/chuong-trinh-dao-tao", label: "Chương trình đào tạo", icon: LibraryBig },
     { to: "/quan-tri/giang-vien", label: "Giảng viên", icon: UserCog },

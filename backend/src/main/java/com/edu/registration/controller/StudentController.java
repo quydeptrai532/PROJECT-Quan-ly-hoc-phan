@@ -36,6 +36,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.edu.registration.dto.VerifiableTranscriptDtos;
+import com.edu.registration.service.VerifiableTranscriptService;
+import com.edu.registration.exception.ApiException;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -54,6 +57,7 @@ public class StudentController {
     private final StudentTranscriptPdfService studentTranscriptPdfService;
     private final CourseClassAnnouncementService thongBaoLopHocPhanService;
     private final RegistrationPeriodService registrationPeriodService;
+    private final VerifiableTranscriptService verifiableTranscriptService;
 
     public StudentController(CourseClassService lopHocPhanService, RegistrationService dangKyService,
                               GradeService diemService, ClassAbsenceNoticeService thongBaoNghiService,
@@ -61,7 +65,7 @@ public class StudentController {
                               StudentDashboardService sinhVienDashboardService,
                               RetakeCourseService hocLaiCaiThienService) {
         this(lopHocPhanService, dangKyService, diemService, thongBaoNghiService,
-                studentAcademicProfileService, sinhVienDashboardService, hocLaiCaiThienService, null, null, null);
+                studentAcademicProfileService, sinhVienDashboardService, hocLaiCaiThienService, null, null, null, null);
     }
 
     public StudentController(CourseClassService lopHocPhanService, RegistrationService dangKyService,
@@ -72,7 +76,7 @@ public class StudentController {
                               StudentTranscriptPdfService studentTranscriptPdfService) {
         this(lopHocPhanService, dangKyService, diemService, thongBaoNghiService,
                 studentAcademicProfileService, sinhVienDashboardService, hocLaiCaiThienService,
-                studentTranscriptPdfService, null, null);
+                studentTranscriptPdfService, null, null, null);
     }
 
     @Autowired
@@ -83,7 +87,8 @@ public class StudentController {
                               RetakeCourseService hocLaiCaiThienService,
                               StudentTranscriptPdfService studentTranscriptPdfService,
                               CourseClassAnnouncementService thongBaoLopHocPhanService,
-                              @Autowired(required = false) RegistrationPeriodService registrationPeriodService) {
+                              @Autowired(required = false) RegistrationPeriodService registrationPeriodService,
+                              @Autowired(required = false) VerifiableTranscriptService verifiableTranscriptService) {
         this.lopHocPhanService = lopHocPhanService;
         this.dangKyService = dangKyService;
         this.diemService = diemService;
@@ -94,6 +99,7 @@ public class StudentController {
         this.studentTranscriptPdfService = studentTranscriptPdfService;
         this.thongBaoLopHocPhanService = thongBaoLopHocPhanService;
         this.registrationPeriodService = registrationPeriodService;
+        this.verifiableTranscriptService = verifiableTranscriptService;
     }
 
     @GetMapping("/lop-hoc-phan")
@@ -199,7 +205,44 @@ public class StudentController {
     @GetMapping("/sinh-vien/me/bang-diem/pdf")
     @PreAuthorize("hasRole('SINH_VIEN')")
     public ResponseEntity<byte[]> xuatBangDiemPdf(@RequestParam(required = false) Long hocKyId) {
-        StudentTranscriptPdfService.PdfFile tep = studentTranscriptPdfService.xuatBangDiemPdf(hocKyId);
+        StudentTranscriptPdfService.PdfFile tep;
+        if (verifiableTranscriptService != null) {
+            tep = verifiableTranscriptService.xuatBangDiemDienTuSinhVien(hocKyId);
+        } else {
+            tep = studentTranscriptPdfService.xuatBangDiemPdf(hocKyId);
+        }
+        HttpHeaders headers = ExportSecuritySupport.createSafeDownloadHeaders(tep.tenTep(), MediaType.APPLICATION_PDF);
+        if (tep.maXacMinh() != null && !tep.maXacMinh().isBlank()) {
+            headers.set("X-Verification-Code", tep.maXacMinh());
+            headers.add(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "X-Verification-Code");
+        }
+        if (tep.verificationUrl() != null && !tep.verificationUrl().isBlank()) {
+            headers.set("X-Verification-Url", tep.verificationUrl());
+            headers.add(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "X-Verification-Url");
+        }
+        if (tep.phienBan() != null) {
+            headers.set("X-Transcript-Version", String.valueOf(tep.phienBan()));
+            headers.add(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "X-Transcript-Version");
+        }
+        return new ResponseEntity<>(tep.noiDung(), headers, HttpStatus.OK);
+    }
+
+    @GetMapping("/sinh-vien/me/bang-diem-xac-thuc")
+    @PreAuthorize("hasRole('SINH_VIEN')")
+    public List<VerifiableTranscriptDtos.VerifiableTranscriptSummaryDto> danhSachBangDiemXacThucMe() {
+        if (verifiableTranscriptService == null) {
+            return List.of();
+        }
+        return verifiableTranscriptService.danhSachCuaSinhVienHienTai();
+    }
+
+    @GetMapping("/sinh-vien/me/bang-diem-xac-thuc/{id}/pdf")
+    @PreAuthorize("hasRole('SINH_VIEN')")
+    public ResponseEntity<byte[]> taiBangDiemDaCapMe(@PathVariable Long id) {
+        if (verifiableTranscriptService == null) {
+            throw ApiException.notFound("Tính năng bảng điểm xác thực chưa được kích hoạt");
+        }
+        StudentTranscriptPdfService.PdfFile tep = verifiableTranscriptService.taiPdfDaPhatHanh(id);
         HttpHeaders headers = ExportSecuritySupport.createSafeDownloadHeaders(tep.tenTep(), MediaType.APPLICATION_PDF);
         return new ResponseEntity<>(tep.noiDung(), headers, HttpStatus.OK);
     }

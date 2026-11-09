@@ -13,7 +13,8 @@ Dự án Quản lý đào tạo & Đăng ký học phần (QLSV) áp dụng mô 
 
 | Role | Hành động | Loại dữ liệu | Phạm vi bản ghi | Kết quả khi không có quyền |
 | :--- | :--- | :--- | :--- | :--- |
-| **Bất kỳ (Chưa đăng nhập)** | `POST /api/auth/login` | Tài khoản xác thực | Toàn bộ tài khoản | `401 Unauthorized` nếu sai mật khẩu / `403 Forbidden` nếu tài khoản bị khóa |
+| **Bất kỳ (Chưa đăng nhập)** | POST /api/auth/login | Tài khoản xác thực | Toàn bộ tài khoản | 401 Unauthorized nếu sai mật khẩu / 403 Forbidden nếu tài khoản bị khóa |
+| **Bất kỳ (Chưa đăng nhập)** | GET /api/public/bang-diem/xac-thuc/** | Xác minh bảng điểm điện tử | Bảng điểm có mã xác minh hợp lệ (chỉ trả thông tin tối thiểu) | 429 Too Many Requests nếu vượt giới hạn tốc độ; KHONG_HOP_LE nếu sai mã |
 | **Tất cả (Đã xác thực)** | `GET /api/auth/me` | Thông tin người dùng hiện tại | Chỉ tài khoản người dùng đang đăng nhập (`actor`) | `401 Unauthorized` nếu chưa đăng nhập / `403 Forbidden` nếu tài khoản bị khóa |
 | **Tất cả (Đã xác thực)** | `PUT /api/auth/change-password` | Mật khẩu tài khoản | Chỉ tài khoản người dùng đang đăng nhập (`actor`) | `401 Unauthorized` / `403 Forbidden` nếu tài khoản bị khóa |
 | **SINH_VIEN** | `GET /api/sinh-vien/me/thong-tin` | Hồ sơ sinh viên | Bản ghi sinh viên liên kết với tài khoản sinh viên đăng nhập | `401` nếu chưa đăng nhập; `403` nếu khác role hoặc tài khoản khóa |
@@ -47,7 +48,9 @@ Dự án Quản lý đào tạo & Đăng ký học phần (QLSV) áp dụng mô 
 | **GIANG_VIEN** | `GET, POST, PATCH /api/phuc-khao/**` | Phúc khảo điểm môn học | Chỉ các đơn phúc khảo thuộc các lớp do giảng viên phụ trách | `403 Forbidden` nếu ngoài phân công |
 | **GIANG_VIEN** | `POST /api/admin/**` | Quản trị hệ thống | Không có quyền | `403 Forbidden` |
 | **QUAN_TRI** | `GET, POST, PUT, DELETE /api/admin/sinh-vien/**` | Quản lý sinh viên | Toàn bộ sinh viên trong trường | `401` nếu chưa đăng nhập; `403` nếu không phải QUAN_TRI |
-| **QUAN_TRI** | `PATCH /api/admin/sinh-vien/{id}/trang-thai` | Khóa/Mở khóa tài khoản SV | Toàn bộ sinh viên | `401` / `403` |
+| **QUAN_TRI** | PATCH /api/admin/sinh-vien/{id}/trang-thai | Khóa/Mở khóa tài khoản SV | Toàn bộ sinh viên | 401 / 403 |
+| **QUAN_TRI** | GET, POST /api/admin/bang-diem-xac-thuc/** | Quản lý bảng điểm xác thực | Tra cứu toàn trường, tải PDF snapshot, thu hồi và cấp lại phiên bản mới | 401 / 403 |
+| **SINH_VIEN** | GET /api/sinh-vien/me/bang-diem-xac-thuc/** | Bảng điểm xác thực cá nhân | Chỉ danh sách và PDF snapshot của chính sinh viên đang đăng nhập | 401 / 403 |
 | **QUAN_TRI** | `POST /api/admin/sinh-vien/import-csv` | Bulk import sinh viên | Toàn trường | `401` / `403` |
 | **QUAN_TRI** | `GET, POST, PUT, DELETE /api/admin/giang-vien/**` | Quản lý giảng viên | Toàn bộ giảng viên trong trường | `401` / `403` |
 | **QUAN_TRI** | `PATCH /api/admin/giang-vien/{id}/trang-thai` | Khóa/Mở khóa tài khoản GV | Toàn bộ giảng viên | `401` / `403` |
