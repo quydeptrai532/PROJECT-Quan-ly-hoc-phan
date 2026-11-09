@@ -11,7 +11,7 @@ test.describe("Giảng viên", () => {
 
     await page.goto("/lop-cua-toi");
     await expect(page.getByRole("heading", { name: "Lớp học phần phụ trách" })).toBeVisible();
-    await expect(page.getByText("INT303.01")).toBeVisible();
+    await expect(page.getByText("INT303.01", { exact: true }).first()).toBeVisible();
 
     await page.getByRole("link", { name: /Nhập điểm & xem danh sách/ }).first().click();
     await expect(page.getByText("Danh sách sinh viên")).toBeVisible();
