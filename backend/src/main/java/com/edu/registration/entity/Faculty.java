@@ -21,6 +21,9 @@ public class Faculty {
     @Column(nullable = false, length = 150)
     private String ten;
 
+    @Column(name = "dang_hieu_luc", nullable = false)
+    private boolean dangHieuLuc = true;
+
     public Long getId() {
         return id;
     }
@@ -43,5 +46,13 @@ public class Faculty {
 
     public void setTen(String ten) {
         this.ten = ten;
+    }
+
+    public boolean isDangHieuLuc() {
+        return dangHieuLuc;
+    }
+
+    public void setDangHieuLuc(boolean dangHieuLuc) {
+        this.dangHieuLuc = dangHieuLuc;
     }
 }

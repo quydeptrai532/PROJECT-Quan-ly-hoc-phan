@@ -13,6 +13,9 @@ public interface MajorRepository extends JpaRepository<Major, Long> {
     List<Major> findAllByOrderByMaAsc();
 
     @EntityGraph(attributePaths = {"khoa"})
+    List<Major> findByDangHieuLucOrderByMaAsc(boolean dangHieuLuc);
+
+    @EntityGraph(attributePaths = {"khoa"})
     List<Major> findByKhoaIdOrderByMaAsc(Long khoaId);
 
     @EntityGraph(attributePaths = {"khoa"})
@@ -20,5 +23,13 @@ public interface MajorRepository extends JpaRepository<Major, Long> {
 
     boolean existsByMa(String ma);
 
+    boolean existsByMaIgnoreCase(String ma);
+
+    boolean existsByMaIgnoreCaseAndIdNot(String ma, Long id);
+
     Optional<Major> findByMa(String ma);
+
+    Optional<Major> findByMaIgnoreCase(String ma);
+
+    long countByKhoaId(Long khoaId);
 }

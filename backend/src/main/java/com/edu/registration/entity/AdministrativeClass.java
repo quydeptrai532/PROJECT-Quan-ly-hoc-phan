@@ -28,6 +28,9 @@ public class AdministrativeClass {
     @JoinColumn(name = "nganh_id", nullable = false)
     private Major nganh;
 
+    @Column(name = "dang_hieu_luc", nullable = false)
+    private boolean dangHieuLuc = true;
+
     public Long getId() {
         return id;
     }
@@ -58,5 +61,13 @@ public class AdministrativeClass {
 
     public void setNganh(Major nganh) {
         this.nganh = nganh;
+    }
+
+    public boolean isDangHieuLuc() {
+        return dangHieuLuc;
+    }
+
+    public void setDangHieuLuc(boolean dangHieuLuc) {
+        this.dangHieuLuc = dangHieuLuc;
     }
 }

@@ -222,6 +222,10 @@ public class CourseClassService {
             }
             Subject monHoc = monHocRepository.findById(request.monHocId())
                     .orElseThrow(() -> ApiException.notFound("Môn học không tồn tại"));
+            if (!monHoc.isDangHieuLuc()) {
+                throw ApiException.badRequest("Môn học " + monHoc.getMa() + " (" + monHoc.getTen()
+                        + ") đang ở trạng thái lưu trữ/ngừng hoạt động, không thể mở lớp học phần mới");
+            }
             Lecturer giangVien = giangVienRepository.findById(request.giangVienId())
                     .orElseThrow(() -> ApiException.notFound("Giảng viên không tồn tại"));
             Semester hocKy = hocKyService.lay(request.hocKyId());
@@ -269,6 +273,10 @@ public class CourseClassService {
             }
             Subject monHoc = monHocRepository.findById(request.monHocId())
                     .orElseThrow(() -> ApiException.notFound("Môn học không tồn tại"));
+            if (!monHoc.isDangHieuLuc() && !lop.getMonHoc().getId().equals(monHoc.getId())) {
+                throw ApiException.badRequest("Môn học " + monHoc.getMa() + " (" + monHoc.getTen()
+                        + ") đang ở trạng thái lưu trữ/ngừng hoạt động, không thể gán cho lớp học phần");
+            }
             Lecturer giangVien = giangVienRepository.findById(request.giangVienId())
                     .orElseThrow(() -> ApiException.notFound("Giảng viên không tồn tại"));
             Semester hocKy = hocKyService.lay(request.hocKyId());

@@ -54,4 +54,10 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
               and (:nganhId is null or sv.nganh.id = :nganhId)
             """)
     List<Student> findByKhoaIdAndNganhIdForAnalytics(@Param("khoaId") Long khoaId, @Param("nganhId") Long nganhId);
+
+    long countByKhoaId(Long khoaId);
+
+    long countByNganhId(Long nganhId);
+
+    long countByLopHanhChinhId(Long lopHanhChinhId);
 }

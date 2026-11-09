@@ -6,6 +6,7 @@ import {
   Info,
   Pencil,
   Plus,
+  RotateCcw,
   Search,
   Trash2,
   X,
@@ -81,7 +82,16 @@ export default function SubjectPage({ initialTab = "mon-hoc" }) {
     setActiveTab(initialTab);
   }, [initialTab]);
 
-  const { data: monHocList, loading, error, reload: reloadSubjects } = useApi("/admin/mon-hoc");
+  const [subjectStatusFilter, setSubjectStatusFilter] = useState("ACTIVE"); // "ACTIVE" | "ARCHIVED" | "ALL"
+  const [canRestoreCode, setCanRestoreCode] = useState(false);
+
+  const subjectApiEndpoint = useMemo(() => {
+    if (subjectStatusFilter === "ARCHIVED") return "/admin/mon-hoc?dangHieuLuc=false";
+    if (subjectStatusFilter === "ALL") return "/admin/mon-hoc?includeInactive=true";
+    return "/admin/mon-hoc?dangHieuLuc=true";
+  }, [subjectStatusFilter]);
+
+  const { data: monHocList, loading, error, reload: reloadSubjects } = useApi(subjectApiEndpoint);
   const { data: khoaList } = useApi("/admin/khoa");
   const { data: hocKyList } = useApi("/admin/hoc-ky");
   const { data: loaiQuanHeList } = useApi("/admin/loai-quan-he-mon");
@@ -240,6 +250,7 @@ export default function SubjectPage({ initialTab = "mon-hoc" }) {
     setEditing(null);
     setForm({ ...EMPTY_SUBJECT_FORM });
     setFormError("");
+    setCanRestoreCode(false);
     setModalOpen(true);
   };
 
@@ -252,6 +263,7 @@ export default function SubjectPage({ initialTab = "mon-hoc" }) {
       khoaId: String(row.khoaId || ""),
     });
     setFormError("");
+    setCanRestoreCode(false);
     setModalOpen(true);
   };
 
@@ -259,6 +271,7 @@ export default function SubjectPage({ initialTab = "mon-hoc" }) {
     event.preventDefault();
     setSaving(true);
     setFormError("");
+    setCanRestoreCode(false);
     setMessage("");
     try {
       const payload = {
@@ -277,6 +290,33 @@ export default function SubjectPage({ initialTab = "mon-hoc" }) {
       setModalOpen(false);
       reloadSubjects();
     } catch (err) {
+      const errMsg = getErrorMessage(err);
+      setFormError(errMsg);
+      if (!editing && (errMsg.includes("danh mục lưu trữ") || errMsg.includes("khoiPhucNeuDaLuuTru"))) {
+        setCanRestoreCode(true);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRestoreArchived = async () => {
+    setSaving(true);
+    setFormError("");
+    try {
+      const payload = {
+        ma: form.ma.trim(),
+        ten: form.ten.trim(),
+        soTinChi: Number(form.soTinChi),
+        khoaId: form.khoaId ? Number(form.khoaId) : null,
+        khoiPhucNeuDaLuuTru: true,
+      };
+      await api.post("/admin/mon-hoc", payload);
+      setMessage(`Đã khôi phục và cập nhật môn học ${payload.ma} thành công`);
+      setModalOpen(false);
+      setCanRestoreCode(false);
+      reloadSubjects();
+    } catch (err) {
       setFormError(getErrorMessage(err));
     } finally {
       setSaving(false);
@@ -287,7 +327,8 @@ export default function SubjectPage({ initialTab = "mon-hoc" }) {
     const daXacNhan = await confirm({
       title: "Xóa môn học",
       message: `Bạn có chắc muốn xóa môn ${row.ma} - ${row.ten}?`,
-      detail: "Không thể xóa môn học đang được tham chiếu bởi chương trình đào tạo, lớp học phần hoặc quan hệ môn.",
+      detail:
+        "Nếu môn học đã có lớp học phần, bảng điểm hoặc chương trình đào tạo tham chiếu, hệ thống sẽ tự động lưu trữ (soft delete) để bảo toàn dữ liệu lịch sử đào tạo. Nếu chưa có liên kết, môn học sẽ được xóa an toàn.",
       confirmLabel: "Xóa môn học",
       tone: "danger",
     });
@@ -295,8 +336,49 @@ export default function SubjectPage({ initialTab = "mon-hoc" }) {
     setActionError("");
     setMessage("");
     try {
-      await api.delete(`/admin/mon-hoc/${row.id}`);
-      setMessage("Đã xóa môn học");
+      const res = await api.delete(`/admin/mon-hoc/${row.id}`);
+      setMessage(res.data?.thongBao || "Đã xóa môn học");
+      reloadSubjects();
+    } catch (err) {
+      setActionError(getErrorMessage(err));
+    }
+  };
+
+  const restoreSubject = async (row) => {
+    const daXacNhan = await confirm({
+      title: "Khôi phục môn học",
+      message: `Khôi phục môn ${row.ma} - ${row.ten} trở lại danh mục giảng dạy?`,
+      detail: "Môn học sẽ có hiệu lực trở lại để mở lớp học phần và phục vụ đăng ký tín chỉ.",
+      confirmLabel: "Khôi phục",
+      tone: "primary",
+    });
+    if (!daXacNhan) return;
+    setActionError("");
+    setMessage("");
+    try {
+      const res = await api.put(`/admin/mon-hoc/${row.id}/khoi-phuc`);
+      setMessage(res.data?.thongBao || `Đã khôi phục môn học ${row.ma} thành công`);
+      reloadSubjects();
+    } catch (err) {
+      setActionError(getErrorMessage(err));
+    }
+  };
+
+  const removePermanent = async (row) => {
+    const daXacNhan = await confirm({
+      title: "Xóa vĩnh viễn môn học",
+      message: `Cảnh báo: Bạn có chắc chắn muốn xóa vĩnh viễn môn ${row.ma} - ${row.ten}?`,
+      detail:
+        "Thao tác này sẽ xóa bản ghi khỏi cơ sở dữ liệu. Nếu môn học vẫn còn liên kết với lớp học phần, điểm hoặc chương trình, hệ thống sẽ từ chối để bảo vệ toàn vẹn lịch sử.",
+      confirmLabel: "Xóa vĩnh viễn",
+      tone: "danger",
+    });
+    if (!daXacNhan) return;
+    setActionError("");
+    setMessage("");
+    try {
+      await api.delete(`/admin/mon-hoc/${row.id}?permanent=true`);
+      setMessage(`Đã xóa vĩnh viễn môn học ${row.ma}`);
       reloadSubjects();
     } catch (err) {
       setActionError(getErrorMessage(err));
@@ -682,6 +764,15 @@ export default function SubjectPage({ initialTab = "mon-hoc" }) {
                   </option>
                 ))}
               </select>
+              <select
+                className="input sm:w-48"
+                value={subjectStatusFilter}
+                onChange={(event) => setSubjectStatusFilter(event.target.value)}
+              >
+                <option value="ACTIVE">Đang giảng dạy</option>
+                <option value="ARCHIVED">Đã lưu trữ / Ngừng</option>
+                <option value="ALL">Tất cả trạng thái</option>
+              </select>
             </div>
             <p className="text-sm text-slate-500">{rows.length} môn học</p>
           </div>
@@ -705,6 +796,7 @@ export default function SubjectPage({ initialTab = "mon-hoc" }) {
                     <th className="th text-center">Tiết lý thuyết</th>
                     <th className="th text-center">Số buổi (3 tiết/buổi)</th>
                     <th className="th">Khoa</th>
+                    <th className="th text-center">Trạng thái</th>
                     <th className="th">Tạo / Cập nhật</th>
                     <th className="th text-right">Thao tác</th>
                   </tr>
@@ -718,32 +810,72 @@ export default function SubjectPage({ initialTab = "mon-hoc" }) {
                       <td className="td text-center">{tietLyThuyet(row.soTinChi)}</td>
                       <td className="td text-center">{soBuoiHoc(row.soTinChi)}</td>
                       <td className="td text-slate-500">{row.khoaTen}</td>
+                      <td className="td text-center">
+                        {row.dangHieuLuc !== false ? (
+                          <Badge tone="green">Đang giảng dạy</Badge>
+                        ) : (
+                          <div className="flex flex-col items-center gap-0.5">
+                            <Badge tone="amber">Đã lưu trữ</Badge>
+                            {row.lyDoLuuTru && (
+                              <span
+                                className="max-w-[130px] truncate text-[11px] text-slate-400"
+                                title={row.lyDoLuuTru}
+                              >
+                                {row.lyDoLuuTru}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </td>
                       <td className="td text-xs text-slate-500">{formatAuditMeta(row)}</td>
                       <td className="td">
                         <div className="flex justify-end gap-1">
-                          <button
-                            type="button"
-                            className="btn-secondary px-2.5 py-1.5 text-xs"
-                            onClick={() => moTienQuyet(row)}
-                          >
-                            Tiên quyết
-                          </button>
-                          <button
-                            type="button"
-                            className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100"
-                            onClick={() => openEdit(row)}
-                            title="Sửa"
-                          >
-                            <Pencil size={15} />
-                          </button>
-                          <button
-                            type="button"
-                            className="rounded-md p-1.5 text-rose-500 hover:bg-rose-50"
-                            onClick={() => remove(row)}
-                            title="Xóa"
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                          {row.dangHieuLuc !== false ? (
+                            <>
+                              <button
+                                type="button"
+                                className="btn-secondary px-2.5 py-1.5 text-xs"
+                                onClick={() => moTienQuyet(row)}
+                              >
+                                Tiên quyết
+                              </button>
+                              <button
+                                type="button"
+                                className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100"
+                                onClick={() => openEdit(row)}
+                                title="Sửa"
+                              >
+                                <Pencil size={15} />
+                              </button>
+                              <button
+                                type="button"
+                                className="rounded-md p-1.5 text-rose-500 hover:bg-rose-50"
+                                onClick={() => remove(row)}
+                                title="Xóa"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+                                onClick={() => restoreSubject(row)}
+                                title="Khôi phục môn học"
+                              >
+                                <RotateCcw size={13} /> Khôi phục
+                              </button>
+                              <button
+                                type="button"
+                                className="rounded-md p-1.5 text-rose-500 hover:bg-rose-50"
+                                onClick={() => removePermanent(row)}
+                                title="Xóa vĩnh viễn"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -1126,6 +1258,21 @@ export default function SubjectPage({ initialTab = "mon-hoc" }) {
           {formError && (
             <div className="sm:col-span-2">
               <Alert tone="error">{formError}</Alert>
+            </div>
+          )}
+          {canRestoreCode && (
+            <div className="sm:col-span-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
+              <p className="text-xs font-medium leading-relaxed text-amber-900">
+                Mã môn học này đã tồn tại trong danh mục lưu trữ. Bạn có thể khôi phục lại môn học và cập nhật theo thông tin vừa nhập mà không làm ảnh hưởng đến dữ liệu lịch sử.
+              </p>
+              <button
+                type="button"
+                className="btn-primary mt-2 text-xs"
+                onClick={handleRestoreArchived}
+                disabled={saving}
+              >
+                Khôi phục & Cập nhật môn học này
+              </button>
             </div>
           )}
           <Field label="Mã môn học" required>
