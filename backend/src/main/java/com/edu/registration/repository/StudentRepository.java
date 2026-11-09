@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -60,4 +62,14 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     long countByNganhId(Long nganhId);
 
     long countByLopHanhChinhId(Long lopHanhChinhId);
+
+    @EntityGraph(attributePaths = {"user", "khoa", "nganh", "lopHanhChinh"})
+    @Query(value = """
+        select sv from Student sv
+        where lower(sv.ma) like concat('%', :kw, '%') or lower(sv.hoTen) like concat('%', :kw, '%')
+        """, countQuery = """
+        select count(sv) from Student sv
+        where lower(sv.ma) like concat('%', :kw, '%') or lower(sv.hoTen) like concat('%', :kw, '%')
+        """)
+    Page<Student> searchForAdminLookup(@Param("kw") String kw, Pageable pageable);
 }
