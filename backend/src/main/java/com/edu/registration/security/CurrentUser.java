@@ -22,7 +22,11 @@ public class CurrentUser {
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Chưa đăng nhập");
         }
-        return userRepository.findByUsername(authentication.getName())
+        User user = userRepository.findByUsername(authentication.getName())
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Tài khoản không tồn tại"));
+        if (!user.isTrangThai()) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Tài khoản đã bị khóa, vui lòng liên hệ phòng đào tạo");
+        }
+        return user;
     }
 }

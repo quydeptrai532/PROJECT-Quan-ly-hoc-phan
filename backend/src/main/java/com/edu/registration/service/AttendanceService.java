@@ -502,6 +502,11 @@ public class AttendanceService {
         if (actor.getRole() == Role.GIANG_VIEN) {
             Lecturer gv = giangVienRepository.findByUser(actor)
                     .orElseThrow(() -> ApiException.forbidden("Không tìm thấy hồ sơ giảng viên"));
+            boolean assigned = dangKyHocPhanRepository.existsBySinhVienIdAndGiangVienIdAndTrangThai(
+                    sv.getId(), gv.getId(), RegistrationStatus.DA_DANG_KY);
+            if (!assigned) {
+                throw ApiException.forbidden("Bạn không có quyền xem thông tin sinh viên này do không phụ trách lớp của sinh viên");
+            }
             dangKys = dangKys.stream()
                     .filter(dk -> dk.getLopHocPhan().getGiangVien() != null
                             && dk.getLopHocPhan().getGiangVien().getId().equals(gv.getId()))
