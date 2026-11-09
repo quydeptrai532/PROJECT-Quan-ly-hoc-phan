@@ -167,13 +167,31 @@ public class GradeService {
         kiemTraQuyenSuaDiem(lop);
         kiemTraBangDiemChoPhepSua(lop);
 
+        int currentSheetVersion = lop != null ? lop.getPhienBanBangDiemHieuLuc() : 0;
+        Grade existingDiem = diemRepository.findByDangKyId(dangKyId).orElse(null);
+        Long currentGradeVer = existingDiem != null ? existingDiem.getVersion() : null;
+
+        if (request != null && request.phienBanBangDiem() != null && !request.phienBanBangDiem().equals(currentSheetVersion)) {
+            throw ApiException.gradeConflict("Bảng điểm lớp học phần đã bị thay đổi bởi người khác (phiên bản bảng điểm: "
+                    + currentSheetVersion + "). Vui lòng tải lại và đối chiếu.", currentGradeVer, currentSheetVersion);
+        }
+        if (existingDiem != null) {
+            if (request != null && request.version() != null && !request.version().equals(existingDiem.getVersion())) {
+                throw ApiException.gradeConflict("Điểm của sinh viên đã bị thay đổi bởi người khác (phiên bản hiện tại: "
+                        + existingDiem.getVersion() + "). Vui lòng tải lại và đối chiếu.", existingDiem.getVersion(), currentSheetVersion);
+            }
+        } else if (request != null && request.version() != null && !request.version().equals(0L)) {
+            throw ApiException.gradeConflict("Bản ghi điểm của sinh viên chưa tồn tại nhưng request mang phiên bản "
+                    + request.version() + ". Vui lòng tải lại và đối chiếu.", null, currentSheetVersion);
+        }
+
         Student sv = dangKy.getSinhVien();
         Long svId = sv != null ? sv.getId() : null;
         String maSv = sv != null ? sv.getMa() : null;
 
         List<ValidationErrorDetail> errors = new ArrayList<>();
-        validateDiem(request.diemQuaTrinh(), "diemQuaTrinh", dangKyId, svId, maSv, 1, errors);
-        validateDiem(request.diemCuoiKy(), "diemCuoiKy", dangKyId, svId, maSv, 1, errors);
+        validateDiem(request != null ? request.diemQuaTrinh() : null, "diemQuaTrinh", dangKyId, svId, maSv, 1, errors);
+        validateDiem(request != null ? request.diemCuoiKy() : null, "diemCuoiKy", dangKyId, svId, maSv, 1, errors);
 
         if (!errors.isEmpty()) {
             throw ApiException.validation(errors.get(0).message(), errors);
@@ -181,41 +199,69 @@ public class GradeService {
 
         Double tongKet = tinhDiemTongKet(request.diemQuaTrinh(), request.diemCuoiKy());
 
-        Grade diem = diemRepository.findByDangKyId(dangKyId).orElseGet(() -> {
-            Grade moi = new Grade();
-            moi.setDangKy(dangKy);
-            return moi;
-        });
+        Double diemQuaTrinhCu = existingDiem != null ? existingDiem.getDiemQuaTrinh() : null;
+        Double diemCuoiKyCu = existingDiem != null ? existingDiem.getDiemCuoiKy() : null;
+        Double diemTongKetCu = existingDiem != null ? existingDiem.getDiemTongKet() : null;
+        Long versionCu = existingDiem != null ? existingDiem.getVersion() : null;
+        int phienBanCu = currentSheetVersion;
+
+        Grade diem = existingDiem != null ? existingDiem : new Grade();
+        if (existingDiem == null) {
+            diem.setDangKy(dangKy);
+        }
         diem.setDiemQuaTrinh(request.diemQuaTrinh());
         diem.setDiemCuoiKy(request.diemCuoiKy());
         diem.setDiemTongKet(tongKet);
         diem.setCapNhatLuc(LocalDateTime.now());
-        Grade daLuu = diemRepository.save(diem);
 
-        if (lop.getTrangThaiBangDiem() == null) {
-            lop.setTrangThaiBangDiem(GradeSheetStatus.NHAP);
+        if (lop != null) {
+            lop.tangPhienBanBangDiem();
+            if (lop.getTrangThaiBangDiem() == null) {
+                lop.setTrangThaiBangDiem(GradeSheetStatus.NHAP);
+            }
             if (lop.getId() != null) {
                 lopHocPhanRepository.save(lop);
             }
         }
+        Grade daLuu = diemRepository.save(diem);
 
         final CourseClass lopRef = lop;
         executeAudited("GRADE_UPDATED", "GRADE", dangKyId, audit -> {
+            Map<String, Object> before = new LinkedHashMap<>();
+            before.put("dangKyId", dangKy.getId());
+            if (lopRef != null) {
+                before.put("lopHocPhanId", lopRef.getId());
+                before.put("maLop", lopRef.getMa());
+            }
+            before.put("diemQuaTrinhCu", diemQuaTrinhCu);
+            before.put("diemCuoiKyCu", diemCuoiKyCu);
+            before.put("diemTongKetCu", diemTongKetCu);
+            before.put("versionCu", versionCu);
+            before.put("phienBanBangDiemCu", phienBanCu);
+
             Map<String, Object> changes = new LinkedHashMap<>();
             changes.put("dangKyId", dangKy.getId());
-            changes.put("lopHocPhanId", lopRef.getId());
-            changes.put("maLop", lopRef.getMa());
+            if (lopRef != null) {
+                changes.put("lopHocPhanId", lopRef.getId());
+                changes.put("maLop", lopRef.getMa());
+                changes.put("phienBanBangDiemCu", phienBanCu);
+                changes.put("phienBanBangDiemMoi", lopRef.getPhienBanBangDiemHieuLuc());
+                changes.put("trangThaiBangDiem", lopRef.getTrangThaiBangDiemHieuLuc().name());
+            }
             changes.put("soBanGhiDiem", 1);
-            if (daLuu.getId() != null) {
+            if (daLuu != null && daLuu.getId() != null) {
                 changes.put("diemId", daLuu.getId());
             }
-            changes.put("trangThaiBangDiem", lopRef.getTrangThaiBangDiemHieuLuc().name());
-            audit.changes(Map.of(), changes);
+            changes.put("diemQuaTrinhMoi", daLuu != null ? daLuu.getDiemQuaTrinh() : null);
+            changes.put("diemCuoiKyMoi", daLuu != null ? daLuu.getDiemCuoiKy() : null);
+            changes.put("diemTongKetMoi", daLuu != null ? daLuu.getDiemTongKet() : null);
+            changes.put("versionMoi", daLuu != null ? daLuu.getVersion() : null);
+            audit.changes(before, changes);
             return null;
         });
 
         log.info("Đã lưu điểm cho đăng ký id={} thuộc lớp {} (trạng thái bảng điểm={})",
-                dangKy.getId(), lop.getMa(), lop.getTrangThaiBangDiemHieuLuc());
+                dangKy.getId(), lop != null ? lop.getMa() : null, lop != null ? lop.getTrangThaiBangDiemHieuLuc() : null);
         return mapper.diem(dangKy, daLuu);
     }
 
@@ -226,6 +272,12 @@ public class GradeService {
         CourseClass lop = layLopDeCapNhatBangDiem(lopHocPhanId);
         kiemTraQuyenSuaDiem(lop);
         kiemTraBangDiemChoPhepSua(lop);
+
+        int currentSheetVersion = lop.getPhienBanBangDiemHieuLuc();
+        if (request.phienBanBangDiem() != null && !request.phienBanBangDiem().equals(currentSheetVersion)) {
+            throw ApiException.gradeConflict("Bảng điểm lớp học phần đã bị thay đổi bởi người khác (phiên bản bảng điểm: "
+                    + currentSheetVersion + "). Vui lòng tải lại và đối chiếu.", null, currentSheetVersion);
+        }
 
         List<CourseRegistration> activeRegistrations =
                 dangKyHocPhanRepository.findByLopHocPhan(lopHocPhanId, RegistrationStatus.DA_DANG_KY);
@@ -262,6 +314,23 @@ public class GradeService {
         }
 
         Map<Long, Grade> diemMap = layDiemTheoDangKy(activeRegistrations);
+
+        // Kiểm tra optimistic lock version từng bản ghi điểm
+        for (RegistrationDtos.CapNhatDiemItemRequest item : request.danhSach()) {
+            Grade existing = diemMap.get(item.dangKyId());
+            if (existing != null) {
+                if (item.version() != null && !item.version().equals(existing.getVersion())) {
+                    throw ApiException.gradeConflict("Điểm của đăng ký id " + item.dangKyId()
+                            + " đã bị thay đổi bởi người khác (phiên bản hiện tại: " + existing.getVersion()
+                            + "). Vui lòng tải lại và đối chiếu.", existing.getVersion(), currentSheetVersion);
+                }
+            } else if (item.version() != null && !item.version().equals(0L)) {
+                throw ApiException.gradeConflict("Điểm của đăng ký id " + item.dangKyId()
+                        + " không tồn tại nhưng request mang phiên bản " + item.version()
+                        + ". Vui lòng tải lại và đối chiếu.", null, currentSheetVersion);
+            }
+        }
+
         LocalDateTime now = LocalDateTime.now();
         List<Grade> toSave = new ArrayList<>();
 
@@ -280,20 +349,27 @@ public class GradeService {
             toSave.add(diem);
         }
 
-        diemRepository.saveAll(toSave);
-
+        int phienBanCu = currentSheetVersion;
+        lop.tangPhienBanBangDiem();
         if (lop.getTrangThaiBangDiem() == null) {
             lop.setTrangThaiBangDiem(GradeSheetStatus.NHAP);
-            lopHocPhanRepository.save(lop);
         }
+        lopHocPhanRepository.save(lop);
+        diemRepository.saveAll(toSave);
 
         executeAudited("GRADE_UPDATED", "GRADE_SHEET", lopHocPhanId, audit -> {
+            Map<String, Object> before = new LinkedHashMap<>();
+            before.put("lopHocPhanId", lop.getId());
+            before.put("phienBanBangDiemCu", phienBanCu);
+
             Map<String, Object> changes = new LinkedHashMap<>();
             changes.put("lopHocPhanId", lop.getId());
             changes.put("maLop", lop.getMa());
             changes.put("soBanGhiDiem", toSave.size());
+            changes.put("phienBanBangDiemCu", phienBanCu);
+            changes.put("phienBanBangDiemMoi", lop.getPhienBanBangDiemHieuLuc());
             changes.put("trangThaiBangDiem", lop.getTrangThaiBangDiemHieuLuc().name());
-            audit.changes(Map.of(), changes);
+            audit.changes(before, changes);
             return null;
         });
 
@@ -725,16 +801,22 @@ public class GradeService {
         if (lop != null) {
             before.put("lopHocPhanId", lop.getId());
             before.put("maLop", lop.getMa());
+            before.put("phienBanBangDiemCu", lop.getPhienBanBangDiemHieuLuc());
         }
         before.put("diemQuaTrinh", diem.getDiemQuaTrinh());
         before.put("diemCuoiKy", diem.getDiemCuoiKy());
         before.put("diemTongKet", diem.getDiemTongKet());
+        before.put("versionCu", diem.getVersion());
 
         LocalDateTime now = LocalDateTime.now();
         diem.setDiemQuaTrinh(finalDiemQuaTrinh);
         diem.setDiemCuoiKy(finalDiemCuoiKy);
         diem.setDiemTongKet(tongKetMoi);
         diem.setCapNhatLuc(now);
+        if (lop != null) {
+            lop.tangPhienBanBangDiem();
+            lopHocPhanRepository.save(lop);
+        }
         Grade daLuu = diemRepository.save(diem);
 
         Map<String, Object> after = new LinkedHashMap<>();
@@ -746,10 +828,12 @@ public class GradeService {
             after.put("lopHocPhanId", lop.getId());
             after.put("maLop", lop.getMa());
             after.put("trangThaiBangDiem", lop.getTrangThaiBangDiemHieuLuc().name());
+            after.put("phienBanBangDiemMoi", lop.getPhienBanBangDiemHieuLuc());
         }
         after.put("diemQuaTrinh", daLuu.getDiemQuaTrinh());
         after.put("diemCuoiKy", daLuu.getDiemCuoiKy());
         after.put("diemTongKet", daLuu.getDiemTongKet());
+        after.put("versionMoi", daLuu.getVersion());
         after.put("phucKhaoId", phucKhaoId);
         after.put("lyDo", lyDo);
 

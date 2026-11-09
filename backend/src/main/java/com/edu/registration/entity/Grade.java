@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.time.LocalDateTime;
 
@@ -29,6 +30,10 @@ public class Grade {
     private Double diemCuoiKy;
 
     private Double diemTongKet;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version = 0L;
 
     @Column(nullable = false)
     private LocalDateTime capNhatLuc = LocalDateTime.now();
@@ -71,6 +76,14 @@ public class Grade {
 
     public void setDiemTongKet(Double diemTongKet) {
         this.diemTongKet = diemTongKet;
+    }
+
+    public Long getVersion() {
+        return version != null ? version : 0L;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 
     public LocalDateTime getCapNhatLuc() {

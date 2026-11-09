@@ -172,13 +172,22 @@ export default function GradeExcelImportModal({
                 {
                     previewToken: preview.previewToken,
                     fileSha256: preview.fileSha256,
+                    phienBanBangDiem: preview.phienBanBangDiem,
                 }
             );
             setImportResult(data);
             setPreview(null);
             onImportSuccess?.(data);
         } catch (err) {
-            setError(getErrorMessage(err));
+            const resp = err.response;
+            if (resp?.status === 409) {
+                setError(
+                    resp.data?.message ||
+                    "Bảng điểm đã bị người khác thay đổi trong quá trình xem trước (xung đột phiên bản). Vui lòng tải lại và thực hiện lại."
+                );
+            } else {
+                setError(getErrorMessage(err));
+            }
         } finally {
             setConfirmLoading(false);
         }

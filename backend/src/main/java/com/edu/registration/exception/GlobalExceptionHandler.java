@@ -2,10 +2,14 @@ package com.edu.registration.exception;
 
 import com.edu.registration.dto.ValidationErrorDetail;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import jakarta.persistence.OptimisticLockException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -14,8 +18,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -30,16 +32,40 @@ public class GlobalExceptionHandler {
     private static final Pattern INDEXED_FIELD_PATTERN = Pattern.compile(".*?\\[(\\d+)\\]\\.(.+)");
 
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
-    public record ErrorResponse(String message, Instant timestamp, List<ValidationErrorDetail> errors) {
+    public record ErrorResponse(
+            String message,
+            Instant timestamp,
+            List<ValidationErrorDetail> errors,
+            Long currentVersion,
+            Integer currentPhienBanBangDiem) {
+
         public ErrorResponse(String message, Instant timestamp) {
-            this(message, timestamp, List.of());
+            this(message, timestamp, List.of(), null, null);
+        }
+
+        public ErrorResponse(String message, Instant timestamp, List<ValidationErrorDetail> errors) {
+            this(message, timestamp, errors, null, null);
         }
     }
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ErrorResponse> handleApiException(ApiException ex) {
         return ResponseEntity.status(ex.getStatus())
-                .body(new ErrorResponse(ex.getMessage(), Instant.now(), ex.getErrors()));
+                .body(new ErrorResponse(
+                        ex.getMessage(),
+                        Instant.now(),
+                        ex.getErrors(),
+                        ex.getCurrentVersion(),
+                        ex.getCurrentPhienBanBangDiem()));
+    }
+
+    @ExceptionHandler({ObjectOptimisticLockingFailureException.class, OptimisticLockException.class})
+    public ResponseEntity<ErrorResponse> handleOptimisticLock(Exception ex) {
+        log.warn("Xung đột cập nhật đồng thời (Optimistic Locking): {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(
+                        "Dữ liệu đã được người khác cập nhật trước đó. Vui lòng tải lại trang để đối chiếu phiên bản mới nhất.",
+                        Instant.now()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
