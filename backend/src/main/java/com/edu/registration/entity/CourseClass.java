@@ -45,6 +45,10 @@ public class CourseClass {
     @Column(nullable = false, length = 20)
     private String phong;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "phong_hoc_id")
+    private Classroom phongHoc;
+
     @Column(nullable = false)
     private int thu;
 
@@ -231,6 +235,14 @@ public class CourseClass {
 
     public void setPhong(String phong) {
         this.phong = phong;
+    }
+
+    public Classroom getPhongHoc() {
+        return phongHoc;
+    }
+
+    public void setPhongHoc(Classroom phongHoc) {
+        this.phongHoc = phongHoc;
     }
 
     public int getThu() {

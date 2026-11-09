@@ -4,6 +4,8 @@ import com.edu.registration.config.ClassScheduleConflictProperties;
 import com.edu.registration.dto.CourseClassDtos;
 import com.edu.registration.dto.RegistrationDtos;
 import com.edu.registration.entity.ClassTransferHistory;
+import com.edu.registration.entity.Classroom;
+import com.edu.registration.entity.ClassroomStatus;
 import com.edu.registration.entity.CourseClass;
 import com.edu.registration.entity.CourseRegistration;
 import com.edu.registration.entity.Grade;
@@ -20,6 +22,7 @@ import com.edu.registration.entity.User;
 import com.edu.registration.exception.ApiException;
 import com.edu.registration.repository.ClassAbsenceNoticeRepository;
 import com.edu.registration.repository.ClassTransferHistoryRepository;
+import com.edu.registration.repository.ClassroomRepository;
 import com.edu.registration.repository.CourseClassRepository;
 import com.edu.registration.repository.CourseRegistrationRepository;
 import com.edu.registration.repository.GradeRepository;
@@ -66,6 +69,7 @@ public class CourseClassService {
     private final PrerequisiteSubjectRepository monTienQuyetRepository;
     private final StudentRepository sinhVienRepository;
     private final ClassTransferHistoryRepository classTransferHistoryRepository;
+    private final ClassroomRepository classroomRepository;
 
     public CourseClassService(CourseClassRepository lopHocPhanRepository, SubjectRepository monHocRepository,
                              LecturerRepository giangVienRepository,
@@ -75,7 +79,7 @@ public class CourseClassService {
                              CurrentUser currentUser, DtoMapper mapper, NotificationService thongBaoService) {
         this(lopHocPhanRepository, monHocRepository, giangVienRepository, dangKyHocPhanRepository,
                 null, thongBaoNghiRepository, hocKyService, auditLogService, currentUser, mapper, thongBaoService, null,
-                null, null, null, null);
+                null, null, null, null, null);
     }
 
     public CourseClassService(CourseClassRepository lopHocPhanRepository, SubjectRepository monHocRepository,
@@ -87,7 +91,7 @@ public class CourseClassService {
                              CurrentUser currentUser, DtoMapper mapper, NotificationService thongBaoService) {
         this(lopHocPhanRepository, monHocRepository, giangVienRepository, dangKyHocPhanRepository,
                 lichSuDangKyRepository, thongBaoNghiRepository, hocKyService, auditLogService, currentUser, mapper, thongBaoService, null,
-                null, null, null, null);
+                null, null, null, null, null);
     }
 
     public CourseClassService(CourseClassRepository lopHocPhanRepository, SubjectRepository monHocRepository,
@@ -100,7 +104,7 @@ public class CourseClassService {
                              ClassScheduleConflictService conflictService) {
         this(lopHocPhanRepository, monHocRepository, giangVienRepository, dangKyHocPhanRepository,
                 lichSuDangKyRepository, thongBaoNghiRepository, hocKyService, auditLogService, currentUser, mapper, thongBaoService, conflictService,
-                null, null, null, null);
+                null, null, null, null, null);
     }
 
     @Autowired
@@ -115,7 +119,8 @@ public class CourseClassService {
                              GradeRepository diemRepository,
                              PrerequisiteSubjectRepository monTienQuyetRepository,
                              StudentRepository sinhVienRepository,
-                             ClassTransferHistoryRepository classTransferHistoryRepository) {
+                             ClassTransferHistoryRepository classTransferHistoryRepository,
+                              @Autowired(required = false) ClassroomRepository classroomRepository) {
         this.lopHocPhanRepository = lopHocPhanRepository;
         this.monHocRepository = monHocRepository;
         this.giangVienRepository = giangVienRepository;
@@ -132,6 +137,7 @@ public class CourseClassService {
         this.monTienQuyetRepository = monTienQuyetRepository;
         this.sinhVienRepository = sinhVienRepository;
         this.classTransferHistoryRepository = classTransferHistoryRepository;
+        this.classroomRepository = classroomRepository;
     }
 
     @Transactional(readOnly = true)
@@ -1016,10 +1022,23 @@ public class CourseClassService {
     }
 
     private void apDung(CourseClass lop, CourseClassDtos.LopHocPhanRequest request) {
-        lop.setPhong(request.phong().trim());
+        String reqPhong = request.phong() != null ? request.phong().trim() : "";
+        lop.setPhong(reqPhong);
         lop.setThu(request.thu());
         lop.setTietBatDau(request.tietBatDau());
         lop.setSoTiet(request.soTiet());
         lop.setSiSoToiDa(request.siSoToiDa());
+
+        if (classroomRepository != null && !reqPhong.isBlank()) {
+            classroomRepository.findByMaIgnoreCase(reqPhong).ifPresent(cr -> {
+                if (cr.getTrangThai() == ClassroomStatus.BAO_TRI) {
+                    throw ApiException.badRequest("Phòng học " + cr.getMa() + " đang bảo trì, không thể xếp lịch cho lớp học phần");
+                }
+                if (cr.getTrangThai() == ClassroomStatus.NGUNG_SU_DUNG) {
+                    throw ApiException.badRequest("Phòng học " + cr.getMa() + " đã ngừng sử dụng, không thể xếp lịch cho lớp học phần");
+                }
+                lop.setPhongHoc(cr);
+            });
+        }
     }
 }

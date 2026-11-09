@@ -81,4 +81,12 @@ public interface CourseClassRepository extends JpaRepository<CourseClass, Long> 
     List<CourseClass> findByMonHocIdOrderByMaAsc(Long monHocId);
 
     long countByMonHocId(Long monHocId);
+
+    boolean existsByPhongIgnoreCase(String phong);
+
+    boolean existsByPhongHocId(Long phongHocId);
+
+    long countByPhongIgnoreCase(String phong);
+
+    long countByPhongHocId(Long phongHocId);
 }

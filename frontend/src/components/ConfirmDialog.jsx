@@ -62,10 +62,10 @@ export function ConfirmProvider({ children }) {
         footer={
           <>
             <button type="button" className="btn-secondary" onClick={() => close(false)}>
-              {options.cancelLabel || "Hủy"}
+              {options.cancelLabel || options.cancelText || "Hủy"}
             </button>
             <button type="button" className={tone.button} onClick={() => close(true)}>
-              {options.confirmLabel || "Xác nhận"}
+              {options.confirmLabel || options.confirmText || "Xác nhận"}
             </button>
           </>
         }

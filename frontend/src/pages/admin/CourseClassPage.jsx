@@ -58,6 +58,7 @@ export default function CourseClassPage() {
   const { data: hocKyList } = useApi("/admin/hoc-ky");
   const { data: monHocList } = useApi("/admin/mon-hoc");
   const { data: giangVienList } = useApi("/admin/giang-vien");
+  const { data: activeRooms } = useApi("/admin/phong-hoc/hoat-dong");
 
   const [hocKyId, setHocKyId] = useState(() => searchParams.get("hocKyId") || "");
   const [keyword, setKeyword] = useState(() => searchParams.get("keyword") || "");
@@ -1030,14 +1031,22 @@ export default function CourseClassPage() {
               ))}
             </select>
           </Field>
-          <Field label="Phòng học" required>
+          <Field label="Phòng học" required hint="Chỉ chọn hoặc nhập phòng đang hoạt động">
             <input
-              className="input"
+              className="input font-mono uppercase"
+              list="ds-phong-hoat-dong"
               value={form.phong}
-              onChange={(event) => setForm({ ...form, phong: event.target.value })}
+              onChange={(event) => setForm({ ...form, phong: event.target.value.toUpperCase() })}
               placeholder="VD: A101"
               required
             />
+            <datalist id="ds-phong-hoat-dong">
+              {(activeRooms || []).map((ph) => (
+                <option key={ph.id} value={ph.ma}>
+                  {ph.ma} - {ph.ten} ({ph.sucChua} chỗ{ph.loaiPhong ? ", " + ph.loaiPhong : ""})
+                </option>
+              ))}
+            </datalist>
           </Field>
           <Field label="Sĩ số tối đa" required>
             <input
