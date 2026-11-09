@@ -100,3 +100,10 @@ app:
     enforcement-policy: ${CLASS_SCHEDULE_CONFLICT_ENFORCEMENT:BLOCK_ON_CONFLICT}
     official-regulation: ${CLASS_SCHEDULE_CONFLICT_OFFICIAL_REGULATION:false}
     policy-note: ${CLASS_SCHEDULE_CONFLICT_POLICY_NOTE:Chính sách chặn lưu hay cho phép cảnh báo/ghi đè khi phát hiện trùng lịch giảng viên hoặc phòng học chưa được Chủ dự án chốt chính thức. Hệ thống hiện đang áp dụng chính sách chặn lưu (BLOCK_ON_CONFLICT) để đảm bảo không vi phạm quy chế thời khóa biểu.}
+  grade-appeal:
+    # QLSV-85 (TASK-AD-10): Cấu hình tập trung cho quy trình tiếp nhận và xử lý hồ sơ phúc khảo điểm
+    submission-window-days: ${GRADE_APPEAL_SUBMISSION_WINDOW_DAYS:15}
+    require-published-grade: ${GRADE_APPEAL_REQUIRE_PUBLISHED_GRADE:true}
+    auto-apply-grade-change: ${GRADE_APPEAL_AUTO_APPLY_GRADE_CHANGE:true}
+    official-regulation: ${GRADE_APPEAL_OFFICIAL_REGULATION:false}
+    sla-note: ${GRADE_APPEAL_SLA_NOTE:Thời hạn tiếp nhận hồ sơ phúc khảo (dự kiến 15 ngày kể từ ngày công bố điểm) và quy trình xử lý SLA đang áp dụng theo cấu hình tập trung dự kiến, chưa phải quy chế chính thức của Nhà trường và chờ Chủ dự án / Phòng Đào tạo phê duyệt.}

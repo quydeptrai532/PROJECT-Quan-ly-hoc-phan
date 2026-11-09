@@ -58,6 +58,7 @@ public class NotificationService {
     public static final String ATTENDANCE_ALERT_EVENT = "ATTENDANCE_THRESHOLD_ALERT";
     public static final String ATTENDANCE_RESOLVED_EVENT = "ATTENDANCE_ALERT_RESOLVED";
     public static final String CLASS_STUDENT_TRANSFERRED_EVENT = "CLASS_STUDENT_TRANSFERRED";
+    public static final String GRADE_APPEAL_EVENT = "GRADE_APPEAL_PROCESSED";
 
     private final NotificationRepository thongBaoRepository;
     private final CourseRegistrationRepository dangKyRepository;
@@ -294,6 +295,23 @@ public class NotificationService {
             if (tgtLecUser != null) {
                 send(tgtLecUser, eventType, baseKey + ":tgt-lec", tgtLecTitle, tgtLecMsg, "NORMAL", "/lop-cua-toi", effectiveTime);
             }
+        });
+    }
+
+    public void gradeAppealProcessed(User studentUser, String maHoSo, String tenMon,
+                                     String trangThai, String ketQua, LocalDateTime occurredAt) {
+        if (studentUser == null || studentUser.getId() == null) {
+            return;
+        }
+        LocalDateTime effectiveTime = occurredAt != null ? occurredAt : LocalDateTime.now();
+        String idempotencyKey = "grade-appeal:" + maHoSo + ":" + trangThai;
+        boolean chapThuan = "CHAP_THUAN".equalsIgnoreCase(trangThai);
+        String title = "Kết quả phúc khảo môn " + tenMon + " (" + (chapThuan ? "Chấp thuận" : "Giữ nguyên điểm") + ")";
+        String message = "Hồ sơ phúc khảo " + maHoSo + " môn " + tenMon + " đã được xử lý. Kết quả: " + ketQua;
+        String targetUrl = "/diem";
+
+        dispatchAfterCommit(GRADE_APPEAL_EVENT + ":" + idempotencyKey, () -> {
+            send(studentUser, GRADE_APPEAL_EVENT, idempotencyKey, title, message, "HIGH", targetUrl, effectiveTime);
         });
     }
 

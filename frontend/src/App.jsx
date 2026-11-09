@@ -34,6 +34,8 @@ import CurriculumPage from "./pages/admin/CurriculumPage";
 import SupportRequestsPage from "./pages/student/SupportRequestsPage";
 import AdminSupportRequestsPage from "./pages/admin/AdminSupportRequestsPage";
 import AuditAlertsPage from "./pages/admin/AuditAlertsPage";
+import GradeAppealsPage from "./pages/student/GradeAppealsPage";
+import AdminGradeAppealsPage from "./pages/admin/AdminGradeAppealsPage";
 
 function RootRedirect() {
   const { user } = useAuth();
@@ -108,6 +110,7 @@ export default function App() {
       <Route path="/chuyen-can-cua-toi" element={<ProtectedRoute roles={["SINH_VIEN"]}><StudentAttendancePage /></ProtectedRoute>} />
       <Route path="/tien-do" element={<ProtectedRoute roles={["SINH_VIEN"]}><ProgressPlannerPage /></ProtectedRoute>} />
       <Route path="/yeu-cau-ho-tro" element={<ProtectedRoute roles={["SINH_VIEN"]}><SupportRequestsPage /></ProtectedRoute>} />
+      <Route path="/phuc-khao-diem" element={<ProtectedRoute roles={["SINH_VIEN"]}><GradeAppealsPage /></ProtectedRoute>} />
       <Route
         path="/thong-bao"
         element={
@@ -257,6 +260,7 @@ export default function App() {
       />
       <Route path="/quan-tri/chuong-trinh-dao-tao" element={<ProtectedRoute roles={["QUAN_TRI"]}><CurriculumPage /></ProtectedRoute>} />
       <Route path="/quan-tri/yeu-cau-ho-tro" element={<ProtectedRoute roles={["QUAN_TRI"]}><AdminSupportRequestsPage /></ProtectedRoute>} />
+      <Route path="/quan-tri/phuc-khao" element={<ProtectedRoute roles={["QUAN_TRI"]}><AdminGradeAppealsPage /></ProtectedRoute>} />
 
       <Route
         path="/ho-so"

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Award, BookOpen, GraduationCap, ScrollText, TrendingUp } from "lucide-react";
+import { Award, BookOpen, FileCheck, GraduationCap, ScrollText, TrendingUp } from "lucide-react";
 import {
   CartesianGrid,
   Line,
@@ -74,6 +74,10 @@ export default function GradesPage() {
         description="Điểm thành phần, điểm tổng kết, GPA học kỳ và điểm tích lũy."
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            <Link to="/phuc-khao-diem" className="btn-secondary">
+              <FileCheck size={16} />
+              Phúc khảo điểm
+            </Link>
             <Link to="/lich-su-hoc-tap" className="btn-secondary">
               <ScrollText size={16} />
               Lịch sử học tập & môn chưa đạt
@@ -203,6 +207,7 @@ export default function GradesPage() {
                         <th className="th text-center">Cuối kỳ</th>
                         <th className="th text-center">Tổng kết</th>
                         <th className="th">Kết quả</th>
+                        <th className="th text-right">Thao tác</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -220,6 +225,19 @@ export default function GradesPage() {
                             {formatDiem(item.diemTongKet)}
                           </td>
                           <td className="td">{ketQuaBadge(item.diemTongKet)}</td>
+                          <td className="td text-right">
+                            {item.diemTongKet !== null ? (
+                              <Link
+                                to={`/phuc-khao-diem?dangKyId=${item.id}`}
+                                className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition"
+                                title="Nộp hồ sơ phúc khảo cho môn này"
+                              >
+                                Phúc khảo
+                              </Link>
+                            ) : (
+                              <span className="text-slate-300 text-xs">—</span>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>

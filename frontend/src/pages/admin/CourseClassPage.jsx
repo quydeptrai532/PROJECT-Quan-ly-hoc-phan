@@ -62,6 +62,8 @@ export default function CourseClassPage() {
 
   const [hocKyId, setHocKyId] = useState(() => searchParams.get("hocKyId") || "");
   const [keyword, setKeyword] = useState(() => searchParams.get("keyword") || "");
+  const [giangVienFilter, setGiangVienFilter] = useState("");
+  const [gradeStatusFilter, setGradeStatusFilter] = useState("");
   const [message, setMessage] = useState("");
   const [warning, setWarning] = useState("");
   const [actionError, setActionError] = useState("");
@@ -127,8 +129,18 @@ export default function CourseClassPage() {
   const params = hocKyId ? { hocKyId } : undefined;
   const { data: lopList, loading, error, reload } = useApi("/admin/lop-hoc-phan", params);
 
+  const pendingApprovalCount = useMemo(() => {
+    return (lopList || []).filter((l) => l.trangThaiBangDiem === "CHO_DUYET").length;
+  }, [lopList]);
+
   const rows = useMemo(() => {
-    const list = lopList || [];
+    let list = lopList || [];
+    if (giangVienFilter) {
+      list = list.filter((lop) => String(lop.giangVienId) === String(giangVienFilter));
+    }
+    if (gradeStatusFilter) {
+      list = list.filter((lop) => (lop.trangThaiBangDiem || "NHAP") === gradeStatusFilter);
+    }
     const term = keyword.trim().toLowerCase();
     if (!term) return list;
     return list.filter(
@@ -138,7 +150,7 @@ export default function CourseClassPage() {
         lop.maMon.toLowerCase().includes(term) ||
         lop.tenGiangVien.toLowerCase().includes(term)
     );
-  }, [lopList, keyword]);
+  }, [lopList, keyword, giangVienFilter, gradeStatusFilter]);
 
   const openCreate = () => {
     setEditing(null);
@@ -449,17 +461,108 @@ export default function CourseClassPage() {
       </div>
 
       <div className="card overflow-hidden">
+        {/* Quick Grade Sheet Approval Filters */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-slate-50/70 px-4 py-2.5">
+          <span className="text-xs font-semibold text-slate-500 mr-1">Trạng thái điểm:</span>
+          <button
+            type="button"
+            className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+              !gradeStatusFilter ? "bg-[#173f3a] text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+            }`}
+            onClick={() => setGradeStatusFilter("")}
+          >
+            Tất cả ({(lopList || []).length})
+          </button>
+          <button
+            type="button"
+            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+              gradeStatusFilter === "CHO_DUYET"
+                ? "bg-amber-600 text-white"
+                : "bg-white border border-slate-200 text-amber-700 hover:bg-amber-50"
+            }`}
+            onClick={() => setGradeStatusFilter("CHO_DUYET")}
+          >
+            Chờ duyệt
+            {pendingApprovalCount > 0 && (
+              <span className={`rounded-full px-1.5 text-[10px] font-bold ${
+                gradeStatusFilter === "CHO_DUYET" ? "bg-white text-amber-800" : "bg-amber-100 text-amber-900"
+              }`}>
+                {pendingApprovalCount}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+              gradeStatusFilter === "DA_DUYET" ? "bg-blue-600 text-white" : "bg-white border border-slate-200 text-blue-700 hover:bg-blue-50"
+            }`}
+            onClick={() => setGradeStatusFilter("DA_DUYET")}
+          >
+            Đã duyệt
+          </button>
+          <button
+            type="button"
+            className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+              gradeStatusFilter === "DA_CONG_BO" ? "bg-green-600 text-white" : "bg-white border border-slate-200 text-green-700 hover:bg-green-50"
+            }`}
+            onClick={() => setGradeStatusFilter("DA_CONG_BO")}
+          >
+            Đã công bố
+          </button>
+          <button
+            type="button"
+            className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+              gradeStatusFilter === "DA_KHOA" ? "bg-indigo-600 text-white" : "bg-white border border-slate-200 text-indigo-700 hover:bg-indigo-50"
+            }`}
+            onClick={() => setGradeStatusFilter("DA_KHOA")}
+          >
+            Đã khóa
+          </button>
+          <button
+            type="button"
+            className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+              gradeStatusFilter === "TRA_VE" ? "bg-rose-600 text-white" : "bg-white border border-slate-200 text-rose-700 hover:bg-rose-50"
+            }`}
+            onClick={() => setGradeStatusFilter("TRA_VE")}
+          >
+            Trả sửa
+          </button>
+          <button
+            type="button"
+            className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+              gradeStatusFilter === "NHAP" ? "bg-slate-600 text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+            }`}
+            onClick={() => setGradeStatusFilter("NHAP")}
+          >
+            Bản nháp
+          </button>
+        </div>
+
         <div className="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative w-full sm:max-w-sm">
-            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              className="input pl-9"
-              placeholder="Tìm lớp, môn học, giảng viên..."
-              value={keyword}
-              onChange={(event) => setKeyword(event.target.value)}
-            />
+          <div className="flex flex-wrap items-center gap-3 w-full sm:max-w-2xl">
+            <div className="relative w-full sm:max-w-xs">
+              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                className="input pl-9"
+                placeholder="Tìm lớp, môn học, giảng viên..."
+                value={keyword}
+                onChange={(event) => setKeyword(event.target.value)}
+              />
+            </div>
+            <select
+              className="input w-auto min-w-[200px]"
+              value={giangVienFilter}
+              onChange={(e) => setGiangVienFilter(e.target.value)}
+            >
+              <option value="">Tất cả giảng viên</option>
+              {(giangVienList || []).map((gv) => (
+                <option key={gv.id} value={gv.id}>
+                  {gv.hoTen} ({gv.ma})
+                </option>
+              ))}
+            </select>
           </div>
-          <p className="text-sm text-slate-500">{rows.length} lớp học phần</p>
+          <p className="text-sm text-slate-500 shrink-0">{rows.length} lớp học phần</p>
         </div>
 
         {loading ? (
@@ -755,6 +858,7 @@ export default function CourseClassPage() {
                       <button
                         type="button"
                         className="btn-primary text-xs"
+                        disabled={gradeDetailStatus.soSinhVienDuDieuKien < gradeDetailStatus.soSinhVienDangHoc || gradeDetailStatus.soSinhVienDangHoc === 0}
                         onClick={() => thucHienBangDiem(gradeDetailRow, "phe-duyet-diem", `Đã phê duyệt bảng điểm lớp ${gradeDetailRow.ma}`)}
                       >
                         <CheckCircle2 size={14} /> Phê duyệt
