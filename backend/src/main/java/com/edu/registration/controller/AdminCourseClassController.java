@@ -3,6 +3,7 @@ package com.edu.registration.controller;
 import com.edu.registration.dto.CourseClassDtos;
 import com.edu.registration.dto.RegistrationDtos;
 import com.edu.registration.service.CourseClassService;
+import com.edu.registration.entity.GradeSheetStatus;
 import com.edu.registration.service.GradeService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,9 +39,20 @@ public class AdminCourseClassController {
     }
 
     @GetMapping("/lop-hoc-phan")
-    public List<CourseClassDtos.LopHocPhanDto> danhSach(@RequestParam(required = false) Long hocKyId,
-                                                       @RequestParam(required = false) String keyword) {
-        return lopHocPhanService.danhSach(hocKyId, keyword);
+    public List<CourseClassDtos.LopHocPhanDto> danhSach(
+            @RequestParam(required = false) Long hocKyId,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long giangVienId,
+            @RequestParam(required = false) GradeSheetStatus trangThaiBangDiem) {
+        return lopHocPhanService.danhSach(hocKyId, keyword, giangVienId, trangThaiBangDiem);
+    }
+
+    @GetMapping("/lop-hoc-phan/cho-duyet")
+    public List<CourseClassDtos.LopHocPhanDto> danhSachChoDuyet(
+            @RequestParam(required = false) Long hocKyId,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long giangVienId) {
+        return lopHocPhanService.danhSach(hocKyId, keyword, giangVienId, GradeSheetStatus.CHO_DUYET);
     }
 
     @PostMapping("/lop-hoc-phan/kiem-tra-xung-dot")

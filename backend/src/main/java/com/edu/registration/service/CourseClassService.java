@@ -142,8 +142,23 @@ public class CourseClassService {
 
     @Transactional(readOnly = true)
     public List<CourseClassDtos.LopHocPhanDto> danhSach(Long hocKyId, String keyword) {
+        return danhSach(hocKyId, keyword, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CourseClassDtos.LopHocPhanDto> danhSach(Long hocKyId, String keyword, Long giangVienId, GradeSheetStatus trangThaiBangDiem) {
         Semester hocKy = hocKyService.layHoacHienTai(hocKyId);
         List<CourseClass> danhSach = lopHocPhanRepository.findByHocKyIdOrderByMaAsc(hocKy.getId());
+        if (giangVienId != null) {
+            danhSach = danhSach.stream()
+                    .filter(lop -> lop.getGiangVien() != null && giangVienId.equals(lop.getGiangVien().getId()))
+                    .toList();
+        }
+        if (trangThaiBangDiem != null) {
+            danhSach = danhSach.stream()
+                    .filter(lop -> lop.getTrangThaiBangDiemHieuLuc() == trangThaiBangDiem)
+                    .toList();
+        }
         if (keyword != null && !keyword.isBlank()) {
             String tuKhoa = keyword.trim().toLowerCase(Locale.ROOT);
             danhSach = danhSach.stream()

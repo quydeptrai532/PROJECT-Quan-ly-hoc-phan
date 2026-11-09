@@ -665,6 +665,90 @@ public class GradeService {
         return moKhoaBangDiem(lopHocPhanId, null);
     }
 
+    /**
+     * QLSV-85: Điều chỉnh điểm thông qua hồ sơ phúc khảo được chấp thuận.
+     * Đi qua luồng điều chỉnh có audit bắt buộc; ghi nhận snapshot trước/sau và lý do,
+     * tuyệt đối không sửa âm thầm điểm gốc và không mở khóa tùy tiện cả lớp.
+     */
+    public RegistrationDtos.DiemDto dieuChinhDiemPhucKhao(Long diemId, Long phucKhaoId,
+                                                          Double diemQuaTrinhMoi, Double diemCuoiKyMoi,
+                                                          String lyDo, User actor) {
+        if (diemId == null) {
+            throw ApiException.badRequest("Mã bản ghi điểm không được để trống");
+        }
+        Grade diem = diemRepository.findWithDetailsById(diemId)
+                .orElseThrow(() -> ApiException.notFound("Bản ghi điểm không tồn tại"));
+
+        CourseRegistration dangKy = diem.getDangKy();
+        CourseClass lop = dangKy != null ? dangKy.getLopHocPhan() : null;
+
+        if (actor == null || actor.getRole() != Role.QUAN_TRI) {
+            throw ApiException.forbidden("Chỉ người có quyền quản trị (QUAN_TRI) mới được điều chỉnh điểm sau phúc khảo");
+        }
+
+        List<ValidationErrorDetail> errors = new ArrayList<>();
+        Student sv = dangKy != null ? dangKy.getSinhVien() : null;
+        Long svId = sv != null ? sv.getId() : null;
+        String maSv = sv != null ? sv.getMa() : null;
+
+        Double finalDiemQuaTrinh = diemQuaTrinhMoi != null ? diemQuaTrinhMoi : diem.getDiemQuaTrinh();
+        Double finalDiemCuoiKy = diemCuoiKyMoi != null ? diemCuoiKyMoi : diem.getDiemCuoiKy();
+
+        validateDiem(finalDiemQuaTrinh, "diemQuaTrinh", dangKy != null ? dangKy.getId() : null, svId, maSv, 1, errors);
+        validateDiem(finalDiemCuoiKy, "diemCuoiKy", dangKy != null ? dangKy.getId() : null, svId, maSv, 1, errors);
+
+        if (!errors.isEmpty()) {
+            throw ApiException.validation(errors.get(0).message(), errors);
+        }
+
+        Double tongKetMoi = tinhDiemTongKet(finalDiemQuaTrinh, finalDiemCuoiKy);
+
+        Map<String, Object> before = new LinkedHashMap<>();
+        before.put("diemId", diem.getId());
+        if (dangKy != null) {
+            before.put("dangKyId", dangKy.getId());
+        }
+        if (lop != null) {
+            before.put("lopHocPhanId", lop.getId());
+            before.put("maLop", lop.getMa());
+        }
+        before.put("diemQuaTrinh", diem.getDiemQuaTrinh());
+        before.put("diemCuoiKy", diem.getDiemCuoiKy());
+        before.put("diemTongKet", diem.getDiemTongKet());
+
+        LocalDateTime now = LocalDateTime.now();
+        diem.setDiemQuaTrinh(finalDiemQuaTrinh);
+        diem.setDiemCuoiKy(finalDiemCuoiKy);
+        diem.setDiemTongKet(tongKetMoi);
+        diem.setCapNhatLuc(now);
+        Grade daLuu = diemRepository.save(diem);
+
+        Map<String, Object> after = new LinkedHashMap<>();
+        after.put("diemId", daLuu.getId());
+        if (dangKy != null) {
+            after.put("dangKyId", dangKy.getId());
+        }
+        if (lop != null) {
+            after.put("lopHocPhanId", lop.getId());
+            after.put("maLop", lop.getMa());
+            after.put("trangThaiBangDiem", lop.getTrangThaiBangDiemHieuLuc().name());
+        }
+        after.put("diemQuaTrinh", daLuu.getDiemQuaTrinh());
+        after.put("diemCuoiKy", daLuu.getDiemCuoiKy());
+        after.put("diemTongKet", daLuu.getDiemTongKet());
+        after.put("phucKhaoId", phucKhaoId);
+        after.put("lyDo", lyDo);
+
+        executeAudited("GRADE_ADJUSTED_VIA_APPEAL", "GRADE", diem.getId(), audit -> {
+            audit.changes(before, after);
+            return null;
+        });
+
+        log.info("Đã điều chỉnh điểm phúc khảo id={} cho đăng ký id={} (điểm mới: QT={}, CK={}, TK={})",
+                phucKhaoId, dangKy != null ? dangKy.getId() : null, finalDiemQuaTrinh, finalDiemCuoiKy, tongKetMoi);
+        return mapper.diem(dangKy, daLuu);
+    }
+
     @Transactional(readOnly = true)
     public RegistrationDtos.KetQuaHocTapDto ketQuaHocTap() {
         Student sinhVien = sinhVienHienTai();
