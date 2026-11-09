@@ -376,7 +376,12 @@ public class CourseClassService {
                     .orElseThrow(() -> ApiException.notFound("Lớp học phần không tồn tại"));
 
             if (lop.isDaHuy()) {
-                throw ApiException.badRequest("Lớp học phần " + lop.getMa() + " đã bị hủy trước đó");
+                return new CourseClassDtos.HuyLopHocPhanResponse(
+                        lop.getId(),
+                        lop.getMa(),
+                        0,
+                        lop.getLyDoHuy() != null ? lop.getLyDoHuy() : normalizedReason
+                );
             }
 
             Map<String, Object> before = auditSnapshot(lop);
