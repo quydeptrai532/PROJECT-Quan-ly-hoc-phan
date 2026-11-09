@@ -15,6 +15,7 @@ import java.util.Optional;
 public interface LecturerRepository extends JpaRepository<Lecturer, Long> {
 
     Optional<Lecturer> findByUser(User user);
+    Optional<Lecturer> findByUserId(Long userId);
 
     Optional<Lecturer> findByMa(String ma);
 
