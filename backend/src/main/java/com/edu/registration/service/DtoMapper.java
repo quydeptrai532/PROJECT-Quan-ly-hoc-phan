@@ -262,7 +262,8 @@ public class DtoMapper {
                 dangKy.getSinhVien().getEmail(),
                 diem != null ? diem.getDiemQuaTrinh() : null,
                 diem != null ? diem.getDiemCuoiKy() : null,
-                diem != null ? diem.getDiemTongKet() : null);
+                diem != null ? diem.getDiemTongKet() : null,
+                diem != null ? diem.getVersion() : null);
     }
 
     public RegistrationDtos.ThoiKhoaBieuDto thoiKhoaBieu(CourseRegistration dangKy) {

@@ -174,6 +174,7 @@ CREATE TABLE IF NOT EXISTS diem (
     diem_qua_trinh DOUBLE,
     diem_cuoi_ky DOUBLE,
     diem_tong_ket DOUBLE,
+    version BIGINT NOT NULL DEFAULT 0,
     cap_nhat_luc DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     CONSTRAINT fk_diem_dangky FOREIGN KEY (dang_ky_id) REFERENCES dang_ky_hoc_phan(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

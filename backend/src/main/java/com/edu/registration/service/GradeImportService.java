@@ -391,7 +391,8 @@ public class GradeImportService {
                     List.copyOf(allErrors),
                     now,
                     expiresAt,
-                    new AtomicBoolean(false)
+                    new AtomicBoolean(false),
+                    lop.getPhienBanBangDiemHieuLuc()
             );
             storePreviewSession(session);
 
@@ -416,7 +417,8 @@ public class GradeImportService {
                     properties.updatePolicy(),
                     properties.policyNote(),
                     previewRows,
-                    allErrors
+                    allErrors,
+                    lop.getPhienBanBangDiemHieuLuc()
             );
         } finally {
             deleteTempFileSafely(tempFile);
@@ -443,10 +445,21 @@ public class GradeImportService {
 
         gradeService.kiemTraBangDiemChoPhepSua(lop);
 
+        int currentPhienBan = lop.getPhienBanBangDiemHieuLuc();
+        if (request.phienBanBangDiem() != null && !request.phienBanBangDiem().equals(currentPhienBan)) {
+            throw ApiException.gradeConflict("Bảng điểm lớp học phần đã bị thay đổi bởi người khác (phiên bản bảng điểm: "
+                    + currentPhienBan + "). Vui lòng tải lại và đối chiếu.", null, currentPhienBan);
+        }
+
         String token = request.previewToken().trim();
         PreviewSession session = previewSessions.get(token);
         if (session == null) {
             throw ApiException.badRequest("Phiên xem trước (preview) không tồn tại hoặc đã hết hạn. Vui lòng tải tệp lên và xem trước lại");
+        }
+
+        if (session.phienBanBangDiem() != null && !session.phienBanBangDiem().equals(currentPhienBan)) {
+            throw ApiException.gradeConflict("Bảng điểm lớp học phần đã bị thay đổi trong quá trình xem trước (phiên bản hiện tại: "
+                    + currentPhienBan + "). Vui lòng tải tệp lên và xem trước lại.", null, currentPhienBan);
         }
 
         if (clock.instant().isAfter(session.expiresAt())) {
@@ -579,12 +592,17 @@ public class GradeImportService {
                 ));
             }
 
-            diemRepository.saveAll(toSave);
-
+            int phienBanCu = currentPhienBan;
+            lop.tangPhienBanBangDiem();
             if (lop.getTrangThaiBangDiem() == null) {
                 lop.setTrangThaiBangDiem(GradeSheetStatus.NHAP);
-                lopHocPhanRepository.save(lop);
             }
+            lopHocPhanRepository.save(lop);
+            diemRepository.saveAll(toSave);
+
+            Map<String, Object> auditBefore = new LinkedHashMap<>();
+            auditBefore.put("lopHocPhanId", lop.getId());
+            auditBefore.put("phienBanBangDiemCu", phienBanCu);
 
             Map<String, Object> auditAfter = new LinkedHashMap<>();
             auditAfter.put("lopHocPhanId", lop.getId());
@@ -595,10 +613,12 @@ public class GradeImportService {
             auditAfter.put("soCapNhat", soCapNhat);
             auditAfter.put("soThatBai", 0);
             auditAfter.put("soBanGhiDiem", toSave.size());
+            auditAfter.put("phienBanBangDiemCu", phienBanCu);
+            auditAfter.put("phienBanBangDiemMoi", lop.getPhienBanBangDiemHieuLuc());
             auditAfter.put("transactionPolicy", properties.transactionPolicy());
             auditAfter.put("updatePolicy", properties.updatePolicy());
             auditAfter.put("trangThaiBangDiem", lop.getTrangThaiBangDiemHieuLuc().name());
-            audit.changes(Map.of(), auditAfter);
+            audit.changes(auditBefore, auditAfter);
 
             log.info("Đã xác nhận import .xlsx cho lớp {} (id={}): tổng={}, tạo mới={}, cập nhật={}",
                     lop.getMa(), lop.getId(), session.rows().size(), soTaoMoi, soCapNhat);
@@ -978,7 +998,8 @@ public class GradeImportService {
             List<ValidationErrorDetail> errors,
             Instant createdAt,
             Instant expiresAt,
-            AtomicBoolean consumed
+            AtomicBoolean consumed,
+            Integer phienBanBangDiem
     ) {
     }
 

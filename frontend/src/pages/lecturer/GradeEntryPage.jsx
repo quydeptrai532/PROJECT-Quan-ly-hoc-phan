@@ -10,6 +10,7 @@ import {
     History,
     Lock,
     Megaphone,
+    RefreshCw,
     Save,
     Search,
     Send,
@@ -73,6 +74,7 @@ export default function GradeEntryPage() {
     const [message, setMessage] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
     const [analyticsReloadKey, setAnalyticsReloadKey] = useState(0);
+    const [conflictWarning, setConflictWarning] = useState(null);
 
     const [profileModalOpen, setProfileModalOpen] = useState(false);
     const [announcementModalOpen, setAnnouncementModalOpen] = useState(false);
@@ -199,10 +201,13 @@ export default function GradeEntryPage() {
         setBusyId(row.dangKyId);
         setError("");
         setMessage("");
+        setConflictWarning(null);
         try {
             const payload = {
                 diemQuaTrinh: quaTrinh === "" ? null : Number(quaTrinh),
                 diemCuoiKy: cuoiKy === "" ? null : Number(cuoiKy),
+                version: row.version,
+                phienBanBangDiem: trangThaiDetail?.phienBanBangDiem ?? lop?.phienBanBangDiem,
             };
             const { data } = await api.put(`/diem/${row.dangKyId}`, payload);
             setRows((current) =>
@@ -223,7 +228,11 @@ export default function GradeEntryPage() {
             setAnalyticsReloadKey((k) => k + 1);
         } catch (err) {
             const responseData = err.response?.data;
-            if (responseData?.errors && Array.isArray(responseData.errors) && responseData.errors.length > 0) {
+            if (err.response?.status === 409) {
+                const msg = responseData?.message || "Dữ liệu điểm đã bị người khác cập nhật (xung đột phiên bản). Vui lòng tải lại trang để đối chiếu và thử lại.";
+                setConflictWarning(msg);
+                setError(msg);
+            } else if (responseData?.errors && Array.isArray(responseData.errors) && responseData.errors.length > 0) {
                 const mapped = parseErrorsToFieldMap(responseData.errors, row.dangKyId);
                 setFieldErrors((current) => ({ ...current, ...mapped }));
                 setError(responseData.message || "Dữ liệu điểm không hợp lệ");
@@ -240,6 +249,7 @@ export default function GradeEntryPage() {
         setWorkflowBusy(true);
         setError("");
         setMessage("");
+        setConflictWarning(null);
 
         const clientErrors = {};
         const danhSachPayload = [];
@@ -260,10 +270,12 @@ export default function GradeEntryPage() {
             if (Object.keys(errs).length > 0) {
                 clientErrors[dkId] = errs;
             }
+            const existingRow = rows.find((r) => r.dangKyId === dkId);
             danhSachPayload.push({
                 dangKyId: dkId,
                 diemQuaTrinh: qtVal === "" ? null : Number(qtVal),
                 diemCuoiKy: ckVal === "" ? null : Number(ckVal),
+                version: existingRow?.version,
             });
         }
 
@@ -275,7 +287,11 @@ export default function GradeEntryPage() {
         }
 
         try {
-            const { data } = await api.put(`/giang-vien/lop-hoc-phan/${id}/diem`, { danhSach: danhSachPayload });
+            const phienBan = trangThaiDetail?.phienBanBangDiem ?? lop?.phienBanBangDiem;
+            const { data } = await api.put(`/giang-vien/lop-hoc-phan/${id}/diem`, {
+                danhSach: danhSachPayload,
+                phienBanBangDiem: phienBan,
+            });
             setRows((current) => {
                 const updatedMap = new Map((data || []).map((item) => [item.dangKyId, item]));
                 return current.map((row) => (updatedMap.has(row.dangKyId) ? { ...row, ...updatedMap.get(row.dangKyId) } : row));
@@ -287,7 +303,11 @@ export default function GradeEntryPage() {
             setAnalyticsReloadKey((k) => k + 1);
         } catch (err) {
             const responseData = err.response?.data;
-            if (responseData?.errors && Array.isArray(responseData.errors) && responseData.errors.length > 0) {
+            if (err.response?.status === 409) {
+                const msg = responseData?.message || "Bảng điểm đã bị người khác cập nhật (xung đột phiên bản). Vui lòng tải lại để đối chiếu.";
+                setConflictWarning(msg);
+                setError(msg);
+            } else if (responseData?.errors && Array.isArray(responseData.errors) && responseData.errors.length > 0) {
                 const mapped = parseErrorsToFieldMap(responseData.errors, null);
                 setFieldErrors((current) => ({ ...current, ...mapped }));
                 setError(responseData.message || "Dữ liệu cập nhật có điểm không hợp lệ; toàn bộ giao dịch đã được rollback.");
@@ -449,6 +469,32 @@ export default function GradeEntryPage() {
             <div className="mb-4 space-y-3">
                 {message && <Alert tone="success" onClose={() => setMessage("")}>{message}</Alert>}
                 {error && <Alert tone="error" onClose={() => setError("")}>{error}</Alert>}
+                {conflictWarning && (
+                    <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900 shadow-sm">
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-start gap-2.5">
+                                <AlertTriangle size={18} className="mt-0.5 shrink-0 text-amber-600" />
+                                <div className="space-y-1">
+                                    <p className="font-semibold text-amber-950">Xung đột dữ liệu chỉnh điểm (HTTP 409 Conflict)</p>
+                                    <p>{conflictWarning}</p>
+                                    <p className="text-amber-800">Dữ liệu trên màn hình đã cũ hơn phiên bản trên hệ thống do có người khác vừa cập nhật. Vui lòng tải lại và đối chiếu trước khi gửi lại để tránh ghi đè dữ liệu.</p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                className="btn-secondary whitespace-nowrap text-xs border-amber-300 bg-white hover:bg-amber-100 text-amber-900 font-medium"
+                                onClick={async () => {
+                                    setConflictWarning(null);
+                                    setEdits({});
+                                    setFieldErrors({});
+                                    await reloadAll();
+                                }}
+                            >
+                                <RefreshCw size={14} className="mr-1 inline" /> Tải lại & đối chiếu
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {trangThaiBangDiem === "TRA_VE" && (

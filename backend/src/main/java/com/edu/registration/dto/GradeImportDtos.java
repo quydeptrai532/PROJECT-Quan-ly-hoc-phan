@@ -76,15 +76,30 @@ public final class GradeImportDtos {
             String updatePolicy,
             String policyNote,
             List<PreviewRowDto> danhSachDong,
-            List<ValidationErrorDetail> errors
+            List<ValidationErrorDetail> errors,
+            Integer phienBanBangDiem
     ) {
+        public PreviewResponse(
+                String previewToken, String fileSha256, Instant expiresAt, Long lopHocPhanId,
+                String maLop, String tenMon, String tenTep, long kichThuocTep, String sheetName,
+                int tongSoDong, int soDongHopLe, int soDongLoi, int soTaoMoiDuKien, int soCapNhatDuKien,
+                boolean coTheXacNhan, String transactionPolicy, String updatePolicy, String policyNote,
+                List<PreviewRowDto> danhSachDong, List<ValidationErrorDetail> errors) {
+            this(previewToken, fileSha256, expiresAt, lopHocPhanId, maLop, tenMon, tenTep, kichThuocTep,
+                    sheetName, tongSoDong, soDongHopLe, soDongLoi, soTaoMoiDuKien, soCapNhatDuKien,
+                    coTheXacNhan, transactionPolicy, updatePolicy, policyNote, danhSachDong, errors, null);
+        }
     }
 
     public record ConfirmImportRequest(
             @NotBlank(message = "Mã phiên xem trước (previewToken) không được để trống")
             String previewToken,
-            String fileSha256
+            String fileSha256,
+            Integer phienBanBangDiem
     ) {
+        public ConfirmImportRequest(String previewToken, String fileSha256) {
+            this(previewToken, fileSha256, null);
+        }
     }
 
     public record ConfirmRowResultDto(
