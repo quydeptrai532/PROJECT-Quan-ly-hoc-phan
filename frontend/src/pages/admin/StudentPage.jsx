@@ -3,6 +3,7 @@ import { Download, Lock, LockOpen, Pencil, Plus, Search, Upload, UserRound } fro
 import api, { getErrorMessage } from "../../api/client";
 import { useConfirm } from "../../components/ConfirmDialog";
 import { Alert, Badge, EmptyState, Field, Modal, PageHeader, Spinner } from "../../components/ui";
+import UserImportModal from "../../components/UserImportModal";
 import { useApi } from "../../lib/useApi";
 
 const EMPTY_FORM = {
@@ -29,6 +30,7 @@ export default function StudentPage() {
   const [actionError, setActionError] = useState("");
   const [importResult, setImportResult] = useState(null);
   const [importing, setImporting] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [busyId, setBusyId] = useState(null);
   const fileRef = useRef(null);
 
@@ -157,16 +159,28 @@ export default function StudentPage() {
     }
   };
 
-  const taiFileMau = () => {
-    const csv = "\uFEFFma,hoTen,email,khoaId,nganhId,lopId\nSV010,Nguyen Van A,a@student.edu.vn,1,1,1\n";
-    const url = window.URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "mau-import-sinh-vien.csv";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
+  const taiFileMau = async () => {
+    try {
+      const response = await api.get("/admin/sinh-vien/import/template", { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: "text/csv;charset=utf-8" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "mau-import-sinh-vien.csv";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      const csv = "\uFEFFma,hoTen,email,khoaId,nganhId,lopId\nSV010,Nguyen Van A,a@student.edu.vn,1,1,1\n";
+      const url = window.URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "mau-import-sinh-vien.csv";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    }
   };
 
   return (
@@ -183,10 +197,9 @@ export default function StudentPage() {
             <button
               type="button"
               className="btn-secondary"
-              onClick={() => fileRef.current?.click()}
-              disabled={importing}
+              onClick={() => setImportModalOpen(true)}
             >
-              <Upload size={16} /> {importing ? "Đang nhập..." : "Nhập CSV"}
+              <Upload size={16} /> Nhập CSV (Xem trước & Kiểm tra)
             </button>
             <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={importCsv} />
             <button type="button" className="btn-primary" onClick={openCreate}>
@@ -410,6 +423,13 @@ export default function StudentPage() {
           </div>
         </form>
       </Modal>
+
+      <UserImportModal
+        open={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        type="sinh-vien"
+        onSuccess={reload}
+      />
     </div>
   );
 }

@@ -32,8 +32,10 @@ const ACTIONS = {
   LECTURER_ACCOUNT_STATUS_CHANGED: "Đổi trạng thái tài khoản giảng viên",
   STUDENT_ACCOUNT_CREATED: "Tạo tài khoản sinh viên",
   STUDENT_ACCOUNT_UPDATED: "Cập nhật tài khoản sinh viên",
+  STUDENT_IMPORTED_CSV: "Import sinh viên từ CSV",
   LECTURER_ACCOUNT_CREATED: "Tạo tài khoản giảng viên",
   LECTURER_ACCOUNT_UPDATED: "Cập nhật tài khoản giảng viên",
+  LECTURER_IMPORTED_CSV: "Import giảng viên từ CSV",
   COURSE_REGISTRATION: "Đăng ký học phần",
   COURSE_REGISTRATION_CANCELLED: "Hủy đăng ký học phần",
 };

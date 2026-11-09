@@ -50,12 +50,14 @@ public class UserService {
     private final TransactionTemplate transactionTemplate;
     private final UserAuthCache userAuthCache;
     private final AuditLogService auditLogService;
+    private final UserImportService userImportService;
 
     public UserService(UserRepository userRepository, StudentRepository sinhVienRepository,
                        LecturerRepository giangVienRepository, FacultyRepository khoaRepository,
                        MajorRepository nganhRepository, AdministrativeClassRepository lopHanhChinhRepository,
                        PasswordEncoder passwordEncoder, DtoMapper mapper, TransactionTemplate transactionTemplate,
-                       UserAuthCache userAuthCache, AuditLogService auditLogService) {
+                       UserAuthCache userAuthCache, AuditLogService auditLogService,
+                       UserImportService userImportService) {
         this.userRepository = userRepository;
         this.sinhVienRepository = sinhVienRepository;
         this.giangVienRepository = giangVienRepository;
@@ -67,6 +69,7 @@ public class UserService {
         this.transactionTemplate = transactionTemplate;
         this.userAuthCache = userAuthCache;
         this.auditLogService = auditLogService;
+        this.userImportService = userImportService;
     }
 
     @Transactional(readOnly = true)
@@ -198,44 +201,39 @@ public class UserService {
     }
 
     public UserDtos.ImportResultDto importSinhVien(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw ApiException.badRequest("Vui lòng chọn file CSV");
-        }
+        return userImportService.directImport(UserImportService.TargetType.SINH_VIEN, file);
+    }
 
-        List<String> loi = new ArrayList<>();
-        int thanhCong = 0;
+    public UserDtos.UserImportPreviewResponse previewImportSinhVien(MultipartFile file) {
+        return userImportService.preview(UserImportService.TargetType.SINH_VIEN, file);
+    }
 
-        try (Reader reader = new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8);
-             CSVParser parser = CSVFormat.DEFAULT.builder()
-                     .setTrim(true)
-                     .setIgnoreEmptyLines(true)
-                     .build()
-                     .parse(reader)) {
+    public UserDtos.ImportResultDto confirmImportSinhVien(UserDtos.UserConfirmImportRequest request) {
+        return userImportService.confirm(UserImportService.TargetType.SINH_VIEN, request);
+    }
 
-            for (CSVRecord record : parser) {
-                if (record.getRecordNumber() == 1 && "ma".equalsIgnoreCase(record.get(0))) {
-                    continue;
-                }
-                try {
-                    if (record.size() < 4) {
-                        throw ApiException.badRequest("Cần tối thiểu 4 cột: ma,hoTen,email,khoaId");
-                    }
-                    transactionTemplate.executeWithoutResult(status -> taoSinhVienTuRecord(
-                            record.get(0), record.get(1), record.get(2), null,
-                            parseLong(record, 3), parseLong(record, 4), parseLong(record, 5),
-                            record.get(0), MAT_KHAU_MAC_DINH));
-                    thanhCong++;
-                } catch (ApiException ex) {
-                    loi.add("Dòng " + record.getRecordNumber() + ": " + ex.getMessage());
-                } catch (RuntimeException ex) {
-                    loi.add("Dòng " + record.getRecordNumber() + ": dữ liệu không hợp lệ");
-                }
-            }
-        } catch (IOException ex) {
-            throw ApiException.badRequest("Không đọc được file CSV");
-        }
+    public byte[] getSinhVienTemplateCsv() {
+        return userImportService.xuatTemplateCsv(UserImportService.TargetType.SINH_VIEN);
+    }
 
-        return new UserDtos.ImportResultDto(thanhCong, loi);
+    public UserDtos.ImportResultDto importGiangVien(MultipartFile file) {
+        return userImportService.directImport(UserImportService.TargetType.GIANG_VIEN, file);
+    }
+
+    public UserDtos.UserImportPreviewResponse previewImportGiangVien(MultipartFile file) {
+        return userImportService.preview(UserImportService.TargetType.GIANG_VIEN, file);
+    }
+
+    public UserDtos.ImportResultDto confirmImportGiangVien(UserDtos.UserConfirmImportRequest request) {
+        return userImportService.confirm(UserImportService.TargetType.GIANG_VIEN, request);
+    }
+
+    public byte[] getGiangVienTemplateCsv() {
+        return userImportService.xuatTemplateCsv(UserImportService.TargetType.GIANG_VIEN);
+    }
+
+    public byte[] exportErrorReport(List<UserDtos.UserImportRowDetailDto> rows) {
+        return userImportService.xuatFileLoiCsv(rows);
     }
 
     private UserDtos.SinhVienDto taoSinhVienTuRecord(String ma, String hoTen, String email, String soDienThoai,
