@@ -1,5 +1,6 @@
 package com.edu.registration.config;
 
+import com.edu.registration.ratelimit.RateLimitFilter;
 import com.edu.registration.security.JwtAuthFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
@@ -30,11 +31,16 @@ import java.util.Map;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final RateLimitFilter rateLimitFilter;
     private final CorsProperties corsProperties;
     private final ObjectMapper objectMapper;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter, CorsProperties corsProperties, ObjectMapper objectMapper) {
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter,
+                          RateLimitFilter rateLimitFilter,
+                          CorsProperties corsProperties,
+                          ObjectMapper objectMapper) {
         this.jwtAuthFilter = jwtAuthFilter;
+        this.rateLimitFilter = rateLimitFilter;
         this.corsProperties = corsProperties;
         this.objectMapper = objectMapper;
     }
@@ -48,14 +54,22 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/auth/login", "/api/health", "/h2-console/**").permitAll()
+                        .requestMatchers(
+                                "/api/auth/login",
+                                "/api/health",
+                                "/h2-console/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html"
+                        ).permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) ->
                                 writeError(response, HttpServletResponse.SC_UNAUTHORIZED, "Phiên đăng nhập không hợp lệ"))
                         .accessDeniedHandler((request, response, deniedException) ->
                                 writeError(response, HttpServletResponse.SC_FORBIDDEN, "Bạn không có quyền thực hiện thao tác này")))
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(rateLimitFilter, JwtAuthFilter.class);
 
         return http.build();
     }
@@ -78,7 +92,7 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(corsProperties.allowedOrigins());
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
-        configuration.setExposedHeaders(List.of("Content-Disposition"));
+        configuration.setExposedHeaders(List.of("Content-Disposition", "X-RateLimit-Limit", "X-RateLimit-Remaining", "Retry-After"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

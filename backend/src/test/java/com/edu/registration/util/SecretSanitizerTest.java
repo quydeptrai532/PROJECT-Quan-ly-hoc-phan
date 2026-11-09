@@ -37,6 +37,22 @@ class SecretSanitizerTest {
     }
 
     @Test
+    void shouldSanitizePersonalGrades() {
+        String input = "Grade sync failed: diemQuaTrinh=8.5, diemCuoiKy=3.5, diemTongKet=5.5, diemChu=C, gpa=3.2";
+        String sanitized = SecretSanitizer.sanitize(input);
+
+        assertFalse(sanitized.contains("8.5"));
+        assertFalse(sanitized.contains("3.5"));
+        assertFalse(sanitized.contains("5.5"));
+        assertFalse(sanitized.contains("3.2"));
+        assertTrue(sanitized.contains("diemQuaTrinh=***GRADE_REDACTED***"));
+        assertTrue(sanitized.contains("diemCuoiKy=***GRADE_REDACTED***"));
+        assertTrue(sanitized.contains("diemTongKet=***GRADE_REDACTED***"));
+        assertTrue(sanitized.contains("diemChu=***GRADE_REDACTED***"));
+        assertTrue(sanitized.contains("gpa=***GRADE_REDACTED***"));
+    }
+
+    @Test
     void shouldTruncateExcessivelyLongErrors() {
         String longError = "A".repeat(2500);
         String sanitized = SecretSanitizer.sanitize(longError, 500);
