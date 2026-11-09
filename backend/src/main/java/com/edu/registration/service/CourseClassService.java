@@ -20,6 +20,13 @@ import com.edu.registration.entity.Subject;
 import com.edu.registration.entity.SubjectRelationType;
 import com.edu.registration.entity.User;
 import com.edu.registration.exception.ApiException;
+import com.edu.registration.room.ClassFacts;
+import com.edu.registration.room.PolicyMode;
+import com.edu.registration.room.RoomAssignmentChecker;
+import com.edu.registration.room.RoomCheckResult;
+import com.edu.registration.room.RoomFacts;
+import com.edu.registration.room.RoomIssue;
+import com.edu.registration.room.RoomPolicy;
 import com.edu.registration.repository.ClassAbsenceNoticeRepository;
 import com.edu.registration.repository.ClassTransferHistoryRepository;
 import com.edu.registration.repository.ClassroomRepository;
@@ -33,6 +40,7 @@ import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.repository.SubjectRepository;
 import com.edu.registration.security.CurrentUser;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -70,6 +78,12 @@ public class CourseClassService {
     private final StudentRepository sinhVienRepository;
     private final ClassTransferHistoryRepository classTransferHistoryRepository;
     private final ClassroomRepository classroomRepository;
+
+    @Value("${app.room-policy.hoat-dong:BAT_BUOC}")
+    private PolicyMode policyHoatDong = PolicyMode.BAT_BUOC;
+
+    @Value("${app.room-policy.suc-chua:CANH_BAO}")
+    private PolicyMode policySucChua = PolicyMode.CANH_BAO;
 
     public CourseClassService(CourseClassRepository lopHocPhanRepository, SubjectRepository monHocRepository,
                              LecturerRepository giangVienRepository,
@@ -232,6 +246,8 @@ public class CourseClassService {
 
             CourseClassDtos.KetQuaKiemTraXungDotDto ketQuaXungDot =
                     conflictService.kiemTraVaApDungKhiLuu(request, null);
+            List<String> canhBao = new ArrayList<>(ketQuaXungDot.moTaCanhBao());
+            canhBao.addAll(kiemTraPhong(request));
 
             CourseClass lop = new CourseClass();
             lop.setMa(ma);
@@ -247,7 +263,7 @@ public class CourseClassService {
             audit.changes(Map.of(), auditSnapshot(saved));
             return new CourseClassDtos.LopHocPhanResponse(
                     mapper.lopHocPhan(saved),
-                    ketQuaXungDot.moTaCanhBao(),
+                    canhBao,
                     ketQuaXungDot.danhSachXungDot(),
                     ketQuaXungDot.coXungDot(),
                     ketQuaXungDot.chinhSachEnforcement(),
@@ -267,9 +283,13 @@ public class CourseClassService {
             if (!lop.getMa().equalsIgnoreCase(ma) && lopHocPhanRepository.existsByMa(ma)) {
                 throw ApiException.conflict("Mã lớp học phần đã tồn tại");
             }
-            if (request.siSoToiDa() < lop.getSiSoHienTai()) {
+            long siSoDaDangKy = dangKyHocPhanRepository.countByLopHocPhanIdAndTrangThai(
+                    id,
+                    RegistrationStatus.DA_DANG_KY
+            );
+            if (request.siSoToiDa() < siSoDaDangKy) {
                 throw ApiException.badRequest("Sĩ số tối đa không được nhỏ hơn số sinh viên đã đăng ký ("
-                        + lop.getSiSoHienTai() + ")");
+                        + siSoDaDangKy + ")");
             }
             Subject monHoc = monHocRepository.findById(request.monHocId())
                     .orElseThrow(() -> ApiException.notFound("Môn học không tồn tại"));
@@ -283,6 +303,8 @@ public class CourseClassService {
 
             CourseClassDtos.KetQuaKiemTraXungDotDto ketQuaXungDot =
                     conflictService.kiemTraVaApDungKhiLuu(request, id);
+            List<String> canhBao = new ArrayList<>(ketQuaXungDot.moTaCanhBao());
+            canhBao.addAll(kiemTraPhong(request));
 
             lop.setMa(ma);
             lop.setMonHoc(monHoc);
@@ -294,7 +316,7 @@ public class CourseClassService {
             thongBaoService.sectionChanged(lop, before, after, null);
             return new CourseClassDtos.LopHocPhanResponse(
                     mapper.lopHocPhan(lop),
-                    ketQuaXungDot.moTaCanhBao(),
+                    canhBao,
                     ketQuaXungDot.danhSachXungDot(),
                     ketQuaXungDot.coXungDot(),
                     ketQuaXungDot.chinhSachEnforcement(),
@@ -1042,6 +1064,65 @@ public class CourseClassService {
         if (request.tietBatDau() + request.soTiet() - 1 > 12) {
             throw ApiException.badRequest("Lịch học vượt quá tiết 12");
         }
+    }
+
+    /**
+     * Kiểm tra trạng thái và sức chứa bằng danh mục Classroom hiện có.
+     * Xung đột lịch được xử lý tập trung bởi ClassScheduleConflictService.
+     */
+    private List<String> kiemTraPhong(CourseClassDtos.LopHocPhanRequest request) {
+        if (classroomRepository == null) {
+            return List.of();
+        }
+
+        String maPhong = request.phong().trim();
+        Classroom phong = classroomRepository.findByMaForUpdate(maPhong)
+                .orElseThrow(() -> ApiException.notFound("Không tìm thấy phòng học: " + maPhong));
+        if (phong.getTrangThai() == ClassroomStatus.BAO_TRI) {
+            throw ApiException.badRequest(
+                    "Phòng học " + phong.getMa() + " đang bảo trì, không thể xếp lịch cho lớp học phần"
+            );
+        }
+
+        if (phong.getTrangThai() == ClassroomStatus.NGUNG_SU_DUNG) {
+            throw ApiException.badRequest(
+                    "Phòng học " + phong.getMa() + " đã ngừng sử dụng, không thể xếp lịch cho lớp học phần"
+            );
+        }
+
+        RoomFacts roomFacts = new RoomFacts(
+                phong.getTrangThai() == ClassroomStatus.HOAT_DONG,
+                phong.getSucChua(),
+                phong.getLoaiPhong(),
+                Set.of()
+        );
+        ClassFacts classFacts = new ClassFacts(
+                request.siSoToiDa(),
+                null,
+                Set.of(),
+                request.thu(),
+                request.tietBatDau(),
+                request.soTiet()
+        );
+        RoomPolicy policy = new RoomPolicy(
+                policyHoatDong,
+                PolicyMode.TAT,
+                policySucChua,
+                PolicyMode.TAT,
+                PolicyMode.TAT
+        );
+
+        RoomCheckResult result = RoomAssignmentChecker.kiemTra(
+                roomFacts,
+                classFacts,
+                List.of(),
+                policy
+        );
+        if (!result.hopLe()) {
+            String message = String.join("; ", result.loi().stream().map(RoomIssue::message).toList());
+            throw ApiException.badRequest(message);
+        }
+        return result.canhBao().stream().map(RoomIssue::message).toList();
     }
 
     private void apDung(CourseClass lop, CourseClassDtos.LopHocPhanRequest request) {
