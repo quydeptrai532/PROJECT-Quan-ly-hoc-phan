@@ -38,8 +38,17 @@ public class AuditLogService {
             "soTinChiToiDa", "trangThai", "dangKyId", "lopHocPhanId", "active", "maMon", "tenMon", "soTinChi",
             "loaiDangKy", "khoaId", "nganhId", "lopId", "monTienQuyetId", "lyDoHuy", "soBanGhi",
             "maPhieu", "loaiYeuCau", "trangThaiCu", "trangThaiMoi", "soTepDinhKem", "diemId", "traoDoiId",
-            "trangThaiBangDiem", "phienBanCongBo", "soSinhVienDangHoc", "soSinhVienDuDieuKien", "soBanGhiDiem", "soNguoiNhan", "thongBaoLopId", "tieuDe",
-            "buoiHocId", "ngayHoc", "caHoc", "soSinhVienDiemDanh", "daKhoa", "thaoTacDiemDanh"
+            "trangThaiBangDiem", "phienBanCongBo", "phienBanBangDiem", "soSinhVienDangHoc", "soSinhVienDuDieuKien", "soBanGhiDiem", "soNguoiNhan", "thongBaoLopId", "tieuDe",
+            "buoiHocId", "ngayHoc", "caHoc", "soSinhVienDiemDanh", "daKhoa", "thaoTacDiemDanh",
+            "canhBaoId", "sinhVienId", "soBuoiVang", "tongBuoiHopLe", "tyLeVang", "loaiNguong", "giaTriNguong",
+            "trangThaiCanhBao", "nguongSoBuoiVang", "nguongTyLeVang",
+            "kichHoat", "nguong", "cuaSoPhut", "mucDo",
+            "soTaoMoi", "soCapNhat", "soThatBai", "tongSoDong", "transactionPolicy", "updatePolicy", "tenTep",
+            "lyDo", "lyDoTraVe", "lyDoMoKhoa", "hanhDong", "nguoiThucHienId", "choPhepSuaDiem",
+            "loaiQuanHe", "monLienQuanId", "maMonLienQuan", "dieuKienDat", "yeuCauDat",
+            "maNhomTuChon", "tinChiTuChonYeuCau", "khoaNhapHoc", "hocKyHieuLucTuId", "hocKyHieuLucDenId",
+            "hieuLucTu", "hieuLucDen", "dangHieuLuc", "maKhoaHoc", "tenKhoaHoc", "nienKhoa",
+            "namBatDau", "namKetThuc", "hocKyBatDauId", "hocKyKetThucId", "nguoiTaoUsername", "nguoiCapNhatUsername"
     );
 
     private final AuditLogRepository repository;
@@ -90,6 +99,46 @@ public class AuditLogService {
         return repository.search(fromTime, toTime, normalize(actor), normalize(action), normalize(entityType),
                         normalize(entityId), PageRequest.of(safePage, safeSize, sort))
                 .map(this::toDto);
+    }
+
+    /** Xem một bản ghi audit theo id (dùng để truy ngược từ cảnh báo bất thường). */
+    public AuditLogDtos.AuditLogDto get(Long id) {
+        return repository.findById(id)
+                .map(this::toDto)
+                .orElseThrow(() -> ApiException.notFound("Không tìm thấy bản ghi audit"));
+    }
+
+    /**
+     * Ghi nhận một lần đăng nhập thất bại. Lúc này chưa có người dùng đăng nhập nên không dùng execute();
+     * ghi trong transaction riêng để không bị rollback cùng yêu cầu đăng nhập, và không bao giờ làm hỏng luồng đăng nhập.
+     */
+    public void recordLoginFailure(User knownUser, String attemptedUsername, String reason) {
+        String name = attemptedUsername == null ? "" : attemptedUsername.trim();
+        if (name.isEmpty()) {
+            name = "unknown";
+        }
+        if (name.length() > 50) {
+            name = name.substring(0, 50);
+        }
+        final String actorName = name;
+        try {
+            failureTransaction.executeWithoutResult(status -> {
+                AuditLog row = new AuditLog();
+                row.setActorUserId(knownUser == null ? 0L : knownUser.getId());
+                row.setActorUsername(actorName);
+                row.setActorRole(knownUser == null ? "ANONYMOUS" : knownUser.getRole().name());
+                row.setAction("LOGIN_FAILED");
+                row.setEntityType("AUTH");
+                row.setEntityId(null);
+                row.setOccurredAt(LocalDateTime.now());
+                row.setResult("FAILURE");
+                row.setCorrelationId(correlationId());
+                row.setDetailsJson(serialize(Map.of("errorCode", reason)));
+                repository.saveAndFlush(row);
+            });
+        } catch (RuntimeException ex) {
+            log.error("Không ghi được audit đăng nhập thất bại cho user={}", actorName, ex);
+        }
     }
 
     private void save(User actor, String action, String entityType, AuditContext context,

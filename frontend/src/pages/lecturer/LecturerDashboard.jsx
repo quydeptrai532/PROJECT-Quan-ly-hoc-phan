@@ -37,13 +37,16 @@ const CHART_TOOLTIP = {
 const GRADE_SHEET_STATUS_BADGE = {
   NHAP: { label: "Bản nháp", tone: "slate" },
   CHO_DUYET: { label: "Chờ duyệt", tone: "amber" },
+  TRA_VE: { label: "Trả về chỉnh sửa", tone: "red" },
   DA_DUYET: { label: "Đã duyệt", tone: "sky" },
   DA_CONG_BO: { label: "Đã công bố", tone: "emerald" },
+  DA_KHOA: { label: "Đã khóa", tone: "indigo" },
 };
 
 const TASK_BADGE = {
   NHAP_DIEM: { label: "Cần nhập điểm", tone: "amber" },
   GUI_DUYET: { label: "Chờ gửi duyệt", tone: "indigo" },
+  TRA_VE: { label: "Trả về chỉnh sửa", tone: "red" },
   CHO_DUYET: { label: "Đang chờ duyệt", tone: "sky" },
   CHO_CONG_BO: { label: "Chờ công bố", tone: "emerald" },
 };
@@ -234,7 +237,7 @@ export default function LecturerDashboard() {
                   Công việc cần xử lý
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Theo dõi bảng điểm nháp, thiếu điểm hoặc đang chờ duyệt
+                  Theo dõi bảng điểm nháp, trả về chỉnh sửa, thiếu điểm hoặc đang chờ duyệt
                 </p>
               </div>
             </div>

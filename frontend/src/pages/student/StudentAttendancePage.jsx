@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import {
+  AlertTriangle,
   CalendarCheck,
   CalendarDays,
   CheckCircle,
@@ -17,6 +18,10 @@ export default function StudentAttendancePage() {
 
   const params = useMemo(() => (hocKyId ? { hocKyId } : {}), [hocKyId]);
   const { data: reportData, loading, error, reload } = useApi("/sinh-vien/me/chuyen-can", params);
+  const { data: alertsData } = useApi("/sinh-vien/me/canh-bao-diem-danh");
+  const activeAlerts = useMemo(() => {
+    return (alertsData || []).filter((a) => a.trangThai === "DANG_CANH_BAO");
+  }, [alertsData]);
 
   const danhSach = reportData || [];
 
@@ -76,6 +81,21 @@ export default function StudentAttendancePage() {
       />
 
       {error && <Alert tone="error">{error}</Alert>}
+
+      {activeAlerts.length > 0 && (
+        <Alert tone="warning">
+          <div className="font-semibold text-amber-950 flex items-center gap-1.5">
+            <AlertTriangle size={16} /> Cảnh báo nghỉ quá ngưỡng ({activeAlerts.length})
+          </div>
+          <div className="mt-2 space-y-1.5 text-xs text-amber-900 leading-relaxed">
+            {activeAlerts.map((a) => (
+              <div key={a.id} className="p-2.5 bg-amber-100/70 rounded-lg border border-amber-200">
+                <span className="font-semibold text-amber-950">{a.maLop} — {a.tenMon}:</span> {a.thongDiep}
+              </div>
+            ))}
+          </div>
+        </Alert>
+      )}
 
       {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

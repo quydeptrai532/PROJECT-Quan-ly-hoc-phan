@@ -1,30 +1,30 @@
 package com.edu.registration.concurrent;
 
-import com.edu.registration.entity.DangKyHocPhan;
+import com.edu.registration.entity.CourseRegistration;
 import com.edu.registration.entity.AuditLog;
-import com.edu.registration.entity.ThongBao;
-import com.edu.registration.entity.GiangVien;
-import com.edu.registration.entity.HocKy;
-import com.edu.registration.entity.Khoa;
-import com.edu.registration.entity.LopHocPhan;
-import com.edu.registration.entity.MonHoc;
+import com.edu.registration.entity.Notification;
+import com.edu.registration.entity.Lecturer;
+import com.edu.registration.entity.Semester;
+import com.edu.registration.entity.Faculty;
+import com.edu.registration.entity.CourseClass;
+import com.edu.registration.entity.Subject;
 import com.edu.registration.entity.Role;
-import com.edu.registration.entity.SinhVien;
-import com.edu.registration.entity.TrangThaiDangKy;
+import com.edu.registration.entity.Student;
+import com.edu.registration.entity.RegistrationStatus;
 import com.edu.registration.entity.User;
-import com.edu.registration.repository.DangKyHocPhanRepository;
+import com.edu.registration.repository.CourseRegistrationRepository;
 import com.edu.registration.repository.AuditLogRepository;
-import com.edu.registration.repository.ThongBaoRepository;
-import com.edu.registration.repository.GiangVienRepository;
-import com.edu.registration.repository.HocKyRepository;
-import com.edu.registration.repository.KhoaRepository;
-import com.edu.registration.repository.LopHocPhanRepository;
-import com.edu.registration.repository.MonHocRepository;
-import com.edu.registration.repository.MonTienQuyetRepository;
-import com.edu.registration.repository.SinhVienRepository;
+import com.edu.registration.repository.NotificationRepository;
+import com.edu.registration.repository.LecturerRepository;
+import com.edu.registration.repository.SemesterRepository;
+import com.edu.registration.repository.FacultyRepository;
+import com.edu.registration.repository.CourseClassRepository;
+import com.edu.registration.repository.SubjectRepository;
+import com.edu.registration.repository.PrerequisiteSubjectRepository;
+import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.repository.UserRepository;
 import com.edu.registration.security.JwtService;
-import com.edu.registration.service.ThongBaoService;
+import com.edu.registration.service.NotificationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -90,17 +90,17 @@ class ConcurrentRegistrationIntegrationTest {
 
     @Autowired private TestRestTemplate http;
     @Autowired private UserRepository userRepository;
-    @Autowired private SinhVienRepository sinhVienRepository;
-    @Autowired private KhoaRepository khoaRepository;
-    @Autowired private HocKyRepository hocKyRepository;
-    @Autowired private MonHocRepository monHocRepository;
-    @Autowired private MonTienQuyetRepository monTienQuyetRepository;
-    @Autowired private GiangVienRepository giangVienRepository;
-    @Autowired private LopHocPhanRepository lopHocPhanRepository;
-    @Autowired private DangKyHocPhanRepository dangKyRepository;
+    @Autowired private StudentRepository sinhVienRepository;
+    @Autowired private FacultyRepository khoaRepository;
+    @Autowired private SemesterRepository hocKyRepository;
+    @Autowired private SubjectRepository monHocRepository;
+    @Autowired private PrerequisiteSubjectRepository monTienQuyetRepository;
+    @Autowired private LecturerRepository giangVienRepository;
+    @Autowired private CourseClassRepository lopHocPhanRepository;
+    @Autowired private CourseRegistrationRepository dangKyRepository;
     @Autowired private AuditLogRepository auditLogRepository;
-    @SpyBean private ThongBaoRepository thongBaoRepository;
-    @Autowired private ThongBaoService thongBaoService;
+    @SpyBean private NotificationRepository thongBaoRepository;
+    @Autowired private NotificationService thongBaoService;
     @SpyBean private AuditLogRepository auditLogRepositorySpy;
     @Autowired private JwtService jwtService;
     @Autowired private DataSource dataSource;
@@ -113,8 +113,8 @@ class ConcurrentRegistrationIntegrationTest {
 
     private String runId;
     private List<User> students;
-    private LopHocPhan primarySection;
-    private LopHocPhan secondSection;
+    private CourseClass primarySection;
+    private CourseClass secondSection;
 
     @BeforeEach
     void createIsolatedFixture() {
@@ -122,12 +122,12 @@ class ConcurrentRegistrationIntegrationTest {
         assertTrue(studentCount > capacity, "student-count phải lớn hơn capacity để có tranh suất");
         assertTrue(concurrency > 0, "concurrency phải lớn hơn 0");
         runId = UUID.randomUUID().toString().replace("-", "").substring(0, 10);
-        Khoa khoa = new Khoa();
+        Faculty khoa = new Faculty();
         khoa.setMa("T" + runId);
         khoa.setTen("Khoa concurrency test " + runId);
         khoa = khoaRepository.saveAndFlush(khoa);
 
-        HocKy hocKy = new HocKy();
+        Semester hocKy = new Semester();
         hocKy.setTen("Concurrency test " + runId);
         hocKy.setNamHoc("2099-2100");
         hocKy.setNgayBatDau(LocalDate.now().minusDays(1));
@@ -138,7 +138,7 @@ class ConcurrentRegistrationIntegrationTest {
         hocKy.setSoTinChiToiDa(24);
         hocKy = hocKyRepository.saveAndFlush(hocKy);
 
-        MonHoc mon = new MonHoc();
+        Subject mon = new Subject();
         mon.setMa("T" + runId);
         mon.setTen("Môn concurrency test " + runId);
         mon.setSoTinChi(3);
@@ -150,7 +150,7 @@ class ConcurrentRegistrationIntegrationTest {
         lecturerUser.setPassword("unused");
         lecturerUser.setRole(Role.GIANG_VIEN);
         lecturerUser = userRepository.saveAndFlush(lecturerUser);
-        GiangVien lecturer = new GiangVien();
+        Lecturer lecturer = new Lecturer();
         lecturer.setUser(lecturerUser);
         lecturer.setMa("GV" + runId);
         lecturer.setHoTen("Giảng viên test");
@@ -167,7 +167,7 @@ class ConcurrentRegistrationIntegrationTest {
             user.setPassword("unused");
             user.setRole(Role.SINH_VIEN);
             user = userRepository.saveAndFlush(user);
-            SinhVien student = new SinhVien();
+            Student student = new Student();
             student.setUser(user);
             student.setMa("SV" + runId + i);
             student.setHoTen("Sinh viên test " + i);
@@ -185,9 +185,9 @@ class ConcurrentRegistrationIntegrationTest {
         long successes = attempts.stream().filter(Attempt::success).count();
         long conflicts = attempts.stream().filter(attempt -> attempt.status() == 409).count();
         entityManager.clear();
-        LopHocPhan storedSection = lopHocPhanRepository.findById(primarySection.getId()).orElseThrow();
+        CourseClass storedSection = lopHocPhanRepository.findById(primarySection.getId()).orElseThrow();
         long activeRows = dangKyRepository.countByLopHocPhanIdAndTrangThai(
-                primarySection.getId(), TrangThaiDangKy.DA_DANG_KY);
+                primarySection.getId(), RegistrationStatus.DA_DANG_KY);
 
         assertEquals(Math.min(capacity, requests), successes, "Số đăng ký thành công phải lấp đúng sức chứa");
         assertEquals(requests - successes, conflicts, "Yêu cầu thua cuộc phải nhận HTTP 409 nghiệp vụ");
@@ -207,7 +207,7 @@ class ConcurrentRegistrationIntegrationTest {
         assertEquals(1, attempts.stream().filter(attempt -> attempt.status() == 409).count());
         assertEquals(1, dangKyRepository.findTheoHocKy(
                 sinhVienRepository.findByUser(students.get(0)).orElseThrow().getId(),
-                primarySection.getHocKy().getId(), TrangThaiDangKy.DA_DANG_KY).size());
+                primarySection.getHocKy().getId(), RegistrationStatus.DA_DANG_KY).size());
     }
 
     @Test
@@ -218,7 +218,7 @@ class ConcurrentRegistrationIntegrationTest {
         assertEquals(HttpStatus.OK, first.getStatusCode());
         assertEquals(HttpStatus.CONFLICT, duplicate.getStatusCode());
         assertEquals(1, dangKyRepository.countByLopHocPhanIdAndTrangThai(
-                primarySection.getId(), TrangThaiDangKy.DA_DANG_KY));
+                primarySection.getId(), RegistrationStatus.DA_DANG_KY));
         entityManager.clear();
         assertEquals(1, lopHocPhanRepository.findById(primarySection.getId()).orElseThrow().getSiSoHienTai());
     }
@@ -234,18 +234,18 @@ class ConcurrentRegistrationIntegrationTest {
 
         assertEquals(HttpStatus.OK, cancelled.getStatusCode());
         entityManager.clear();
-        DangKyHocPhan row = dangKyRepository.findById(registrationId).orElseThrow();
-        LopHocPhan section = lopHocPhanRepository.findById(primarySection.getId()).orElseThrow();
-        assertEquals(TrangThaiDangKy.DA_HUY, row.getTrangThai());
+        CourseRegistration row = dangKyRepository.findById(registrationId).orElseThrow();
+        CourseClass section = lopHocPhanRepository.findById(primarySection.getId()).orElseThrow();
+        assertEquals(RegistrationStatus.DA_HUY, row.getTrangThai());
         assertEquals(0, section.getSiSoHienTai());
         assertEquals(0, dangKyRepository.countByLopHocPhanIdAndTrangThai(
-                primarySection.getId(), TrangThaiDangKy.DA_DANG_KY));
+                primarySection.getId(), RegistrationStatus.DA_DANG_KY));
 
         ResponseEntity<String> retried = postRegistration(students.get(0), primarySection.getId());
         assertEquals(HttpStatus.OK, retried.getStatusCode());
         assertEquals(registrationId, readId(retried.getBody()), "Đăng ký lại phải kích hoạt bản ghi đã hủy");
         entityManager.clear();
-        assertEquals(TrangThaiDangKy.DA_DANG_KY,
+        assertEquals(RegistrationStatus.DA_DANG_KY,
                 dangKyRepository.findById(registrationId).orElseThrow().getTrangThai());
         assertEquals(1, lopHocPhanRepository.findById(primarySection.getId()).orElseThrow().getSiSoHienTai());
     }
@@ -256,7 +256,7 @@ class ConcurrentRegistrationIntegrationTest {
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(1, dangKyRepository.countByLopHocPhanIdAndTrangThai(
-                primarySection.getId(), TrangThaiDangKy.DA_DANG_KY));
+                primarySection.getId(), RegistrationStatus.DA_DANG_KY));
         entityManager.clear();
         assertEquals(1, lopHocPhanRepository.findById(primarySection.getId()).orElseThrow().getSiSoHienTai());
     }
@@ -269,9 +269,9 @@ class ConcurrentRegistrationIntegrationTest {
         assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
         assertTrue(response.getBody().contains("đã đăng ký môn"));
         assertEquals(0, dangKyRepository.countByLopHocPhanIdAndTrangThai(
-                primarySection.getId(), TrangThaiDangKy.DA_DANG_KY));
+                primarySection.getId(), RegistrationStatus.DA_DANG_KY));
         assertEquals(0, dangKyRepository.countByLopHocPhanIdAndTrangThai(
-                secondSection.getId(), TrangThaiDangKy.DA_DANG_KY));
+                secondSection.getId(), RegistrationStatus.DA_DANG_KY));
         entityManager.clear();
         assertEquals(0, lopHocPhanRepository.findById(primarySection.getId()).orElseThrow().getSiSoHienTai());
         assertEquals(0, lopHocPhanRepository.findById(secondSection.getId()).orElseThrow().getSiSoHienTai());
@@ -279,13 +279,13 @@ class ConcurrentRegistrationIntegrationTest {
 
     @Test
     void confirmationRechecksPrerequisitesOnTheServer() throws Exception {
-        MonHoc prerequisite = new MonHoc();
+        Subject prerequisite = new Subject();
         prerequisite.setMa("P" + runId);
         prerequisite.setTen("Môn tiên quyết test " + runId);
         prerequisite.setSoTinChi(3);
         prerequisite.setKhoa(primarySection.getMonHoc().getKhoa());
         prerequisite = monHocRepository.saveAndFlush(prerequisite);
-        monTienQuyetRepository.saveAndFlush(new com.edu.registration.entity.MonTienQuyet(
+        monTienQuyetRepository.saveAndFlush(new com.edu.registration.entity.PrerequisiteSubject(
                 primarySection.getMonHoc(), prerequisite));
 
         ResponseEntity<String> response = confirmPlan(students.get(0), List.of(primarySection.getId()));
@@ -293,7 +293,7 @@ class ConcurrentRegistrationIntegrationTest {
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertTrue(response.getBody().contains("tiên quyết"));
         assertEquals(0, dangKyRepository.countByLopHocPhanIdAndTrangThai(
-                primarySection.getId(), TrangThaiDangKy.DA_DANG_KY));
+                primarySection.getId(), RegistrationStatus.DA_DANG_KY));
         assertEquals(0, thongBaoRepository.countByRecipientIdAndReadAtIsNull(students.get(0).getId()));
         entityManager.clear();
         assertEquals(0, lopHocPhanRepository.findById(primarySection.getId()).orElseThrow().getSiSoHienTai());
@@ -309,7 +309,7 @@ class ConcurrentRegistrationIntegrationTest {
         assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
         assertTrue(response.getBody().contains("đủ sĩ số"));
         assertEquals(0, dangKyRepository.countByLopHocPhanIdAndTrangThai(
-                primarySection.getId(), TrangThaiDangKy.DA_DANG_KY));
+                primarySection.getId(), RegistrationStatus.DA_DANG_KY));
         entityManager.clear();
         assertEquals(capacity, lopHocPhanRepository.findById(primarySection.getId()).orElseThrow().getSiSoHienTai());
     }
@@ -341,9 +341,9 @@ class ConcurrentRegistrationIntegrationTest {
     void registrationCreatesIdempotentNoticesForTheStudentAndResponsibleLecturer() {
         assertEquals(HttpStatus.OK, postRegistration(students.get(0), primarySection.getId()).getStatusCode());
 
-        List<ThongBao> studentNotices = thongBaoRepository.findByRecipientId(students.get(0).getId(),
+        List<Notification> studentNotices = thongBaoRepository.findByRecipientId(students.get(0).getId(),
                 org.springframework.data.domain.PageRequest.of(0, 20)).getContent();
-        List<ThongBao> lecturerNotices = thongBaoRepository.findByRecipientId(
+        List<Notification> lecturerNotices = thongBaoRepository.findByRecipientId(
                 primarySection.getGiangVien().getUser().getId(),
                 org.springframework.data.domain.PageRequest.of(0, 20)).getContent();
         assertEquals(1, studentNotices.stream().filter(n -> n.getEventType().equals("COURSE_REGISTRATION_CONFIRMED")).count());
@@ -380,9 +380,9 @@ class ConcurrentRegistrationIntegrationTest {
                 HttpMethod.DELETE, new HttpEntity<>(headers), String.class);
         assertEquals(HttpStatus.BAD_REQUEST, retryCancel.getStatusCode());
 
-        List<ThongBao> notices = thongBaoRepository.findByRecipientId(students.get(0).getId(),
+        List<Notification> notices = thongBaoRepository.findByRecipientId(students.get(0).getId(),
                 org.springframework.data.domain.PageRequest.of(0, 20)).getContent();
-        List<ThongBao> cancelNotices = notices.stream()
+        List<Notification> cancelNotices = notices.stream()
                 .filter(n -> "COURSE_REGISTRATION_CANCELLED".equals(n.getEventType()))
                 .toList();
         assertEquals(1, cancelNotices.size());
@@ -424,11 +424,11 @@ class ConcurrentRegistrationIntegrationTest {
         assertTrue(retrySectionCancel.getBody().contains("\"soDangKyBiHuy\":0"));
 
         entityManager.clear();
-        assertEquals(TrangThaiDangKy.DA_HUY, dangKyRepository.findById(reg0Id).orElseThrow().getTrangThai());
+        assertEquals(RegistrationStatus.DA_HUY, dangKyRepository.findById(reg0Id).orElseThrow().getTrangThai());
         assertEquals(0, lopHocPhanRepository.findById(primarySection.getId()).orElseThrow().getSiSoHienTai());
 
         // Student 0 (who was active at cancellation time) receives COURSE_SECTION_CANCELLED
-        List<ThongBao> student0SectionNotices = thongBaoRepository.findByRecipientId(students.get(0).getId(),
+        List<Notification> student0SectionNotices = thongBaoRepository.findByRecipientId(students.get(0).getId(),
                 org.springframework.data.domain.PageRequest.of(0, 20)).getContent().stream()
                 .filter(n -> "COURSE_SECTION_CANCELLED".equals(n.getEventType()))
                 .toList();
@@ -450,7 +450,7 @@ class ConcurrentRegistrationIntegrationTest {
     @Test
     void notificationPersistenceFailureDoesNotRollbackRegistrationAndIsRecoveredOnList() {
         doThrow(new DataAccessResourceFailureException("notification table unavailable"))
-                .when(thongBaoRepository).save(any(ThongBao.class));
+                .when(thongBaoRepository).save(any(Notification.class));
 
         ResponseEntity<String> registered = postRegistration(students.get(0), primarySection.getId());
         assertEquals(HttpStatus.OK, registered.getStatusCode());
@@ -458,7 +458,7 @@ class ConcurrentRegistrationIntegrationTest {
 
         // Registration is durably committed even though notification save failed
         entityManager.clear();
-        assertEquals(TrangThaiDangKy.DA_DANG_KY,
+        assertEquals(RegistrationStatus.DA_DANG_KY,
                 dangKyRepository.findById(registrationId).orElseThrow().getTrangThai());
         assertEquals(1, lopHocPhanRepository.findById(primarySection.getId()).orElseThrow().getSiSoHienTai());
         assertEquals(0, thongBaoRepository.countByRecipientIdAndReadAtIsNull(students.get(0).getId()));
@@ -506,8 +506,8 @@ class ConcurrentRegistrationIntegrationTest {
 
     @Test
     void notificationReadsAndUpdatesAreRestrictedToTheAuthenticatedRecipient() {
-        ThongBao own = saveNotice(students.get(0), "own-notice");
-        ThongBao other = saveNotice(students.get(1), "other-notice");
+        Notification own = saveNotice(students.get(0), "own-notice");
+        Notification other = saveNotice(students.get(1), "other-notice");
         HttpEntity<Void> ownRequest = new HttpEntity<>(headersFor(students.get(0)));
         HttpEntity<Void> otherRequest = new HttpEntity<>(headersFor(students.get(1)));
 
@@ -552,7 +552,7 @@ class ConcurrentRegistrationIntegrationTest {
 
     @Test
     void adminActionAnalyticsUsesActiveRegistrationsAndSupportsSemesterAndFacultyFilters() {
-        MonHoc lowEnrollmentSubject = new MonHoc();
+        Subject lowEnrollmentSubject = new Subject();
         lowEnrollmentSubject.setMa("L" + runId);
         lowEnrollmentSubject.setTen("Môn ít đăng ký " + runId);
         lowEnrollmentSubject.setSoTinChi(3);
@@ -587,7 +587,7 @@ class ConcurrentRegistrationIntegrationTest {
         assertFalse(afterCancel.getBody().contains("\"loai\":\"MON_HET_CHO\""));
         assertTrue(afterCancel.getBody().contains("LOP_IT_DANG_KY"));
 
-        Khoa otherFaculty = new Khoa();
+        Faculty otherFaculty = new Faculty();
         otherFaculty.setMa("F" + runId);
         otherFaculty.setTen("Khoa không có lớp " + runId);
         otherFaculty = khoaRepository.saveAndFlush(otherFaculty);
@@ -626,8 +626,8 @@ class ConcurrentRegistrationIntegrationTest {
         assertTrue(response.getBody().contains("/quan-tri/hoc-ky"));
     }
 
-    private ThongBao saveNotice(User recipient, String title) {
-        ThongBao notice = new ThongBao();
+    private Notification saveNotice(User recipient, String title) {
+        Notification notice = new Notification();
         notice.setRecipient(recipient);
         notice.setEventType("TEST_EVENT");
         notice.setIdempotencyKey(title);
@@ -668,7 +668,7 @@ class ConcurrentRegistrationIntegrationTest {
     @Test
     void adminAccountStatusChangeAuditsOnlyMinimalStatusValues() throws Exception {
         User admin = userRepository.findByUsername("admin").orElseThrow();
-        SinhVien target = sinhVienRepository.findByUser(students.get(0)).orElseThrow();
+        Student target = sinhVienRepository.findByUser(students.get(0)).orElseThrow();
         HttpEntity<Map<String, Boolean>> request = new HttpEntity<>(Map.of("trangThai", false), headersFor(admin));
 
         ResponseEntity<String> response = http.exchange("/api/admin/sinh-vien/" + target.getId() + "/trang-thai",
@@ -703,15 +703,15 @@ class ConcurrentRegistrationIntegrationTest {
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
         assertEquals(0, dangKyRepository.countByLopHocPhanIdAndTrangThai(
-                primarySection.getId(), TrangThaiDangKy.DA_DANG_KY));
+                primarySection.getId(), RegistrationStatus.DA_DANG_KY));
         assertEquals(0, thongBaoRepository.countByRecipientIdAndReadAtIsNull(students.get(0).getId()));
         entityManager.clear();
         assertEquals(0, lopHocPhanRepository.findById(primarySection.getId()).orElseThrow().getSiSoHienTai());
     }
 
-    private LopHocPhan saveSection(String suffix, MonHoc mon, HocKy term, GiangVien lecturer,
+    private CourseClass saveSection(String suffix, Subject mon, Semester term, Lecturer lecturer,
                                    int max, int weekday) {
-        LopHocPhan section = new LopHocPhan();
+        CourseClass section = new CourseClass();
         section.setMa("T" + runId + "." + suffix);
         section.setMonHoc(mon);
         section.setHocKy(term);

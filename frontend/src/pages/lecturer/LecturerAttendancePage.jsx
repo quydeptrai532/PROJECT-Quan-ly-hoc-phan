@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
+  AlertTriangle,
   ArrowLeft,
   CalendarCheck,
   CalendarDays,
@@ -12,6 +13,7 @@ import {
   Plus,
   RefreshCw,
   Search,
+  Sliders,
   Trash2,
   Unlock,
   UserCheck,
@@ -50,6 +52,14 @@ export default function LecturerAttendancePage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [searchStudent, setSearchStudent] = useState("");
+  const [baoCaoCanhBao, setBaoCaoCanhBao] = useState(null);
+  const [loadingAlerts, setLoadingAlerts] = useState(false);
+  const [searchAlertStudent, setSearchAlertStudent] = useState("");
+  const [thresholdModalOpen, setThresholdModalOpen] = useState(false);
+  const [thresholdForm, setThresholdForm] = useState({
+    nguongSoBuoiVang: "",
+    nguongTyLeVang: "",
+  });
 
   // Attendance edits state: { [sinhVienId]: { trangThai, ghiChu } }
   const [attendanceEdits, setAttendanceEdits] = useState({});
@@ -150,6 +160,55 @@ export default function LecturerAttendancePage() {
       loadReport();
     }
   }, [activeTab, loadReport]);
+
+  const loadAlerts = useCallback(async () => {
+    setLoadingAlerts(true);
+    try {
+      const res = await api.get(`/giang-vien/lop-hoc-phan/${id}/canh-bao`);
+      setBaoCaoCanhBao(res.data);
+      setThresholdForm({
+        nguongSoBuoiVang: res.data.nguongSoBuoiVang != null ? String(res.data.nguongSoBuoiVang) : "",
+        nguongTyLeVang: res.data.nguongTyLeVang != null ? String(res.data.nguongTyLeVang) : "",
+      });
+    } catch (err) {
+      console.warn("Could not load alerts:", err);
+    } finally {
+      setLoadingAlerts(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    loadAlerts();
+  }, [loadAlerts]);
+
+  useEffect(() => {
+    if (activeTab === "canh-bao") {
+      loadAlerts();
+    }
+  }, [activeTab, loadAlerts]);
+
+  const handleSaveThreshold = async (e) => {
+    if (e) e.preventDefault();
+    try {
+      setSaving(true);
+      setFormError("");
+      const payload = {
+        nguongSoBuoiVang: thresholdForm.nguongSoBuoiVang ? parseInt(thresholdForm.nguongSoBuoiVang, 10) : null,
+        nguongTyLeVang: thresholdForm.nguongTyLeVang ? parseFloat(thresholdForm.nguongTyLeVang) : null,
+      };
+      const res = await api.put(`/giang-vien/lop-hoc-phan/${id}/cau-hinh-canh-bao`, payload);
+      setBaoCaoCanhBao(res.data);
+      setThresholdModalOpen(false);
+      setSuccess("Đã cập nhật cấu hình ngưỡng cảnh báo cho lớp học phần.");
+      if (activeTab === "bao-cao") {
+        loadReport();
+      }
+    } catch (err) {
+      setFormError(getErrorMessage(err, "Không thể lưu cấu hình ngưỡng."));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const selectedSession = useMemo(() => {
     return buoiHocList.find((b) => b.id === selectedBuoiId) || chiTietDiemDanh?.buoiHoc;
@@ -337,6 +396,7 @@ export default function LecturerAttendancePage() {
       setSuccess("Lưu kết quả điểm danh thành công!");
       await loadClassAndSessions();
       await loadSessionDetail(selectedBuoiId);
+      await loadAlerts();
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -453,6 +513,28 @@ export default function LecturerAttendancePage() {
           }`}
         >
           <CalendarDays size={16} /> Báo cáo chuyên cần cả lớp
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("canh-bao")}
+          className={`flex items-center gap-2 border-b-2 px-5 py-3 text-sm font-semibold transition ${
+            activeTab === "canh-bao"
+              ? "border-indigo-600 text-indigo-600"
+              : "border-transparent text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          <AlertTriangle size={16} /> Cảnh báo quá ngưỡng
+          {baoCaoCanhBao && (
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                baoCaoCanhBao.soSinhVienBiCanhBao > 0
+                  ? "bg-rose-100 text-rose-700"
+                  : "bg-slate-100 text-slate-600"
+              }`}
+            >
+              {baoCaoCanhBao.soSinhVienBiCanhBao}
+            </span>
+          )}
         </button>
       </div>
 
@@ -943,6 +1025,258 @@ export default function LecturerAttendancePage() {
           )}
         </div>
       )}
+
+      {/* TAB 3: CẢNH BÁO QUÁ NGƯỠNG (QLSV-71) */}
+      {activeTab === "canh-bao" && (
+        <div className="space-y-6">
+          {loadingAlerts ? (
+            <div className="card flex items-center justify-center p-12">
+              <Spinner size="lg" />
+            </div>
+          ) : !baoCaoCanhBao ? (
+            <div className="card">
+              <EmptyState
+                icon={AlertTriangle}
+                title="Không tải được dữ liệu cảnh báo"
+                description="Vui lòng thử lại sau hoặc làm mới trang."
+              />
+            </div>
+          ) : (
+            <>
+              {/* Stat Cards */}
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <StatCard
+                  label="Tổng số buổi hợp lệ"
+                  value={baoCaoCanhBao.tongSoBuoiHopLe}
+                  hint="Đã diễn ra và không bị hủy"
+                  icon={CalendarCheck}
+                  tone="sky"
+                />
+                <StatCard
+                  label="Sinh viên đang cảnh báo"
+                  value={baoCaoCanhBao.soSinhVienBiCanhBao}
+                  hint="Vượt ngưỡng buổi vắng hoặc tỷ lệ"
+                  icon={XCircle}
+                  tone={baoCaoCanhBao.soSinhVienBiCanhBao > 0 ? "rose" : "emerald"}
+                />
+                <StatCard
+                  label="Ngưỡng số buổi vắng"
+                  value={baoCaoCanhBao.nguongSoBuoiVang ? `${baoCaoCanhBao.nguongSoBuoiVang} buổi` : "Chưa đặt"}
+                  hint={baoCaoCanhBao.nguonNguong === "LOP_HOC_PHAN" ? "Cấu hình riêng theo lớp" : baoCaoCanhBao.nguonNguong === "HE_THONG" ? "Cấu hình tập trung hệ thống" : "Chờ chủ dự án chốt"}
+                  icon={Sliders}
+                  tone="amber"
+                />
+                <StatCard
+                  label="Ngưỡng tỷ lệ vắng"
+                  value={baoCaoCanhBao.nguongTyLeVang ? `${baoCaoCanhBao.nguongTyLeVang}%` : "Chưa đặt"}
+                  hint={baoCaoCanhBao.canhBaoKichHoat ? "Đang bật cảnh báo" : "Cảnh báo chưa kích hoạt"}
+                  icon={AlertTriangle}
+                  tone={baoCaoCanhBao.canhBaoKichHoat ? "indigo" : "slate"}
+                />
+              </div>
+
+              {/* Policy & Status Card */}
+              <Alert tone={baoCaoCanhBao.canhBaoKichHoat ? "info" : "warning"}>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className="font-semibold text-slate-900 flex items-center gap-1.5 text-sm">
+                      <Info size={16} /> Quy chế ngưỡng cảnh báo chuyên cần
+                      <Badge tone={baoCaoCanhBao.canhBaoKichHoat ? "green" : "amber"}>
+                        {baoCaoCanhBao.canhBaoKichHoat ? "Đã kích hoạt" : "Chờ chốt chính thức"}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-slate-700 leading-relaxed max-w-3xl">
+                      {baoCaoCanhBao.ghiChuQuyChe}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Nguồn ngưỡng: <strong>{baoCaoCanhBao.nguonNguong === "LOP_HOC_PHAN" ? "Theo lớp học phần" : baoCaoCanhBao.nguonNguong === "HE_THONG" ? "Cấu hình tập trung" : "Chưa cấu hình"}</strong> ·
+                      Hệ thống không tính các buổi học chưa diễn ra trong tương lai hoặc buổi bị hủy.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormError("");
+                      setThresholdModalOpen(true);
+                    }}
+                    className="btn-secondary text-xs shrink-0 self-start sm:self-center"
+                  >
+                    <Sliders size={14} /> Cấu hình ngưỡng lớp
+                  </button>
+                </div>
+              </Alert>
+
+              {/* Alerts Table Card */}
+              <div className="card p-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+                  <div>
+                    <h3 className="font-semibold text-slate-800">
+                      Danh sách cảnh báo ({baoCaoCanhBao.danhSachCanhBao?.length || 0})
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Cảnh báo được cập nhật tự động khi điểm danh thay đổi và giữ nguyên lịch sử kiểm toán khi được giải tỏa.
+                    </p>
+                  </div>
+                  <div className="relative w-full sm:w-72">
+                    <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Tìm sinh viên cảnh báo..."
+                      className="input pl-9 text-xs"
+                      value={searchAlertStudent}
+                      onChange={(e) => setSearchAlertStudent(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {(!baoCaoCanhBao.danhSachCanhBao || baoCaoCanhBao.danhSachCanhBao.length === 0) ? (
+                  <EmptyState
+                    icon={CheckCircle}
+                    title="Không có sinh viên nào vi phạm ngưỡng"
+                    description={
+                      baoCaoCanhBao.canhBaoKichHoat
+                        ? "Tất cả sinh viên trong lớp đều có số buổi vắng và tỷ lệ vắng nằm trong giới hạn cho phép."
+                        : "Chưa cấu hình ngưỡng cảnh báo cho lớp học phần. Bấm 'Cấu hình ngưỡng lớp' để thiết lập."
+                    }
+                  />
+                ) : (
+                  <div className="overflow-x-auto rounded-xl border border-slate-200">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-600">
+                        <tr>
+                          <th className="px-4 py-3 text-center w-12">STT</th>
+                          <th className="px-4 py-3">Mã SV</th>
+                          <th className="px-4 py-3">Họ và tên</th>
+                          <th className="px-4 py-3">Lớp HC</th>
+                          <th className="px-3 py-3 text-center text-rose-700">Buổi vắng</th>
+                          <th className="px-3 py-3 text-center">Buổi hợp lệ</th>
+                          <th className="px-4 py-3 text-center">Tỷ lệ vắng</th>
+                          <th className="px-4 py-3 text-center">Loại ngưỡng</th>
+                          <th className="px-4 py-3 text-center">Mức ngưỡng</th>
+                          <th className="px-4 py-3 text-center">Trạng thái</th>
+                          <th className="px-4 py-3">Chi tiết thông điệp</th>
+                          <th className="px-4 py-3 text-right">Cập nhật</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 bg-white">
+                        {baoCaoCanhBao.danhSachCanhBao
+                          .filter(
+                            (item) =>
+                              !searchAlertStudent.trim() ||
+                              item.maSinhVien.toLowerCase().includes(searchAlertStudent.toLowerCase()) ||
+                              item.hoTenSinhVien.toLowerCase().includes(searchAlertStudent.toLowerCase())
+                          )
+                          .map((item, idx) => {
+                            const isDangCanhBao = item.trangThai === "DANG_CANH_BAO";
+                            return (
+                              <tr key={item.id} className="hover:bg-slate-50/70 transition">
+                                <td className="px-4 py-3 text-center text-xs text-slate-400">{idx + 1}</td>
+                                <td className="px-4 py-3 font-semibold text-slate-900">{item.maSinhVien}</td>
+                                <td className="px-4 py-3 font-medium text-slate-800">{item.hoTenSinhVien}</td>
+                                <td className="px-4 py-3 text-xs text-slate-500">{item.lopHanhChinh || "—"}</td>
+                                <td className="px-3 py-3 text-center font-bold text-rose-600">{item.soBuoiVang}</td>
+                                <td className="px-3 py-3 text-center font-semibold text-slate-700">{item.tongBuoiHopLe}</td>
+                                <td className="px-4 py-3 text-center font-bold text-rose-600">{item.tyLeVang.toFixed(1)}%</td>
+                                <td className="px-4 py-3 text-center text-xs text-slate-600">
+                                  {item.loaiNguong === "SO_BUOI_VANG" ? "Số buổi vắng" : "Tỷ lệ vắng"}
+                                </td>
+                                <td className="px-4 py-3 text-center font-semibold text-slate-700">
+                                  {item.loaiNguong === "SO_BUOI_VANG" ? `${Math.round(item.giaTriNguong)} buổi` : `${item.giaTriNguong}%`}
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  {isDangCanhBao ? (
+                                    <Badge tone="red">Đang cảnh báo</Badge>
+                                  ) : (
+                                    <Badge tone="green">Đã giải tỏa</Badge>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-xs text-slate-600 max-w-xs truncate" title={item.thongDiep}>
+                                  {item.thongDiep}
+                                </td>
+                                <td className="px-4 py-3 text-right text-xs text-slate-400 whitespace-nowrap">
+                                  {formatDateTime(item.thoiGianCapNhat || item.thoiGianTao)}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* MODAL CẤU HÌNH NGƯỠNG CẢNH BÁO LỚP */}
+      <Modal
+        open={thresholdModalOpen}
+        onClose={() => setThresholdModalOpen(false)}
+        title="Cấu hình ngưỡng cảnh báo chuyên cần"
+        description={`Lớp ${lop?.ma} - ${lop?.tenMon}`}
+        footer={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setThresholdModalOpen(false)}
+              className="btn-secondary text-sm"
+              disabled={saving}
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveThreshold}
+              className="btn-primary text-sm"
+              disabled={saving}
+            >
+              {saving ? "Đang lưu..." : "Lưu cấu hình"}
+            </button>
+          </div>
+        }
+      >
+        <form onSubmit={handleSaveThreshold} className="space-y-4">
+          {formError && <Alert tone="error">{formError}</Alert>}
+
+          <Alert tone="info">
+            <p className="text-xs leading-relaxed text-sky-950">
+              Ngưỡng quy chế chính thức hiện chưa được Chủ dự án chốt chung toàn trường. Thiết lập dưới đây sẽ áp dụng riêng cho lớp học phần này và kích hoạt việc tính toán cảnh báo tự động.
+            </p>
+          </Alert>
+
+          <Field
+            label="Ngưỡng số buổi vắng tối đa"
+            hint="Ví dụ: 3 (sinh viên vắng từ 3 buổi hợp lệ trở lên sẽ bị cảnh báo). Để trống nếu không áp dụng."
+          >
+            <input
+              type="number"
+              min="1"
+              max="60"
+              className="input text-sm"
+              placeholder="VD: 3"
+              value={thresholdForm.nguongSoBuoiVang}
+              onChange={(e) => setThresholdForm({ ...thresholdForm, nguongSoBuoiVang: e.target.value })}
+            />
+          </Field>
+
+          <Field
+            label="Ngưỡng tỷ lệ vắng tối đa (%)"
+            hint="Ví dụ: 20 (sinh viên có tỷ lệ vắng từ 20% trở lên sẽ bị cảnh báo). Để trống nếu không áp dụng."
+          >
+            <input
+              type="number"
+              step="0.1"
+              min="0.1"
+              max="100"
+              className="input text-sm"
+              placeholder="VD: 20.0"
+              value={thresholdForm.nguongTyLeVang}
+              onChange={(e) => setThresholdForm({ ...thresholdForm, nguongTyLeVang: e.target.value })}
+            />
+          </Field>
+        </form>
+      </Modal>
 
       {/* MODAL TẠO / SỬA BUỔI HỌC */}
       <Modal

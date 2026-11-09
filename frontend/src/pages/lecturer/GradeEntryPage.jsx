@@ -1,24 +1,52 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, BookOpen, Calculator, CheckCircle2, ClipboardList, Eye, Megaphone, RotateCcw, Save, Search, Send, Users } from "lucide-react";
+import {
+    AlertTriangle,
+    ArrowLeft,
+    Calculator,
+    ClipboardList,
+    Eye,
+    FileSpreadsheet,
+    History,
+    Lock,
+    Megaphone,
+    Save,
+    Search,
+    Send,
+    Upload,
+    Users,
+} from "lucide-react";
 import api, { getErrorMessage } from "../../api/client";
 import ExportStudentsButton from "../../components/ExportStudentsButton";
 import ClassAnnouncementModal from "../../components/ClassAnnouncementModal";
+import GradeAnalyticsPanel from "../../components/GradeAnalyticsPanel";
+import GradeExcelImportModal from "../../components/GradeExcelImportModal";
 import { Alert, Badge, EmptyState, Modal, PageHeader, Spinner } from "../../components/ui";
-import { formatDiem, lichHoc } from "../../lib/format";
+import { formatDateTime, formatDiem, lichHoc } from "../../lib/format";
 import { useApi } from "../../lib/useApi";
 
 const GRADE_SHEET_STATUS_META = {
-    NHAP: { label: "Bản nháp (Chưa công bố)", tone: "slate" },
-    CHO_DUYET: { label: "Chờ phê duyệt", tone: "amber" },
-    DA_DUYET: { label: "Đã phê duyệt (Sẵn sàng công bố)", tone: "blue" },
-    DA_CONG_BO: { label: "Đã công bố", tone: "green" },
+    NHAP: { label: "Bản nháp (Cho phép sửa)", tone: "slate" },
+    CHO_DUYET: { label: "Chờ Phòng Đào tạo duyệt (Đã khóa sửa)", tone: "amber" },
+    TRA_VE: { label: "Trả về chỉnh sửa (Cho phép sửa)", tone: "rose" },
+    DA_DUYET: { label: "Đã phê duyệt (Chờ công bố/khóa)", tone: "blue" },
+    DA_CONG_BO: { label: "Đã công bố (Đã khóa sửa)", tone: "green" },
+    DA_KHOA: { label: "Đã khóa bảng điểm", tone: "indigo" },
+};
+
+const ACTION_LABEL = {
+    GUI_DUYET: "Giảng viên gửi duyệt",
+    TRA_VE: "Trả về chỉnh sửa",
+    PHE_DUYET: "Phê duyệt bảng điểm",
+    CONG_BO: "Công bố bảng điểm",
+    KHOA: "Khóa bảng điểm",
+    MO_KHOA: "Mở khóa bảng điểm",
 };
 
 function tinhTongKet(quaTrinh, cuoiKy) {
     const qt = Number(quaTrinh);
     const ck = Number(cuoiKy);
-    if (quaTrinh === "" || cuoiKy === "" || Number.isNaN(qt) || Number.isNaN(ck)) return null;
+    if (quaTrinh === "" || cuoiKy === "" || quaTrinh === null || cuoiKy === null || Number.isNaN(qt) || Number.isNaN(ck)) return null;
     return Math.round((0.4 * qt + 0.6 * ck) * 10) / 10;
 }
 
@@ -26,22 +54,31 @@ export default function GradeEntryPage() {
     const { id } = useParams();
     const { data: lop, loading: loadingLop, error: lopError, reload: reloadLop } = useApi(`/lop-hoc-phan/${id}`);
     const {
+        data: trangThaiDetail,
+        reload: reloadTrangThai,
+    } = useApi(`/giang-vien/lop-hoc-phan/${id}/trang-thai-bang-diem`);
+    const {
         data: sinhVienList,
         loading: loadingSv,
         error: svError,
+        reload: reloadSv,
     } = useApi(`/giang-vien/lop-hoc-phan/${id}/sinh-vien`);
 
     const [rows, setRows] = useState([]);
-    const [edits, setEdits] = useState({});
+    const [edits, setEdits] = useState([]);
+    const [fieldErrors, setFieldErrors] = useState({});
     const [busyId, setBusyId] = useState(null);
     const [workflowBusy, setWorkflowBusy] = useState(false);
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
+    const [analyticsReloadKey, setAnalyticsReloadKey] = useState(0);
 
-    // Student academic profile modal state (QLSV-67 / TASK-LC-02)
     const [profileModalOpen, setProfileModalOpen] = useState(false);
     const [announcementModalOpen, setAnnouncementModalOpen] = useState(false);
+    const [importModalOpen, setImportModalOpen] = useState(false);
+    const [historyModalOpen, setHistoryModalOpen] = useState(false);
+    const [templateDownloading, setTemplateDownloading] = useState(false);
     const [profileLoading, setProfileLoading] = useState(false);
     const [profileError, setProfileError] = useState("");
     const [studentProfile, setStudentProfile] = useState(null);
@@ -66,12 +103,22 @@ export default function GradeEntryPage() {
         [rows]
     );
 
-    const trangThaiBangDiem = lop?.trangThaiBangDiem || "NHAP";
+    const trangThaiBangDiem = trangThaiDetail?.trangThaiBangDiem || lop?.trangThaiBangDiem || "NHAP";
     const statusMeta = GRADE_SHEET_STATUS_META[trangThaiBangDiem] || GRADE_SHEET_STATUS_META.NHAP;
-    const daCongBo = trangThaiBangDiem === "DA_CONG_BO";
+    const choPhepSuaDiem = trangThaiBangDiem === "NHAP" || trangThaiBangDiem === "TRA_VE";
+    const biKhoaSua = !choPhepSuaDiem;
     const duDieuKienDuyet = rows.length > 0 && soDaNhap === rows.length && Object.keys(edits).length === 0;
+    const soLuongThayDoi = Object.keys(edits).length;
+    const lyDoTraVe = trangThaiDetail?.lyDoTraVe || lop?.lyDoTraVeBangDiem;
+    const lichSu = trangThaiDetail?.lichSu || [];
+
+    const reloadAll = async () => {
+        await Promise.all([reloadLop(), reloadTrangThai(), reloadSv()]);
+        setAnalyticsReloadKey((k) => k + 1);
+    };
 
     const onChange = (dangKyId, field, value) => {
+        if (biKhoaSua) return;
         setEdits((current) => ({
             ...current,
             [dangKyId]: {
@@ -82,6 +129,22 @@ export default function GradeEntryPage() {
                 [field]: value,
             },
         }));
+
+        if (fieldErrors[dangKyId]?.[field]) {
+            setFieldErrors((current) => {
+                const next = { ...current };
+                if (next[dangKyId]) {
+                    const sub = { ...next[dangKyId] };
+                    delete sub[field];
+                    if (Object.keys(sub).length === 0) {
+                        delete next[dangKyId];
+                    } else {
+                        next[dangKyId] = sub;
+                    }
+                }
+                return next;
+            });
+        }
     };
 
     const getValue = (row, field) => {
@@ -92,21 +155,56 @@ export default function GradeEntryPage() {
         return value === null || value === undefined ? "" : value;
     };
 
+    const parseErrorsToFieldMap = (resErrors, defaultDangKyId) => {
+        const nextErr = {};
+        if (Array.isArray(resErrors)) {
+            for (const item of resErrors) {
+                const targetId = item.dangKyId || defaultDangKyId;
+                const targetCol = item.cot || item.field || "general";
+                if (targetId) {
+                    if (!nextErr[targetId]) nextErr[targetId] = {};
+                    nextErr[targetId][targetCol] = item.message;
+                }
+            }
+        }
+        return nextErr;
+    };
+
     const luuDiem = async (row) => {
         const quaTrinh = getValue(row, "diemQuaTrinh");
         const cuoiKy = getValue(row, "diemCuoiKy");
-        if (quaTrinh === "" || cuoiKy === "") {
-            setError(`Vui lòng nhập đủ điểm quá trình và cuối kỳ cho ${row.maSinhVien}`);
+
+        const clientErrors = {};
+        if (quaTrinh !== "" && quaTrinh !== null && quaTrinh !== undefined) {
+            const qt = Number(quaTrinh);
+            if (Number.isNaN(qt) || qt < 0 || qt > 10) {
+                clientErrors.diemQuaTrinh = "Điểm phải từ 0 đến 10";
+            }
+        }
+        if (cuoiKy !== "" && cuoiKy !== null && cuoiKy !== undefined) {
+            const ck = Number(cuoiKy);
+            if (Number.isNaN(ck) || ck < 0 || ck > 10) {
+                clientErrors.diemCuoiKy = "Điểm phải từ 0 đến 10";
+            }
+        }
+        if (Object.keys(clientErrors).length > 0) {
+            setFieldErrors((current) => ({
+                ...current,
+                [row.dangKyId]: { ...(current[row.dangKyId] || {}), ...clientErrors },
+            }));
+            setError(`Dữ liệu điểm của sinh viên ${row.maSinhVien} không hợp lệ (phải từ 0 đến 10)`);
             return;
         }
+
         setBusyId(row.dangKyId);
         setError("");
         setMessage("");
         try {
-            const { data } = await api.put(`/diem/${row.dangKyId}`, {
-                diemQuaTrinh: Number(quaTrinh),
-                diemCuoiKy: Number(cuoiKy),
-            });
+            const payload = {
+                diemQuaTrinh: quaTrinh === "" ? null : Number(quaTrinh),
+                diemCuoiKy: cuoiKy === "" ? null : Number(cuoiKy),
+            };
+            const { data } = await api.put(`/diem/${row.dangKyId}`, payload);
             setRows((current) =>
                 current.map((item) => (item.dangKyId === row.dangKyId ? { ...item, ...data } : item))
             );
@@ -115,23 +213,105 @@ export default function GradeEntryPage() {
                 delete next[row.dangKyId];
                 return next;
             });
-            setMessage(`Đã lưu điểm nháp cho ${row.maSinhVien} - ${row.hoTen}`);
-            reloadLop();
+            setFieldErrors((current) => {
+                const next = { ...current };
+                delete next[row.dangKyId];
+                return next;
+            });
+            setMessage(`Đã lưu điểm cho ${row.maSinhVien} - ${row.hoTen}`);
+            await Promise.all([reloadLop(), reloadTrangThai()]);
+            setAnalyticsReloadKey((k) => k + 1);
         } catch (err) {
-            setError(getErrorMessage(err));
+            const responseData = err.response?.data;
+            if (responseData?.errors && Array.isArray(responseData.errors) && responseData.errors.length > 0) {
+                const mapped = parseErrorsToFieldMap(responseData.errors, row.dangKyId);
+                setFieldErrors((current) => ({ ...current, ...mapped }));
+                setError(responseData.message || "Dữ liệu điểm không hợp lệ");
+            } else {
+                setError(getErrorMessage(err));
+            }
         } finally {
             setBusyId(null);
         }
     };
 
-    const thucHienQuyTrinh = async (endpoint, successMessage) => {
+    const luuTatCa = async () => {
+        if (soLuongThayDoi === 0 || biKhoaSua) return;
+        setWorkflowBusy(true);
+        setError("");
+        setMessage("");
+
+        const clientErrors = {};
+        const danhSachPayload = [];
+        for (const [dangKyIdStr, val] of Object.entries(edits)) {
+            const dkId = Number(dangKyIdStr);
+            const qtVal = val.diemQuaTrinh;
+            const ckVal = val.diemCuoiKy;
+
+            const errs = {};
+            if (qtVal !== "" && qtVal !== null && qtVal !== undefined) {
+                const qt = Number(qtVal);
+                if (Number.isNaN(qt) || qt < 0 || qt > 10) errs.diemQuaTrinh = "Điểm phải từ 0 đến 10";
+            }
+            if (ckVal !== "" && ckVal !== null && ckVal !== undefined) {
+                const ck = Number(ckVal);
+                if (Number.isNaN(ck) || ck < 0 || ck > 10) errs.diemCuoiKy = "Điểm phải từ 0 đến 10";
+            }
+            if (Object.keys(errs).length > 0) {
+                clientErrors[dkId] = errs;
+            }
+            danhSachPayload.push({
+                dangKyId: dkId,
+                diemQuaTrinh: qtVal === "" ? null : Number(qtVal),
+                diemCuoiKy: ckVal === "" ? null : Number(ckVal),
+            });
+        }
+
+        if (Object.keys(clientErrors).length > 0) {
+            setFieldErrors((current) => ({ ...current, ...clientErrors }));
+            setError("Có một số ô điểm nhập ngoài miền giá trị hợp lệ (0-10). Vui lòng kiểm tra lại");
+            setWorkflowBusy(false);
+            return;
+        }
+
+        try {
+            const { data } = await api.put(`/giang-vien/lop-hoc-phan/${id}/diem`, { danhSach: danhSachPayload });
+            setRows((current) => {
+                const updatedMap = new Map((data || []).map((item) => [item.dangKyId, item]));
+                return current.map((row) => (updatedMap.has(row.dangKyId) ? { ...row, ...updatedMap.get(row.dangKyId) } : row));
+            });
+            setEdits({});
+            setFieldErrors({});
+            setMessage(`Đã lưu thành công ${danhSachPayload.length} điểm sinh viên trong một thao tác`);
+            await Promise.all([reloadLop(), reloadTrangThai()]);
+            setAnalyticsReloadKey((k) => k + 1);
+        } catch (err) {
+            const responseData = err.response?.data;
+            if (responseData?.errors && Array.isArray(responseData.errors) && responseData.errors.length > 0) {
+                const mapped = parseErrorsToFieldMap(responseData.errors, null);
+                setFieldErrors((current) => ({ ...current, ...mapped }));
+                setError(responseData.message || "Dữ liệu cập nhật có điểm không hợp lệ; toàn bộ giao dịch đã được rollback.");
+            } else {
+                setError(getErrorMessage(err));
+            }
+        } finally {
+            setWorkflowBusy(false);
+        }
+    };
+
+    const guiDuyetBangDiem = async () => {
         setWorkflowBusy(true);
         setError("");
         setMessage("");
         try {
-            await api.post(`/giang-vien/lop-hoc-phan/${id}/${endpoint}`);
-            setMessage(successMessage);
-            await reloadLop();
+            await api.post(`/giang-vien/lop-hoc-phan/${id}/gui-duyet-diem`);
+            setMessage(
+                trangThaiBangDiem === "TRA_VE"
+                    ? "Đã gửi duyệt lại bảng điểm sau khi chỉnh sửa. Bảng điểm hiện tạm khóa chỉnh sửa và chờ Phòng Đào tạo phê duyệt."
+                    : "Đã gửi duyệt bảng điểm lên Phòng Đào tạo. Bảng điểm hiện tạm khóa chỉnh sửa và chưa phát thông báo tới sinh viên."
+            );
+            await Promise.all([reloadLop(), reloadTrangThai()]);
+            setAnalyticsReloadKey((k) => k + 1);
         } catch (err) {
             setError(getErrorMessage(err));
         } finally {
@@ -154,6 +334,35 @@ export default function GradeEntryPage() {
         }
     };
 
+    const taiTemplateExcel = async () => {
+        if (!lop?.id) return;
+        setTemplateDownloading(true);
+        setError("");
+        setMessage("");
+        try {
+            const response = await api.get(`/giang-vien/lop-hoc-phan/${lop.id}/diem/template-xlsx`, {
+                responseType: "blob",
+            });
+            const url = window.URL.createObjectURL(
+                new Blob([response.data], {
+                    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                })
+            );
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `mau-nhap-diem-${lop.ma || lop.id}.xlsx`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+            setMessage(`Đã tải xuống tệp mẫu Excel (.xlsx) cho lớp ${lop.ma}`);
+        } catch (err) {
+            setError(getErrorMessage(err));
+        } finally {
+            setTemplateDownloading(false);
+        }
+    };
+
     return (
         <div>
             <Link
@@ -169,12 +378,43 @@ export default function GradeEntryPage() {
                 description={
                     lop
                         ? `${lop.tenHocKy} · Phòng ${lop.phong} · ${lichHoc(lop.thu, lop.tietBatDau, lop.soTiet)} · Sĩ số ${lop.siSoHienTai}/${lop.siSoToiDa}`
-                        : "Quản lý điểm thành phần và quy trình phê duyệt bảng điểm"
+                        : "Quản lý điểm thành phần và quy trình gửi duyệt bảng điểm"
                 }
                 actions={
                     lop && (
                         <div className="flex flex-wrap items-center gap-2">
                             <Badge tone={statusMeta.tone}>{statusMeta.label}</Badge>
+                            <button
+                                type="button"
+                                className="btn-secondary text-xs"
+                                onClick={() => setHistoryModalOpen(true)}
+                                title="Xem lịch sử chuyển trạng thái và phê duyệt bảng điểm"
+                            >
+                                <History size={14} /> Lịch sử duyệt ({lichSu.length})
+                            </button>
+                            <button
+                                type="button"
+                                className="btn-secondary text-xs"
+                                onClick={taiTemplateExcel}
+                                disabled={templateDownloading || loadingSv}
+                                title="Tải tệp mẫu Excel (.xlsx) chứa danh sách sinh viên và cột điểm hợp lệ"
+                            >
+                                <FileSpreadsheet size={14} />
+                                {templateDownloading ? "Đang tải mẫu..." : "Tải mẫu .xlsx"}
+                            </button>
+                            <button
+                                type="button"
+                                className="btn-primary text-xs"
+                                onClick={() => setImportModalOpen(true)}
+                                disabled={biKhoaSua || loadingSv}
+                                title={
+                                    biKhoaSua
+                                        ? `Bảng điểm đang ở trạng thái ${trangThaiBangDiem}, không thể import điểm`
+                                        : "Import điểm từ tệp Excel (.xlsx) có xem trước và kiểm tra lỗi"
+                                }
+                            >
+                                <Upload size={14} /> Import điểm (.xlsx)
+                            </button>
                             <button
                                 type="button"
                                 className="btn-secondary text-xs"
@@ -210,55 +450,88 @@ export default function GradeEntryPage() {
                 {error && <Alert tone="error" onClose={() => setError("")}>{error}</Alert>}
             </div>
 
+            {trangThaiBangDiem === "TRA_VE" && (
+                <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-800 shadow-sm">
+                    <div className="flex items-start gap-2.5">
+                        <AlertTriangle size={16} className="mt-0.5 shrink-0 text-rose-600" />
+                        <div className="space-y-1">
+                            <p className="font-semibold text-rose-900">
+                                Bảng điểm đã được Phòng Đào tạo trả về yêu cầu chỉnh sửa
+                            </p>
+                            {lyDoTraVe && (
+                                <p>
+                                    <span className="font-medium">Lý do trả về / mở khóa:</span> {lyDoTraVe}
+                                </p>
+                            )}
+                            {trangThaiDetail?.traVeLuc && (
+                                <p className="text-[11px] text-rose-700">
+                                    Thời điểm trả về: {formatDateTime(trangThaiDetail.traVeLuc)}
+                                </p>
+                            )}
+                            <p className="text-rose-700">
+                                Giảng viên phụ trách có thể chỉnh sửa trực tiếp hoặc import lại tệp .xlsx, sau đó bấm{" "}
+                                <span className="font-semibold">Gửi duyệt lại</span>.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {biKhoaSua && (
+                <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-xs text-amber-900 shadow-sm">
+                    <div className="flex items-start gap-2.5">
+                        <Lock size={15} className="mt-0.5 shrink-0 text-amber-600" />
+                        <div className="space-y-1">
+                            <p className="font-semibold">
+                                Bảng điểm hiện đang khóa chỉnh sửa ({statusMeta.label})
+                            </p>
+                            <p className="text-amber-800">
+                                {trangThaiBangDiem === "CHO_DUYET" &&
+                                    "Bảng điểm đang chờ Phòng Đào tạo phê duyệt hoặc trả về chỉnh sửa. Giảng viên không thể sửa hoặc import điểm trong lúc chờ duyệt."}
+                                {trangThaiBangDiem === "DA_DUYET" &&
+                                    "Bảng điểm đã được Phòng Đào tạo phê duyệt và đang chờ công bố/khóa chính thức. Sinh viên chưa xem được điểm cho tới khi công bố."}
+                                {(trangThaiBangDiem === "DA_CONG_BO" || trangThaiBangDiem === "DA_KHOA") &&
+                                    "Bảng điểm đã được công bố/khóa chính thức và hiển thị cho sinh viên. Mọi thao tác nhập/sửa/import điểm đều bị khóa cho tới khi người có quyền đặc biệt mở khóa kèm lý do bắt buộc."}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {lop && (
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
                     <div className="text-xs text-slate-600">
-                        <span className="font-semibold text-slate-800">Quy trình công bố điểm:</span>{" "}
-                        Nhập điểm nháp → Gửi duyệt → Phê duyệt → Công bố chính thức (hệ thống chỉ gửi thông báo nội bộ cho sinh viên khi bảng điểm chuyển sang trạng thái Đã công bố).
+                        <span className="font-semibold text-slate-800">Quy trình duyệt & khóa bảng điểm:</span>{" "}
+                        Nháp (`NHAP`) → Gửi duyệt (`CHO_DUYET`) → Trả chỉnh sửa (`TRA_VE`) hoặc Đã duyệt (`DA_DUYET`) → Đã công bố / Đã khóa (`DA_CONG_BO` / `DA_KHOA`).
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                        {trangThaiBangDiem === "NHAP" && (
-                            <button
-                                type="button"
-                                className="btn-secondary text-xs"
-                                disabled={workflowBusy || !duDieuKienDuyet}
-                                onClick={() => thucHienQuyTrinh("gui-duyet-diem", "Đã gửi duyệt bảng điểm. Chưa phát thông báo tới sinh viên.")}
-                            >
-                                <Send size={14} /> Gửi duyệt
-                            </button>
-                        )}
-                        {(trangThaiBangDiem === "NHAP" || trangThaiBangDiem === "CHO_DUYET") && (
-                            <button
-                                type="button"
-                                className="btn-secondary text-xs"
-                                disabled={workflowBusy || !duDieuKienDuyet}
-                                onClick={() => thucHienQuyTrinh("phe-duyet-diem", "Đã phê duyệt bảng điểm. Bấm Công bố điểm để phát thông báo cho sinh viên.")}
-                            >
-                                <CheckCircle2 size={14} /> Phê duyệt bảng điểm
-                            </button>
-                        )}
-                        {trangThaiBangDiem === "DA_DUYET" && (
+                        {choPhepSuaDiem && (
                             <button
                                 type="button"
                                 className="btn-primary text-xs"
                                 disabled={workflowBusy || !duDieuKienDuyet}
-                                onClick={() => thucHienQuyTrinh("cong-bo-diem", "Đã công bố bảng điểm và phát thông báo nội bộ cho sinh viên đủ điều kiện của lớp.")}
+                                onClick={guiDuyetBangDiem}
+                                title={
+                                    !duDieuKienDuyet
+                                        ? "Cần nhập đủ điểm cho toàn bộ sinh viên đang học và lưu hết các thay đổi trước khi gửi duyệt"
+                                        : "Gửi bảng điểm lên Phòng Đào tạo để phê duyệt"
+                                }
                             >
-                                <Megaphone size={14} /> Công bố điểm
-                            </button>
-                        )}
-                        {daCongBo && (
-                            <button
-                                type="button"
-                                className="btn-secondary text-xs"
-                                disabled={workflowBusy}
-                                onClick={() => thucHienQuyTrinh("thu-hoi-cong-bo-diem", "Đã thu hồi công bố bảng điểm để điều chỉnh.")}
-                            >
-                                <RotateCcw size={14} /> Thu hồi công bố
+                                <Send size={14} />
+                                {trangThaiBangDiem === "TRA_VE" ? "Gửi duyệt lại" : "Gửi duyệt bảng điểm"}
                             </button>
                         )}
                     </div>
                 </div>
+            )}
+
+            {/* Thống kê & phân bố điểm lớp học phần (QLSV-75 / TASK-LC-10) */}
+            {id && (
+                <GradeAnalyticsPanel
+                    mode="lecturer"
+                    singleClassId={id}
+                    reloadTrigger={analyticsReloadKey}
+                />
             )}
 
             <div className="card overflow-hidden">
@@ -276,9 +549,21 @@ export default function GradeEntryPage() {
                             />
                         </div>
                     </div>
-                    <p className="text-xs text-slate-500">
-                        Đã nhập điểm: {soDaNhap}/{rows.length} · Điểm tổng kết = 40% quá trình + 60% cuối kỳ
-                    </p>
+                    <div className="flex flex-wrap items-center gap-3">
+                        {soLuongThayDoi > 0 && choPhepSuaDiem && (
+                            <button
+                                type="button"
+                                className="btn-primary text-xs"
+                                disabled={workflowBusy}
+                                onClick={luuTatCa}
+                            >
+                                <Save size={14} /> Lưu tất cả thay đổi ({soLuongThayDoi})
+                            </button>
+                        )}
+                        <p className="text-xs text-slate-500">
+                            Đã nhập đủ điểm: {soDaNhap}/{rows.length} · Điểm tổng kết = 40% quá trình + 60% cuối kỳ
+                        </p>
+                    </div>
                 </div>
 
                 {loadingSv ? (
@@ -303,8 +588,8 @@ export default function GradeEntryPage() {
                                 <th className="th">Họ tên</th>
                                 <th className="th">Email</th>
                                 <th className="th w-28 text-center">Hồ sơ</th>
-                                <th className="th w-32 text-center">Quá trình</th>
-                                <th className="th w-32 text-center">Cuối kỳ</th>
+                                <th className="th w-36 text-center">Quá trình</th>
+                                <th className="th w-36 text-center">Cuối kỳ</th>
                                 <th className="th w-28 text-center">Tổng kết</th>
                                 <th className="th w-28 text-right">Thao tác</th>
                             </tr>
@@ -317,8 +602,10 @@ export default function GradeEntryPage() {
                                 const daThayDoi =
                                     String(quaTrinh) !== String(row.diemQuaTrinh ?? "") ||
                                     String(cuoiKy) !== String(row.diemCuoiKy ?? "");
+                                const rowErrors = fieldErrors[row.dangKyId] || {};
+                                const coLoi = Boolean(rowErrors.diemQuaTrinh || rowErrors.diemCuoiKy || rowErrors.general);
                                 return (
-                                    <tr key={row.dangKyId} className="hover:bg-slate-50/60">
+                                    <tr key={row.dangKyId} className={`hover:bg-slate-50/60 ${coLoi ? "bg-rose-50/30" : ""}`}>
                                         <td className="td text-center text-slate-500">{index + 1}</td>
                                         <td className="td font-medium text-slate-900">
                                             <button
@@ -330,7 +617,14 @@ export default function GradeEntryPage() {
                                                 {row.maSinhVien}
                                             </button>
                                         </td>
-                                        <td className="td">{row.hoTen}</td>
+                                        <td className="td">
+                                            <div>
+                                                <span>{row.hoTen}</span>
+                                                {rowErrors.general && (
+                                                    <p className="mt-0.5 text-[11px] text-rose-600">{rowErrors.general}</p>
+                                                )}
+                                            </div>
+                                        </td>
                                         <td className="td text-slate-500">{row.email || "—"}</td>
                                         <td className="td text-center">
                                             <button
@@ -343,28 +637,42 @@ export default function GradeEntryPage() {
                                             </button>
                                         </td>
                                         <td className="td">
-                                            <input
-                                                className="input w-24 text-center"
-                                                type="number"
-                                                min="0"
-                                                max="10"
-                                                step="0.1"
-                                                disabled={daCongBo}
-                                                value={quaTrinh}
-                                                onChange={(event) => onChange(row.dangKyId, "diemQuaTrinh", event.target.value)}
-                                            />
+                                            <div className="flex flex-col items-center">
+                                                <input
+                                                    className={`input w-24 text-center ${rowErrors.diemQuaTrinh ? "!border-rose-500 !ring-rose-500 bg-rose-50/50" : ""}`}
+                                                    type="number"
+                                                    min="0"
+                                                    max="10"
+                                                    step="0.1"
+                                                    disabled={biKhoaSua}
+                                                    value={quaTrinh}
+                                                    onChange={(event) => onChange(row.dangKyId, "diemQuaTrinh", event.target.value)}
+                                                />
+                                                {rowErrors.diemQuaTrinh && (
+                                                    <span className="mt-1 max-w-[130px] text-center text-[10px] font-medium leading-tight text-rose-600">
+                                                        {rowErrors.diemQuaTrinh}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="td">
-                                            <input
-                                                className="input w-24 text-center"
-                                                type="number"
-                                                min="0"
-                                                max="10"
-                                                step="0.1"
-                                                disabled={daCongBo}
-                                                value={cuoiKy}
-                                                onChange={(event) => onChange(row.dangKyId, "diemCuoiKy", event.target.value)}
-                                            />
+                                            <div className="flex flex-col items-center">
+                                                <input
+                                                    className={`input w-24 text-center ${rowErrors.diemCuoiKy ? "!border-rose-500 !ring-rose-500 bg-rose-50/50" : ""}`}
+                                                    type="number"
+                                                    min="0"
+                                                    max="10"
+                                                    step="0.1"
+                                                    disabled={biKhoaSua}
+                                                    value={cuoiKy}
+                                                    onChange={(event) => onChange(row.dangKyId, "diemCuoiKy", event.target.value)}
+                                                />
+                                                {rowErrors.diemCuoiKy && (
+                                                    <span className="mt-1 max-w-[130px] text-center text-[10px] font-medium leading-tight text-rose-600">
+                                                        {rowErrors.diemCuoiKy}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="td text-center">
                                             <span className="inline-flex items-center gap-1 font-semibold text-slate-900">
@@ -376,7 +684,7 @@ export default function GradeEntryPage() {
                                             <button
                                                 type="button"
                                                 className={daThayDoi ? "btn-primary px-3 py-1.5 text-xs" : "btn-secondary px-3 py-1.5 text-xs"}
-                                                disabled={daCongBo || busyId === row.dangKyId || !daThayDoi}
+                                                disabled={biKhoaSua || busyId === row.dangKyId || !daThayDoi}
                                                 onClick={() => luuDiem(row)}
                                             >
                                                 <Save size={14} />
@@ -393,8 +701,50 @@ export default function GradeEntryPage() {
             </div>
 
             <p className="mt-3 text-xs text-slate-500">
-                Điểm hợp lệ từ 0 đến 10. Sinh viên đạt môn khi điểm tổng kết từ 5.0 trở lên. Điểm nháp/chờ duyệt chưa hiển thị cho sinh viên cho tới khi bảng điểm được phê duyệt và công bố.
+                Điểm hợp lệ từ 0 đến 10 (tối đa 2 chữ số thập phân). Điểm tổng kết = 0.4 × quá trình + 0.6 × cuối kỳ (làm tròn 1 chữ số thập phân). Giảng viên chỉ được nhập/sửa/import điểm khi bảng điểm ở trạng thái Nháp (`NHAP`) hoặc Trả về chỉnh sửa (`TRA_VE`).
             </p>
+
+            {/* Modal lịch sử chuyển trạng thái bảng điểm (QLSV-74) */}
+            <Modal
+                open={historyModalOpen}
+                onClose={() => setHistoryModalOpen(false)}
+                title={lop ? `Lịch sử phê duyệt & khóa bảng điểm: ${lop.ma}` : "Lịch sử bảng điểm"}
+                description="Mọi lần gửi duyệt, trả sửa, phê duyệt, công bố, khóa và mở khóa đều được ghi nhận kèm người thực hiện, thời điểm và lý do."
+                size="lg"
+            >
+                {lichSu.length === 0 ? (
+                    <p className="py-6 text-center text-sm text-slate-500">
+                        Chưa có lịch sử chuyển trạng thái nào cho bảng điểm lớp này.
+                    </p>
+                ) : (
+                    <div className="max-h-96 overflow-y-auto divide-y divide-slate-100">
+                        {lichSu.map((item) => (
+                            <div key={item.id} className="py-3 text-xs space-y-1">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <span className="font-semibold text-slate-800">
+                                        {ACTION_LABEL[item.hanhDong] || item.hanhDong}:{" "}
+                                        <span className="font-mono text-slate-600">{item.trangThaiTruoc}</span> →{" "}
+                                        <span className="font-mono text-indigo-700">{item.trangThaiSau}</span>
+                                    </span>
+                                    <span className="text-slate-500">{formatDateTime(item.thoiDiem)}</span>
+                                </div>
+                                <p className="text-slate-600">
+                                    Người thực hiện:{" "}
+                                    <span className="font-medium text-slate-800">
+                                        {item.nguoiThucHienUsername || `User #${item.nguoiThucHienId || "—"}`}
+                                    </span>{" "}
+                                    ({item.nguoiThucHienRole || "—"})
+                                </p>
+                                {item.lyDo && (
+                                    <p className="rounded-md bg-slate-50 px-2.5 py-1.5 text-slate-700 border border-slate-200">
+                                        <span className="font-medium">Lý do:</span> {item.lyDo}
+                                    </p>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </Modal>
 
             {/* Modal xem hồ sơ học tập tối thiểu sinh viên (QLSV-67 / TASK-LC-02) */}
             <Modal
@@ -468,6 +818,22 @@ export default function GradeEntryPage() {
                 open={announcementModalOpen}
                 onClose={() => setAnnouncementModalOpen(false)}
                 lop={lop}
+            />
+            {/* Modal Import điểm từ Excel .xlsx (QLSV-73 / TASK-LC-08) */}
+            <GradeExcelImportModal
+                open={importModalOpen}
+                onClose={() => setImportModalOpen(false)}
+                lop={lop}
+                disabled={biKhoaSua}
+                onImportSuccess={async (res) => {
+                    setEdits({});
+                    setFieldErrors({});
+                    setError("");
+                    setMessage(
+                        `Đã import điểm thành công từ tệp ${res.tenTep}: tạo mới ${res.soTaoMoi}, cập nhật ${res.soCapNhat}, thất bại ${res.soThatBai}.`
+                    );
+                    await reloadAll();
+                }}
             />
         </div>
     );

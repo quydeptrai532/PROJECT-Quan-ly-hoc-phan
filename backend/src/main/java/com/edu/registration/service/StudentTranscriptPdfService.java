@@ -2,10 +2,10 @@ package com.edu.registration.service;
 
 import com.edu.registration.dto.RegistrationDtos;
 import com.edu.registration.dto.StudentAcademicProfileDto;
-import com.edu.registration.entity.SinhVien;
+import com.edu.registration.entity.Student;
 import com.edu.registration.entity.User;
 import com.edu.registration.exception.ApiException;
-import com.edu.registration.repository.SinhVienRepository;
+import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.security.CurrentUser;
 import com.lowagie.text.Document;
 import com.lowagie.text.DocumentException;
@@ -71,18 +71,18 @@ public class StudentTranscriptPdfService {
     private static final Color COLOR_FAIL = new Color(185, 28, 28);
 
     private final CurrentUser currentUser;
-    private final SinhVienRepository sinhVienRepository;
+    private final StudentRepository sinhVienRepository;
     private final StudentAcademicProfileService studentAcademicProfileService;
-    private final DiemService diemService;
+    private final GradeService diemService;
     private final String donViPhatHanh;
     private final Clock clock;
 
     @Autowired
     public StudentTranscriptPdfService(
             CurrentUser currentUser,
-            SinhVienRepository sinhVienRepository,
+            StudentRepository sinhVienRepository,
             StudentAcademicProfileService studentAcademicProfileService,
-            DiemService diemService,
+            GradeService diemService,
             @Value("${app.export.bang-diem.don-vi-phat-hanh:}") String donViPhatHanh) {
         this(currentUser, sinhVienRepository, studentAcademicProfileService, diemService,
                 donViPhatHanh, Clock.systemDefaultZone());
@@ -90,9 +90,9 @@ public class StudentTranscriptPdfService {
 
     StudentTranscriptPdfService(
             CurrentUser currentUser,
-            SinhVienRepository sinhVienRepository,
+            StudentRepository sinhVienRepository,
             StudentAcademicProfileService studentAcademicProfileService,
-            DiemService diemService,
+            GradeService diemService,
             String donViPhatHanh,
             Clock clock) {
         this.currentUser = currentUser;
@@ -113,7 +113,7 @@ public class StudentTranscriptPdfService {
     }
 
     public RegistrationDtos.BangDiemPdfDto layDuLieuBangDiem(Long hocKyId) {
-        SinhVien sinhVien = laySinhVienHienTai();
+        Student sinhVien = laySinhVienHienTai();
         StudentAcademicProfileDto hoSo = studentAcademicProfileService.getMyProfile();
         RegistrationDtos.LichSuHocTapDto lichSu = diemService.lichSuHocTap(hocKyId, null);
 
@@ -429,7 +429,7 @@ public class StudentTranscriptPdfService {
         return box;
     }
 
-    private SinhVien laySinhVienHienTai() {
+    private Student laySinhVienHienTai() {
         User user = currentUser.get();
         if (user.getId() != null) {
             return sinhVienRepository.findWithAcademicProfileByUserId(user.getId())

@@ -1,9 +1,12 @@
 package com.edu.registration.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
@@ -41,24 +44,154 @@ public final class RegistrationDtos {
                                   int soTiet, int siSoHienTai, int siSoToiDa, boolean dangMoDangKy,
                                   String loaiDangKy, List<LanHocTruocDto> cacLanHocTruoc) { }
 
+    public record KiemTraQuanHeMonItemDto(
+            Long quanHeId,
+            Long monHocId,
+            String maMonHoc,
+            String tenMonHoc,
+            Long monLienQuanId,
+            String maMonLienQuan,
+            String tenMonLienQuan,
+            String loaiQuanHe,
+            String tenLoaiQuanHe,
+            Double dieuKienDat,
+            boolean yeuCauDat,
+            String maNhomTuChon,
+            Integer tinChiTuChonYeuCau,
+            String khoaNhapHoc,
+            boolean hieuLucTrongHocKy,
+            boolean quyCheDaChot,
+            boolean chanDangKy,
+            String trangThaiKiemTra,
+            boolean daDatMonLienQuan,
+            boolean dangDangKyCungHocKy,
+            String thongDiep,
+            String phanCanChuDuAnChot) {
+    }
+
+    public record KetQuaKiemTraQuanHeDangKyDto(
+            Long lopHocPhanId,
+            String maLop,
+            Long monHocId,
+            String maMon,
+            String tenMon,
+            Long hocKyId,
+            String tenHocKy,
+            boolean duDieuKienTienQuyet,
+            List<KiemTraQuanHeMonItemDto> danhSachQuanHe) {
+    }
+
     public record NhapDiemRequest(
-            @NotNull(message = "Vui lòng nhập điểm quá trình")
             @DecimalMin(value = "0", message = "Điểm phải từ 0 đến 10")
-            @DecimalMax(value = "10", message = "Điểm phải từ 0 đến 10") Double diemQuaTrinh,
-            @NotNull(message = "Vui lòng nhập điểm cuối kỳ")
+            @DecimalMax(value = "10", message = "Điểm phải từ 0 đến 10")
+            @Digits(integer = 2, fraction = 2, message = "Điểm chỉ được có tối đa 2 chữ số thập phân")
+            Double diemQuaTrinh,
             @DecimalMin(value = "0", message = "Điểm phải từ 0 đến 10")
-            @DecimalMax(value = "10", message = "Điểm phải từ 0 đến 10") Double diemCuoiKy) {
+            @DecimalMax(value = "10", message = "Điểm phải từ 0 đến 10")
+            @Digits(integer = 2, fraction = 2, message = "Điểm chỉ được có tối đa 2 chữ số thập phân")
+            Double diemCuoiKy) {
+    }
+
+    public record CapNhatDiemItemRequest(
+            @NotNull(message = "Mã đăng ký không được để trống")
+            Long dangKyId,
+            @DecimalMin(value = "0", message = "Điểm phải từ 0 đến 10")
+            @DecimalMax(value = "10", message = "Điểm phải từ 0 đến 10")
+            @Digits(integer = 2, fraction = 2, message = "Điểm chỉ được có tối đa 2 chữ số thập phân")
+            Double diemQuaTrinh,
+            @DecimalMin(value = "0", message = "Điểm phải từ 0 đến 10")
+            @DecimalMax(value = "10", message = "Điểm phải từ 0 đến 10")
+            @Digits(integer = 2, fraction = 2, message = "Điểm chỉ được có tối đa 2 chữ số thập phân")
+            Double diemCuoiKy) {
+    }
+
+    public record CapNhatDiemHangLoatRequest(
+            @NotEmpty(message = "Danh sách điểm không được để trống")
+            List<@Valid CapNhatDiemItemRequest> danhSach) {
     }
 
     public record DiemDto(Long dangKyId, Long sinhVienId, String maSinhVien, String hoTen, String email,
                           Double diemQuaTrinh, Double diemCuoiKy, Double diemTongKet) {
     }
 
-    public record TrangThaiBangDiemDto(Long lopHocPhanId, String maLop, String maMon, String tenMon,
-                                       Long hocKyId, String tenHocKy, String namHoc,
-                                       String trangThaiBangDiem, int phienBanCongBo,
-                                       int soSinhVienDangHoc, int soSinhVienDuDieuKien,
-                                       LocalDateTime guiDuyetLuc, LocalDateTime duyetLuc, LocalDateTime congBoLuc) {
+    public record TraVeBangDiemRequest(
+            @NotBlank(message = "Lý do trả về chỉnh sửa không được để trống")
+            @Size(max = 500, message = "Lý do trả về tối đa 500 ký tự")
+            String lyDo) {
+    }
+
+    public record KhoaBangDiemRequest(
+            @Size(max = 500, message = "Ghi chú khóa bảng điểm tối đa 500 ký tự")
+            String lyDo) {
+    }
+
+    public record MoKhoaBangDiemRequest(
+            @NotBlank(message = "Lý do mở khóa bảng điểm không được để trống")
+            @Size(max = 500, message = "Lý do mở khóa tối đa 500 ký tự")
+            String lyDo) {
+    }
+
+    public record LichSuTrangThaiBangDiemDto(
+            Long id,
+            Long lopHocPhanId,
+            String hanhDong,
+            String trangThaiTruoc,
+            String trangThaiSau,
+            String lyDo,
+            Long nguoiThucHienId,
+            String nguoiThucHienUsername,
+            String nguoiThucHienRole,
+            LocalDateTime thoiDiem) {
+    }
+
+    public record TrangThaiBangDiemDto(
+            Long lopHocPhanId,
+            String maLop,
+            String maMon,
+            String tenMon,
+            Long hocKyId,
+            String tenHocKy,
+            String namHoc,
+            String trangThaiBangDiem,
+            String moTaTrangThai,
+            int phienBanCongBo,
+            int phienBanBangDiem,
+            boolean choPhepSuaDiem,
+            boolean daCongBo,
+            boolean daKhoa,
+            int soSinhVienDangHoc,
+            int soSinhVienDuDieuKien,
+            LocalDateTime guiDuyetLuc,
+            Long nguoiGuiDuyetId,
+            LocalDateTime traVeLuc,
+            Long nguoiTraVeId,
+            String lyDoTraVe,
+            LocalDateTime duyetLuc,
+            Long nguoiDuyetId,
+            LocalDateTime congBoLuc,
+            Long nguoiCongBoId,
+            LocalDateTime khoaLuc,
+            Long nguoiKhoaId,
+            LocalDateTime moKhoaLuc,
+            Long nguoiMoKhoaId,
+            String lyDoMoKhoa,
+            List<LichSuTrangThaiBangDiemDto> lichSu) {
+
+        public TrangThaiBangDiemDto(Long lopHocPhanId, String maLop, String maMon, String tenMon,
+                                    Long hocKyId, String tenHocKy, String namHoc,
+                                    String trangThaiBangDiem, int phienBanCongBo,
+                                    int soSinhVienDangHoc, int soSinhVienDuDieuKien,
+                                    LocalDateTime guiDuyetLuc, LocalDateTime duyetLuc, LocalDateTime congBoLuc) {
+            this(lopHocPhanId, maLop, maMon, tenMon, hocKyId, tenHocKy, namHoc,
+                    trangThaiBangDiem, trangThaiBangDiem, phienBanCongBo, 0,
+                    "NHAP".equals(trangThaiBangDiem) || "TRA_VE".equals(trangThaiBangDiem),
+                    "DA_CONG_BO".equals(trangThaiBangDiem) || "DA_KHOA".equals(trangThaiBangDiem),
+                    "DA_CONG_BO".equals(trangThaiBangDiem) || "DA_KHOA".equals(trangThaiBangDiem),
+                    soSinhVienDangHoc, soSinhVienDuDieuKien,
+                    guiDuyetLuc, null, null, null, null,
+                    duyetLuc, null, congBoLuc, null, null, null, null, null, null,
+                    List.of());
+        }
     }
 
     public record HocKyTongKetDto(Long hocKyId, String tenHocKy, String namHoc, int tongTinChi,

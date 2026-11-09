@@ -1,19 +1,19 @@
 package com.edu.registration.service;
 
 import com.edu.registration.dto.UserDtos;
-import com.edu.registration.entity.GiangVien;
-import com.edu.registration.entity.Khoa;
-import com.edu.registration.entity.LopHanhChinh;
-import com.edu.registration.entity.Nganh;
+import com.edu.registration.entity.Lecturer;
+import com.edu.registration.entity.Faculty;
+import com.edu.registration.entity.AdministrativeClass;
+import com.edu.registration.entity.Major;
 import com.edu.registration.entity.Role;
-import com.edu.registration.entity.SinhVien;
+import com.edu.registration.entity.Student;
 import com.edu.registration.entity.User;
 import com.edu.registration.exception.ApiException;
-import com.edu.registration.repository.GiangVienRepository;
-import com.edu.registration.repository.KhoaRepository;
-import com.edu.registration.repository.LopHanhChinhRepository;
-import com.edu.registration.repository.NganhRepository;
-import com.edu.registration.repository.SinhVienRepository;
+import com.edu.registration.repository.LecturerRepository;
+import com.edu.registration.repository.FacultyRepository;
+import com.edu.registration.repository.AdministrativeClassRepository;
+import com.edu.registration.repository.MajorRepository;
+import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.repository.UserRepository;
 import com.edu.registration.security.UserAuthCache;
 import org.apache.commons.csv.CSVFormat;
@@ -40,20 +40,20 @@ public class UserService {
     private static final String MAT_KHAU_MAC_DINH = "123456";
 
     private final UserRepository userRepository;
-    private final SinhVienRepository sinhVienRepository;
-    private final GiangVienRepository giangVienRepository;
-    private final KhoaRepository khoaRepository;
-    private final NganhRepository nganhRepository;
-    private final LopHanhChinhRepository lopHanhChinhRepository;
+    private final StudentRepository sinhVienRepository;
+    private final LecturerRepository giangVienRepository;
+    private final FacultyRepository khoaRepository;
+    private final MajorRepository nganhRepository;
+    private final AdministrativeClassRepository lopHanhChinhRepository;
     private final PasswordEncoder passwordEncoder;
     private final DtoMapper mapper;
     private final TransactionTemplate transactionTemplate;
     private final UserAuthCache userAuthCache;
     private final AuditLogService auditLogService;
 
-    public UserService(UserRepository userRepository, SinhVienRepository sinhVienRepository,
-                       GiangVienRepository giangVienRepository, KhoaRepository khoaRepository,
-                       NganhRepository nganhRepository, LopHanhChinhRepository lopHanhChinhRepository,
+    public UserService(UserRepository userRepository, StudentRepository sinhVienRepository,
+                       LecturerRepository giangVienRepository, FacultyRepository khoaRepository,
+                       MajorRepository nganhRepository, AdministrativeClassRepository lopHanhChinhRepository,
                        PasswordEncoder passwordEncoder, DtoMapper mapper, TransactionTemplate transactionTemplate,
                        UserAuthCache userAuthCache, AuditLogService auditLogService) {
         this.userRepository = userRepository;
@@ -71,7 +71,7 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public List<UserDtos.SinhVienDto> danhSachSinhVien(String keyword) {
-        List<SinhVien> danhSach = (keyword == null || keyword.isBlank())
+        List<Student> danhSach = (keyword == null || keyword.isBlank())
                 ? sinhVienRepository.findAllByOrderByMaAsc()
                 : sinhVienRepository.findByHoTenContainingIgnoreCaseOrMaContainingIgnoreCaseOrderByMaAsc(
                         keyword.trim(), keyword.trim());
@@ -87,7 +87,7 @@ public class UserService {
     @Transactional
     public UserDtos.SinhVienDto suaSinhVien(Long id, UserDtos.SinhVienRequest request) {
         return auditLogService.execute("STUDENT_ACCOUNT_UPDATED", "STUDENT_ACCOUNT", id, audit -> {
-            SinhVien sinhVien = sinhVienRepository.findById(id)
+            Student sinhVien = sinhVienRepository.findById(id)
                     .orElseThrow(() -> ApiException.notFound("Sinh viên không tồn tại"));
             Map<String, Object> before = accountSnapshot(
                     sinhVien.getKhoa() == null ? null : sinhVien.getKhoa().getId(),
@@ -118,7 +118,7 @@ public class UserService {
     @Transactional
     public UserDtos.SinhVienDto doiTrangThaiSinhVien(Long id, boolean trangThai) {
         return auditLogService.execute("STUDENT_ACCOUNT_STATUS_CHANGED", "STUDENT_ACCOUNT", id, audit -> {
-            SinhVien sinhVien = sinhVienRepository.findById(id)
+            Student sinhVien = sinhVienRepository.findById(id)
                     .orElseThrow(() -> ApiException.notFound("Sinh viên không tồn tại"));
             boolean before = sinhVien.getUser().isTrangThai();
             sinhVien.getUser().setTrangThai(trangThai);
@@ -130,7 +130,7 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public List<UserDtos.GiangVienDto> danhSachGiangVien(String keyword) {
-        List<GiangVien> danhSach = (keyword == null || keyword.isBlank())
+        List<Lecturer> danhSach = (keyword == null || keyword.isBlank())
                 ? giangVienRepository.findAllByOrderByMaAsc()
                 : giangVienRepository.findByHoTenContainingIgnoreCaseOrMaContainingIgnoreCaseOrderByMaAsc(
                         keyword.trim(), keyword.trim());
@@ -145,14 +145,14 @@ public class UserService {
                 throw ApiException.conflict("Mã giảng viên đã tồn tại");
             }
             User user = taoUser(request.username(), request.matKhau(), Role.GIANG_VIEN);
-            GiangVien giangVien = new GiangVien();
+            Lecturer giangVien = new Lecturer();
             giangVien.setUser(user);
             giangVien.setMa(ma);
             giangVien.setHoTen(request.hoTen().trim());
             giangVien.setEmail(request.email());
             giangVien.setSoDienThoai(request.soDienThoai());
             giangVien.setKhoa(request.khoaId() != null ? timKhoa(request.khoaId()) : null);
-            GiangVien saved = giangVienRepository.save(giangVien);
+            Lecturer saved = giangVienRepository.save(giangVien);
             audit.entityId(saved.getId());
             audit.changes(Map.of(), lecturerSnapshot(saved.getKhoa() == null ? null : saved.getKhoa().getId()));
             return mapper.giangVien(saved);
@@ -162,7 +162,7 @@ public class UserService {
     @Transactional
     public UserDtos.GiangVienDto suaGiangVien(Long id, UserDtos.GiangVienRequest request) {
         return auditLogService.execute("LECTURER_ACCOUNT_UPDATED", "LECTURER_ACCOUNT", id, audit -> {
-            GiangVien giangVien = giangVienRepository.findById(id)
+            Lecturer giangVien = giangVienRepository.findById(id)
                     .orElseThrow(() -> ApiException.notFound("Giảng viên không tồn tại"));
             Map<String, Object> before = lecturerSnapshot(
                     giangVien.getKhoa() == null ? null : giangVien.getKhoa().getId());
@@ -187,7 +187,7 @@ public class UserService {
     @Transactional
     public UserDtos.GiangVienDto doiTrangThaiGiangVien(Long id, boolean trangThai) {
         return auditLogService.execute("LECTURER_ACCOUNT_STATUS_CHANGED", "LECTURER_ACCOUNT", id, audit -> {
-            GiangVien giangVien = giangVienRepository.findById(id)
+            Lecturer giangVien = giangVienRepository.findById(id)
                     .orElseThrow(() -> ApiException.notFound("Giảng viên không tồn tại"));
             boolean before = giangVien.getUser().isTrangThai();
             giangVien.getUser().setTrangThai(trangThai);
@@ -257,7 +257,7 @@ public class UserService {
             }
 
             User user = taoUser(username, matKhau, Role.SINH_VIEN);
-            SinhVien sinhVien = new SinhVien();
+            Student sinhVien = new Student();
             sinhVien.setUser(user);
             sinhVien.setMa(maChuan);
             sinhVien.setHoTen(hoTen.trim());
@@ -266,7 +266,7 @@ public class UserService {
             sinhVien.setKhoa(khoaId != null ? timKhoa(khoaId) : null);
             sinhVien.setNganh(nganhId != null ? timNganh(nganhId) : null);
             sinhVien.setLopHanhChinh(lopId != null ? timLop(lopId) : null);
-            SinhVien saved = sinhVienRepository.save(sinhVien);
+            Student saved = sinhVienRepository.save(sinhVien);
             audit.entityId(saved.getId());
             audit.changes(Map.of(), accountSnapshot(
                     saved.getKhoa() == null ? null : saved.getKhoa().getId(),
@@ -305,15 +305,15 @@ public class UserService {
         }
     }
 
-    private Khoa timKhoa(Long id) {
+    private Faculty timKhoa(Long id) {
         return khoaRepository.findById(id).orElseThrow(() -> ApiException.notFound("Khoa không tồn tại"));
     }
 
-    private Nganh timNganh(Long id) {
+    private Major timNganh(Long id) {
         return nganhRepository.findById(id).orElseThrow(() -> ApiException.notFound("Ngành không tồn tại"));
     }
 
-    private LopHanhChinh timLop(Long id) {
+    private AdministrativeClass timLop(Long id) {
         return lopHanhChinhRepository.findById(id)
                 .orElseThrow(() -> ApiException.notFound("Lớp hành chính không tồn tại"));
     }

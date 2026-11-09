@@ -56,7 +56,7 @@
 .app-sidebar .nav-link { color: #cfddd5; }
 .app-sidebar .nav-link:hover { background: #ffffff12; color: white; }
 .app-header { background: rgba(243,245,240,.92); border-color: #e2e8df; }
-.app-main { max-width: 1600px; }
+.app-main { max-width: 1400px; }
 .page-heading { color: var(--ink); letter-spacing: -.035em; }
 .card h2 { color: var(--ink); }
 .dashboard-hero { background: #e8eee2; color: var(--ink); box-shadow: none; }

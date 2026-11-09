@@ -3,12 +3,13 @@ import {
   BookOpen,
   CalendarDays,
   CheckCircle2,
+  GitBranch,
   MapPin,
   Search,
   Users,
 } from "lucide-react";
 import api, { getErrorMessage } from "../../api/client";
-import { Alert, Badge, EmptyState, PageHeader, Spinner } from "../../components/ui";
+import { Alert, Badge, EmptyState, Modal, PageHeader, Spinner } from "../../components/ui";
 import { formatDate, lichHoc, soBuoiHoc, tietLyThuyet } from "../../lib/format";
 import { useApi } from "../../lib/useApi";
 
@@ -19,6 +20,11 @@ export default function RegisterPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState(null);
+
+  const [checkingClass, setCheckingClass] = useState(null);
+  const [relationCheckResult, setRelationCheckResult] = useState(null);
+  const [relationCheckLoading, setRelationCheckLoading] = useState(false);
+  const [relationCheckError, setRelationCheckError] = useState("");
 
   useEffect(() => {
     if (!hocKyId && hocKyList?.length) {
@@ -69,12 +75,29 @@ export default function RegisterPage() {
     }
   };
 
+  const kiemTraQuanHe = async (lop) => {
+    setCheckingClass(lop);
+    setRelationCheckResult(null);
+    setRelationCheckError("");
+    setRelationCheckLoading(true);
+    try {
+      const { data } = await api.get("/dang-ky/kiem-tra-quan-he", {
+        params: { lopHocPhanId: lop.id },
+      });
+      setRelationCheckResult(data);
+    } catch (err) {
+      setRelationCheckError(getErrorMessage(err));
+    } finally {
+      setRelationCheckLoading(false);
+    }
+  };
+
   return (
     <div>
       <PageHeader
         icon={BookOpen}
         title="Đăng ký học phần"
-        description="Tìm lớp đang mở và đăng ký trong thời gian cho phép. Hệ thống tự kiểm tra điều kiện."
+        description="Tìm lớp đang mở và đăng ký trong thời gian cho phép. Hệ thống tự kiểm tra điều kiện tiên quyết và các quan hệ môn."
         actions={
           <select
             className="input w-auto min-w-[220px]"
@@ -214,19 +237,29 @@ export default function RegisterPage() {
                         </p>
                       </td>
                       <td className="td text-right">
-                        {disabled ? (
-                          <Badge tone={tone}>{label}</Badge>
-                        ) : (
+                        <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"
-                            className="btn-primary px-3 py-1.5 text-xs"
-                            disabled={busyId === lop.id}
-                            onClick={() => dangKy(lop)}
+                            className="btn-secondary px-2.5 py-1.5 text-xs"
+                            onClick={() => kiemTraQuanHe(lop)}
+                            title="Kiểm tra quan hệ môn học"
                           >
-                            <CheckCircle2 size={14} />
-                            {busyId === lop.id ? "Đang xử lý..." : "Đăng ký"}
+                            <GitBranch size={13} /> Quan hệ môn
                           </button>
-                        )}
+                          {disabled ? (
+                            <Badge tone={tone}>{label}</Badge>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn-primary px-3 py-1.5 text-xs"
+                              disabled={busyId === lop.id}
+                              onClick={() => dangKy(lop)}
+                            >
+                              <CheckCircle2 size={14} />
+                              {busyId === lop.id ? "Đang xử lý..." : "Đăng ký"}
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -241,6 +274,91 @@ export default function RegisterPage() {
         <CalendarDays size={14} />
         Ghi chú: không thể đăng ký hai lớp cùng môn, trùng lịch, vượt sĩ số hoặc khi chưa đạt môn tiên quyết.
       </p>
+
+      <Modal
+        open={Boolean(checkingClass)}
+        onClose={() => setCheckingClass(null)}
+        title="Kiểm tra quan hệ môn học khi đăng ký"
+        description={
+          checkingClass
+            ? `Lớp ${checkingClass.ma} · ${checkingClass.maMon} - ${checkingClass.tenMon}`
+            : ""
+        }
+        footer={
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => setCheckingClass(null)}
+          >
+            Đóng
+          </button>
+        }
+      >
+        {relationCheckError && <Alert tone="error">{relationCheckError}</Alert>}
+        {relationCheckLoading ? (
+          <Spinner label="Đang kiểm tra các quan hệ môn học đã cấu hình..." />
+        ) : relationCheckResult ? (
+          <div className="space-y-3 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5">
+              <span>
+                Lớp: <strong>{relationCheckResult.maLop}</strong> · Học kỳ:{" "}
+                <strong>{relationCheckResult.tenHocKy}</strong>
+              </span>
+              <Badge tone={relationCheckResult.duDieuKienTienQuyet ? "green" : "red"}>
+                {relationCheckResult.duDieuKienTienQuyet
+                  ? "Đủ điều kiện tiên quyết"
+                  : "Chưa đủ điều kiện tiên quyết"}
+              </Badge>
+            </div>
+
+            {(relationCheckResult.danhSachQuanHe || []).length === 0 ? (
+              <p className="text-xs text-slate-500">
+                Môn học này không có ràng buộc quan hệ môn học nào đã cấu hình.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {(relationCheckResult.danhSachQuanHe || []).map((item) => (
+                  <div
+                    key={item.quanHeId}
+                    className="rounded-xl border border-slate-200 p-3 text-xs"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-semibold text-slate-900">
+                        [{item.tenLoaiQuanHe}] {item.maMonLienQuan} - {item.tenMonLienQuan}
+                      </span>
+                      <Badge
+                        tone={
+                          !item.hieuLucTrongHocKy
+                            ? "slate"
+                            : !item.quyCheDaChot
+                            ? "amber"
+                            : !item.chanDangKy
+                            ? "green"
+                            : "red"
+                        }
+                      >
+                        {!item.hieuLucTrongHocKy
+                          ? "Khác đợt / khóa"
+                          : !item.quyCheDaChot
+                          ? "Chờ chốt quy chế"
+                          : !item.chanDangKy
+                          ? "Đã thỏa mãn"
+                          : "Chưa đạt"}
+                      </Badge>
+                    </div>
+                    <p className="mt-1 text-slate-600">{item.thongDiep}</p>
+                    {item.phanCanChuDuAnChot && (
+                      <p className="mt-1 text-[11px] text-amber-700">
+                        Chờ chốt: {item.phanCanChuDuAnChot}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : null}
+      </Modal>
     </div>
   );
 }

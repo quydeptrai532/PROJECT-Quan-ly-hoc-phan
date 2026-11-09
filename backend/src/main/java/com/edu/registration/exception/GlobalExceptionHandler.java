@@ -1,5 +1,7 @@
 package com.edu.registration.exception;
 
+import com.edu.registration.dto.ValidationErrorDetail;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,26 +18,50 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    private static final Pattern INDEXED_FIELD_PATTERN = Pattern.compile(".*?\\[(\\d+)\\]\\.(.+)");
 
-    public record ErrorResponse(String message, Instant timestamp) {
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    public record ErrorResponse(String message, Instant timestamp, List<ValidationErrorDetail> errors) {
+        public ErrorResponse(String message, Instant timestamp) {
+            this(message, timestamp, List.of());
+        }
     }
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ErrorResponse> handleApiException(ApiException ex) {
         return ResponseEntity.status(ex.getStatus())
-                .body(new ErrorResponse(ex.getMessage(), Instant.now()));
+                .body(new ErrorResponse(ex.getMessage(), Instant.now(), ex.getErrors()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
-        FieldError fieldError = ex.getBindingResult().getFieldError();
-        String message = fieldError != null ? fieldError.getDefaultMessage() : "Dữ liệu không hợp lệ";
-        return ResponseEntity.badRequest().body(new ErrorResponse(message, Instant.now()));
+        List<ValidationErrorDetail> details = new ArrayList<>();
+        for (FieldError fe : ex.getBindingResult().getFieldErrors()) {
+            String fieldPath = fe.getField();
+            Integer dong = null;
+            String cot = fieldPath;
+            Matcher matcher = INDEXED_FIELD_PATTERN.matcher(fieldPath);
+            if (matcher.matches()) {
+                try {
+                    dong = Integer.parseInt(matcher.group(1)) + 1;
+                    cot = matcher.group(2);
+                } catch (NumberFormatException ignored) {
+                }
+            }
+            details.add(new ValidationErrorDetail(
+                    null, null, null, dong, cot, fieldPath, fe.getDefaultMessage()));
+        }
+        String firstMessage = details.isEmpty() ? "Dữ liệu không hợp lệ" : details.get(0).message();
+        return ResponseEntity.badRequest().body(new ErrorResponse(firstMessage, Instant.now(), details));
     }
 
     @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class})

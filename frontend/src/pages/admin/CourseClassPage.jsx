@@ -1,17 +1,42 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Ban, CheckCircle2, Download, Layers, Megaphone, Pencil, Plus, RotateCcw, Search, Trash2 } from "lucide-react";
+import {
+  Ban,
+  CheckCircle2,
+  ClipboardCheck,
+  Download,
+  Layers,
+  Lock,
+  Megaphone,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Search,
+  Trash2,
+  Unlock,
+} from "lucide-react";
 import api, { getErrorMessage } from "../../api/client";
 import { useConfirm } from "../../components/ConfirmDialog";
 import { Alert, Badge, EmptyState, Field, Modal, PageHeader, Spinner } from "../../components/ui";
-import { lichHoc, soBuoiHoc, tietLyThuyet } from "../../lib/format";
+import { formatDateTime, formatDiem, lichHoc, soBuoiHoc, tietLyThuyet } from "../../lib/format";
 import { useApi } from "../../lib/useApi";
 
 const GRADE_SHEET_STATUS_META = {
-  NHAP: { label: " Điểm: Nháp", tone: "slate" },
+  NHAP: { label: "Điểm: Nháp", tone: "slate" },
   CHO_DUYET: { label: "Điểm: Chờ duyệt", tone: "amber" },
+  TRA_VE: { label: "Điểm: Trả sửa", tone: "rose" },
   DA_DUYET: { label: "Điểm: Đã duyệt", tone: "blue" },
   DA_CONG_BO: { label: "Điểm: Đã công bố", tone: "green" },
+  DA_KHOA: { label: "Điểm: Đã khóa", tone: "indigo" },
+};
+
+const ACTION_LABEL = {
+  GUI_DUYET: "Giảng viên gửi duyệt",
+  TRA_VE: "Trả về chỉnh sửa",
+  PHE_DUYET: "Phê duyệt bảng điểm",
+  CONG_BO: "Công bố bảng điểm",
+  KHOA: "Khóa bảng điểm",
+  MO_KHOA: "Mở khóa bảng điểm",
 };
 
 const EMPTY_FORM = {
@@ -44,6 +69,20 @@ export default function CourseClassPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Grade sheet review / reason modal state (QLSV-74)
+  const [reasonModalOpen, setReasonModalOpen] = useState(false);
+  const [reasonAction, setReasonAction] = useState(null); // { row, mode: 'TRA_VE' | 'MO_KHOA' }
+  const [reasonText, setReasonText] = useState("");
+  const [reasonError, setReasonError] = useState("");
+  const [reasonSubmitting, setReasonSubmitting] = useState(false);
+
+  const [gradeDetailOpen, setGradeDetailOpen] = useState(false);
+  const [gradeDetailRow, setGradeDetailRow] = useState(null);
+  const [gradeDetailStatus, setGradeDetailStatus] = useState(null);
+  const [gradeDetailStudents, setGradeDetailStudents] = useState([]);
+  const [gradeDetailLoading, setGradeDetailLoading] = useState(false);
+  const [gradeDetailError, setGradeDetailError] = useState("");
 
   useEffect(() => {
     if (!hocKyId && hocKyList?.length) {
@@ -178,16 +217,83 @@ export default function CourseClassPage() {
     }
   };
 
-  const thucHienBangDiem = async (row, endpoint, successText) => {
+  const loadGradeDetail = async (row) => {
+    setGradeDetailOpen(true);
+    setGradeDetailRow(row);
+    setGradeDetailLoading(true);
+    setGradeDetailError("");
+    try {
+      const [statusRes, studentsRes] = await Promise.all([
+        api.get(`/admin/lop-hoc-phan/${row.id}/trang-thai-bang-diem`),
+        api.get(`/admin/lop-hoc-phan/${row.id}/sinh-vien`),
+      ]);
+      setGradeDetailStatus(statusRes.data);
+      setGradeDetailStudents(studentsRes.data || []);
+    } catch (err) {
+      setGradeDetailError(getErrorMessage(err));
+    } finally {
+      setGradeDetailLoading(false);
+    }
+  };
+
+  const thucHienBangDiem = async (row, endpoint, successText, payload = undefined) => {
     setActionError("");
     setMessage("");
     setWarning("");
     try {
-      await api.post(`/admin/lop-hoc-phan/${row.id}/${endpoint}`);
+      const { data } = await api.post(`/admin/lop-hoc-phan/${row.id}/${endpoint}`, payload);
       setMessage(successText);
       reload();
+      if (gradeDetailOpen && gradeDetailRow?.id === row.id) {
+        setGradeDetailStatus(data);
+      }
     } catch (err) {
       setActionError(getErrorMessage(err));
+    }
+  };
+
+  const openReasonModal = (row, mode) => {
+    setReasonAction({ row, mode });
+    setReasonText("");
+    setReasonError("");
+    setReasonModalOpen(true);
+  };
+
+  const submitReasonAction = async (event) => {
+    event.preventDefault();
+    if (!reasonAction) return;
+    const cleanReason = reasonText.trim();
+    if (!cleanReason) {
+      setReasonError(
+        reasonAction.mode === "TRA_VE"
+          ? "Vui lòng nhập lý do trả bảng điểm về chỉnh sửa"
+          : "Vui lòng nhập lý do bắt buộc để mở khóa bảng điểm"
+      );
+      return;
+    }
+    setReasonSubmitting(true);
+    setReasonError("");
+    setActionError("");
+    setMessage("");
+    try {
+      const endpoint = reasonAction.mode === "TRA_VE" ? "tra-ve-diem" : "mo-khoa-diem";
+      const { data } = await api.post(`/admin/lop-hoc-phan/${reasonAction.row.id}/${endpoint}`, {
+        lyDo: cleanReason,
+      });
+      setReasonModalOpen(false);
+      setMessage(
+        reasonAction.mode === "TRA_VE"
+          ? `Đã trả bảng điểm lớp ${reasonAction.row.ma} về cho giảng viên chỉnh sửa`
+          : `Đã mở khóa bảng điểm lớp ${reasonAction.row.ma} để chỉnh sửa`
+      );
+      reload();
+      if (gradeDetailOpen && gradeDetailRow?.id === reasonAction.row.id) {
+        setGradeDetailStatus(data);
+      }
+    } catch (err) {
+      setReasonError(getErrorMessage(err));
+    } finally {
+      setReasonSubmitting(false);
     }
   };
 
@@ -212,8 +318,8 @@ export default function CourseClassPage() {
     <div>
       <PageHeader
         icon={Layers}
-        title="Lớp học phần"
-        description="Mở lớp theo học kỳ, phân công giảng viên, phòng học, lịch học và sĩ số tối đa."
+        title="Lớp học phần & Duyệt bảng điểm"
+        description="Mở lớp theo học kỳ, phân công giảng viên và thực hiện phê duyệt, trả sửa, công bố, khóa/mở khóa bảng điểm."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <select
@@ -261,7 +367,7 @@ export default function CourseClassPage() {
           <EmptyState icon={Layers} title="Chưa có lớp học phần" description="Bấm Mở lớp để tạo lớp cho học kỳ này." />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1060px]">
+            <table className="w-full min-w-[1100px]">
               <thead className="bg-slate-50">
                 <tr>
                   <th className="th">Mã lớp</th>
@@ -294,38 +400,101 @@ export default function CourseClassPage() {
                         {row.siSoHienTai}/{row.siSoToiDa}
                       </td>
                       <td className="td text-center">
-                        <Badge tone={statusMeta.tone}>{statusMeta.label}</Badge>
+                        <div className="inline-flex flex-col items-center gap-1">
+                          <Badge tone={statusMeta.tone}>{statusMeta.label}</Badge>
+                          {row.lyDoTraVeBangDiem && row.trangThaiBangDiem === "TRA_VE" && (
+                            <span className="max-w-[180px] truncate text-[10px] text-rose-600" title={row.lyDoTraVeBangDiem}>
+                              Lý do: {row.lyDoTraVeBangDiem}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="td">
                         <div className="flex justify-end gap-1">
-                          {(row.trangThaiBangDiem === "CHO_DUYET" || row.trangThaiBangDiem === "NHAP") && row.siSoHienTai > 0 && (
-                            <button
-                              type="button"
-                              className="rounded-md p-1.5 text-sky-600 hover:bg-sky-50"
-                              onClick={() => thucHienBangDiem(row, "phe-duyet-diem", `Đã phê duyệt bảng điểm lớp ${row.ma}`)}
-                              title="Phê duyệt bảng điểm"
-                            >
-                              <CheckCircle2 size={15} />
-                            </button>
+                          <button
+                            type="button"
+                            className="rounded-md p-1.5 text-indigo-600 hover:bg-indigo-50"
+                            onClick={() => loadGradeDetail(row)}
+                            title="Xem bảng điểm & lịch sử phê duyệt"
+                          >
+                            <ClipboardCheck size={15} />
+                          </button>
+                          {row.trangThaiBangDiem === "CHO_DUYET" && row.siSoHienTai > 0 && (
+                            <>
+                              <button
+                                type="button"
+                                className="rounded-md p-1.5 text-sky-600 hover:bg-sky-50"
+                                onClick={() => thucHienBangDiem(row, "phe-duyet-diem", `Đã phê duyệt bảng điểm lớp ${row.ma}`)}
+                                title="Phê duyệt bảng điểm (CHO_DUYET → DA_DUYET)"
+                              >
+                                <CheckCircle2 size={15} />
+                              </button>
+                              <button
+                                type="button"
+                                className="rounded-md p-1.5 text-rose-600 hover:bg-rose-50"
+                                onClick={() => openReasonModal(row, "TRA_VE")}
+                                title="Trả bảng điểm về chỉnh sửa kèm lý do"
+                              >
+                                <RotateCcw size={15} />
+                              </button>
+                            </>
                           )}
                           {row.trangThaiBangDiem === "DA_DUYET" && (
-                            <button
-                              type="button"
-                              className="rounded-md p-1.5 text-emerald-600 hover:bg-emerald-50"
-                              onClick={() => thucHienBangDiem(row, "cong-bo-diem", `Đã công bố bảng điểm lớp ${row.ma} và thông báo tới sinh viên`)}
-                              title="Công bố bảng điểm"
-                            >
-                              <Megaphone size={15} />
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                className="rounded-md p-1.5 text-emerald-600 hover:bg-emerald-50"
+                                onClick={() => thucHienBangDiem(row, "cong-bo-diem", `Đã công bố bảng điểm lớp ${row.ma} và thông báo tới sinh viên`)}
+                                title="Công bố bảng điểm (DA_DUYET → DA_CONG_BO)"
+                              >
+                                <Megaphone size={15} />
+                              </button>
+                              <button
+                                type="button"
+                                className="rounded-md p-1.5 text-indigo-600 hover:bg-indigo-50"
+                                onClick={() => thucHienBangDiem(row, "khoa-diem", `Đã công bố và khóa bảng điểm lớp ${row.ma}`)}
+                                title="Công bố & khóa bảng điểm (DA_DUYET → DA_KHOA)"
+                              >
+                                <Lock size={15} />
+                              </button>
+                              <button
+                                type="button"
+                                className="rounded-md p-1.5 text-rose-600 hover:bg-rose-50"
+                                onClick={() => openReasonModal(row, "TRA_VE")}
+                                title="Trả bảng điểm về chỉnh sửa kèm lý do"
+                              >
+                                <RotateCcw size={15} />
+                              </button>
+                            </>
                           )}
                           {row.trangThaiBangDiem === "DA_CONG_BO" && (
+                            <>
+                              <button
+                                type="button"
+                                className="rounded-md p-1.5 text-indigo-600 hover:bg-indigo-50"
+                                onClick={() => thucHienBangDiem(row, "khoa-diem", `Đã khóa chốt bảng điểm lớp ${row.ma}`)}
+                                title="Khóa chốt bảng điểm (DA_CONG_BO → DA_KHOA)"
+                              >
+                                <Lock size={15} />
+                              </button>
+                              <button
+                                type="button"
+                                className="rounded-md p-1.5 text-amber-600 hover:bg-amber-50"
+                                onClick={() => openReasonModal(row, "MO_KHOA")}
+                                title="Mở khóa bảng điểm (bắt buộc nhập lý do)"
+                              >
+                                <Unlock size={15} />
+                              </button>
+                            </>
+                          )}
+                          {row.trangThaiBangDiem === "DA_KHOA" && (
                             <button
                               type="button"
-                              className="rounded-md p-1.5 text-slate-600 hover:bg-slate-100"
-                              onClick={() => thucHienBangDiem(row, "thu-hoi-cong-bo-diem", `Đã thu hồi công bố bảng điểm lớp ${row.ma}`)}
-                              title="Thu hồi công bố bảng điểm"
+                              className="rounded-md p-1.5 text-amber-600 hover:bg-amber-50"
+                              onClick={() => openReasonModal(row, "MO_KHOA")}
+                              title="Mở khóa bảng điểm (bắt buộc nhập lý do)"
                             >
-                              <RotateCcw size={15} />
+                              <Unlock size={15} />
                             </button>
                           )}
                           <button
@@ -372,6 +541,242 @@ export default function CourseClassPage() {
           </div>
         )}
       </div>
+
+      {/* Modal nhập lý do bắt buộc khi Trả sửa hoặc Mở khóa (QLSV-74) */}
+      <Modal
+        open={reasonModalOpen}
+        onClose={() => setReasonModalOpen(false)}
+        title={
+          reasonAction?.mode === "TRA_VE"
+            ? `Trả bảng điểm về chỉnh sửa: ${reasonAction?.row?.ma}`
+            : `Mở khóa bảng điểm: ${reasonAction?.row?.ma}`
+        }
+        description={
+          reasonAction?.mode === "TRA_VE"
+            ? "Bảng điểm sẽ chuyển về trạng thái Trả về chỉnh sửa (TRA_VE) để giảng viên phụ trách điều chỉnh và gửi duyệt lại."
+            : "Thao tác mở khóa bảng điểm yêu cầu quyền đặc biệt và bắt buộc ghi rõ lý do để lưu vết kiểm toán (audit)."
+        }
+        size="md"
+        footer={
+          <>
+            <button type="button" className="btn-secondary" onClick={() => setReasonModalOpen(false)}>
+              Hủy
+            </button>
+            <button type="submit" form="grade-sheet-reason-form" className="btn-primary" disabled={reasonSubmitting}>
+              {reasonSubmitting
+                ? "Đang xử lý..."
+                : reasonAction?.mode === "TRA_VE"
+                  ? "Xác nhận trả sửa"
+                  : "Xác nhận mở khóa"}
+            </button>
+          </>
+        }
+      >
+        <form id="grade-sheet-reason-form" className="space-y-4" onSubmit={submitReasonAction}>
+          {reasonError && <Alert tone="error">{reasonError}</Alert>}
+          <Field
+            label={reasonAction?.mode === "TRA_VE" ? "Lý do trả về chỉnh sửa" : "Lý do mở khóa bảng điểm"}
+            required
+            hint="Tối đa 500 ký tự. Lý do này sẽ được lưu vào lịch sử trạng thái và nhật ký kiểm toán."
+          >
+            <textarea
+              className="input min-h-[100px] py-2"
+              maxLength={500}
+              value={reasonText}
+              onChange={(e) => setReasonText(e.target.value)}
+              placeholder={
+                reasonAction?.mode === "TRA_VE"
+                  ? "Nhập rõ nội dung sai sót hoặc yêu cầu rà soát lại điểm cho giảng viên..."
+                  : "Nhập căn cứ/quyết định mở khóa bảng điểm để điều chỉnh..."
+              }
+              required
+            />
+          </Field>
+        </form>
+      </Modal>
+
+      {/* Modal xem chi tiết bảng điểm & lịch sử duyệt dành cho Phòng Đào tạo / Quản trị (QLSV-74) */}
+      <Modal
+        open={gradeDetailOpen}
+        onClose={() => setGradeDetailOpen(false)}
+        title={gradeDetailRow ? `Kiểm duyệt bảng điểm: ${gradeDetailRow.ma} - ${gradeDetailRow.tenMon}` : "Kiểm duyệt bảng điểm"}
+        description="Kiểm tra bảng điểm lớp học phần, thực hiện duyệt/trả sửa/công bố/khóa/mở khóa và tra cứu lịch sử chuyển trạng thái."
+        size="lg"
+      >
+        {gradeDetailLoading ? (
+          <Spinner label="Đang tải thông tin bảng điểm..." />
+        ) : gradeDetailError ? (
+          <Alert tone="error">{gradeDetailError}</Alert>
+        ) : gradeDetailStatus ? (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+              <div className="space-y-1 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-slate-800">Trạng thái hiện tại:</span>
+                  <Badge tone={(GRADE_SHEET_STATUS_META[gradeDetailStatus.trangThaiBangDiem] || GRADE_SHEET_STATUS_META.NHAP).tone}>
+                    {(GRADE_SHEET_STATUS_META[gradeDetailStatus.trangThaiBangDiem] || GRADE_SHEET_STATUS_META.NHAP).label}
+                  </Badge>
+                </div>
+                <p className="text-slate-600">
+                  Sinh viên đủ điểm: <span className="font-semibold">{gradeDetailStatus.soSinhVienDuDieuKien}/{gradeDetailStatus.soSinhVienDangHoc}</span> ·
+                  Phiên bản công bố: <span className="font-semibold">v{gradeDetailStatus.phienBanCongBo}</span>
+                </p>
+                {gradeDetailStatus.lyDoTraVe && (
+                  <p className="text-rose-700">
+                    <span className="font-semibold">Lý do trả về gần nhất:</span> {gradeDetailStatus.lyDoTraVe}
+                  </p>
+                )}
+                {gradeDetailStatus.lyDoMoKhoa && (
+                  <p className="text-amber-800">
+                    <span className="font-semibold">Lý do mở khóa gần nhất:</span> {gradeDetailStatus.lyDoMoKhoa}
+                  </p>
+                )}
+              </div>
+
+              {gradeDetailRow && (
+                <div className="flex flex-wrap items-center gap-2">
+                  {gradeDetailStatus.trangThaiBangDiem === "CHO_DUYET" && (
+                    <>
+                      <button
+                        type="button"
+                        className="btn-primary text-xs"
+                        onClick={() => thucHienBangDiem(gradeDetailRow, "phe-duyet-diem", `Đã phê duyệt bảng điểm lớp ${gradeDetailRow.ma}`)}
+                      >
+                        <CheckCircle2 size={14} /> Phê duyệt
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-secondary text-xs text-rose-700"
+                        onClick={() => openReasonModal(gradeDetailRow, "TRA_VE")}
+                      >
+                        <RotateCcw size={14} /> Trả về chỉnh sửa
+                      </button>
+                    </>
+                  )}
+                  {gradeDetailStatus.trangThaiBangDiem === "DA_DUYET" && (
+                    <>
+                      <button
+                        type="button"
+                        className="btn-primary text-xs"
+                        onClick={() => thucHienBangDiem(gradeDetailRow, "cong-bo-diem", `Đã công bố bảng điểm lớp ${gradeDetailRow.ma}`)}
+                      >
+                        <Megaphone size={14} /> Công bố điểm
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-secondary text-xs"
+                        onClick={() => thucHienBangDiem(gradeDetailRow, "khoa-diem", `Đã công bố và khóa bảng điểm lớp ${gradeDetailRow.ma}`)}
+                      >
+                        <Lock size={14} /> Công bố & Khóa
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-secondary text-xs text-rose-700"
+                        onClick={() => openReasonModal(gradeDetailRow, "TRA_VE")}
+                      >
+                        <RotateCcw size={14} /> Trả sửa
+                      </button>
+                    </>
+                  )}
+                  {gradeDetailStatus.trangThaiBangDiem === "DA_CONG_BO" && (
+                    <>
+                      <button
+                        type="button"
+                        className="btn-primary text-xs"
+                        onClick={() => thucHienBangDiem(gradeDetailRow, "khoa-diem", `Đã khóa bảng điểm lớp ${gradeDetailRow.ma}`)}
+                      >
+                        <Lock size={14} /> Khóa bảng điểm
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-secondary text-xs text-amber-700"
+                        onClick={() => openReasonModal(gradeDetailRow, "MO_KHOA")}
+                      >
+                        <Unlock size={14} /> Mở khóa kèm lý do
+                      </button>
+                    </>
+                  )}
+                  {gradeDetailStatus.trangThaiBangDiem === "DA_KHOA" && (
+                    <button
+                      type="button"
+                      className="btn-secondary text-xs text-amber-700"
+                      onClick={() => openReasonModal(gradeDetailRow, "MO_KHOA")}
+                    >
+                      <Unlock size={14} /> Mở khóa kèm lý do
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Bảng điểm sinh viên ({gradeDetailStudents.length})
+              </h4>
+              {gradeDetailStudents.length === 0 ? (
+                <p className="text-xs text-slate-500">Lớp chưa có sinh viên đăng ký đang theo học.</p>
+              ) : (
+                <div className="max-h-56 overflow-y-auto rounded-lg border border-slate-200">
+                  <table className="w-full text-xs">
+                    <thead className="bg-slate-50 sticky top-0">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-medium text-slate-600">Mã SV</th>
+                        <th className="px-3 py-2 text-left font-medium text-slate-600">Họ tên</th>
+                        <th className="px-3 py-2 text-center font-medium text-slate-600">Quá trình</th>
+                        <th className="px-3 py-2 text-center font-medium text-slate-600">Cuối kỳ</th>
+                        <th className="px-3 py-2 text-center font-medium text-slate-600">Tổng kết</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {gradeDetailStudents.map((sv) => (
+                        <tr key={sv.dangKyId}>
+                          <td className="px-3 py-1.5 font-mono text-slate-800">{sv.maSinhVien}</td>
+                          <td className="px-3 py-1.5 text-slate-800">{sv.hoTen}</td>
+                          <td className="px-3 py-1.5 text-center">{formatDiem(sv.diemQuaTrinh)}</td>
+                          <td className="px-3 py-1.5 text-center">{formatDiem(sv.diemCuoiKy)}</td>
+                          <td className="px-3 py-1.5 text-center font-semibold text-slate-900">{formatDiem(sv.diemTongKet)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Lịch sử chuyển trạng thái ({gradeDetailStatus.lichSu?.length || 0})
+              </h4>
+              {!gradeDetailStatus.lichSu || gradeDetailStatus.lichSu.length === 0 ? (
+                <p className="text-xs text-slate-500">Chưa có lịch sử chuyển trạng thái.</p>
+              ) : (
+                <div className="max-h-48 overflow-y-auto divide-y divide-slate-100 rounded-lg border border-slate-200 px-3">
+                  {gradeDetailStatus.lichSu.map((item) => (
+                    <div key={item.id} className="py-2.5 text-xs space-y-1">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-semibold text-slate-800">
+                          {ACTION_LABEL[item.hanhDong] || item.hanhDong}:{" "}
+                          <span className="font-mono text-slate-600">{item.trangThaiTruoc}</span> →{" "}
+                          <span className="font-mono text-indigo-700">{item.trangThaiSau}</span>
+                        </span>
+                        <span className="text-slate-500">{formatDateTime(item.thoiDiem)}</span>
+                      </div>
+                      <p className="text-slate-600">
+                        Người thực hiện: <span className="font-medium">{item.nguoiThucHienUsername || `User #${item.nguoiThucHienId || "—"}`}</span> ({item.nguoiThucHienRole || "—"})
+                      </p>
+                      {item.lyDo && (
+                        <p className="rounded bg-slate-50 px-2 py-1 text-slate-700 border border-slate-200">
+                          <span className="font-medium">Lý do:</span> {item.lyDo}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : null}
+      </Modal>
 
       <Modal
         open={modalOpen}

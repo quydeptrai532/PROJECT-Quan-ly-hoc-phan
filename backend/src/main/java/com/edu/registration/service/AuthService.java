@@ -1,12 +1,12 @@
 package com.edu.registration.service;
 
 import com.edu.registration.dto.AuthDtos;
-import com.edu.registration.entity.GiangVien;
-import com.edu.registration.entity.SinhVien;
+import com.edu.registration.entity.Lecturer;
+import com.edu.registration.entity.Student;
 import com.edu.registration.entity.User;
 import com.edu.registration.exception.ApiException;
-import com.edu.registration.repository.GiangVienRepository;
-import com.edu.registration.repository.SinhVienRepository;
+import com.edu.registration.repository.LecturerRepository;
+import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.repository.UserRepository;
 import com.edu.registration.security.CurrentUser;
 import com.edu.registration.security.JwtService;
@@ -26,46 +26,53 @@ public class AuthService {
             java.util.List.of("hoTen", "email", "soDienThoai");
 
     private final UserRepository userRepository;
-    private final SinhVienRepository sinhVienRepository;
-    private final GiangVienRepository giangVienRepository;
+    private final StudentRepository sinhVienRepository;
+    private final LecturerRepository giangVienRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final CurrentUser currentUser;
+    private final AuditLogService auditLogService;
 
-    public AuthService(UserRepository userRepository, SinhVienRepository sinhVienRepository,
-                       GiangVienRepository giangVienRepository, PasswordEncoder passwordEncoder,
-                       JwtService jwtService, CurrentUser currentUser) {
+    public AuthService(UserRepository userRepository, StudentRepository sinhVienRepository,
+                       LecturerRepository giangVienRepository, PasswordEncoder passwordEncoder,
+                       JwtService jwtService, CurrentUser currentUser,
+                       AuditLogService auditLogService) {
         this.userRepository = userRepository;
         this.sinhVienRepository = sinhVienRepository;
         this.giangVienRepository = giangVienRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.currentUser = currentUser;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional(readOnly = true)
     public AuthDtos.LoginResponse login(AuthDtos.LoginRequest request) {
-        User user = userRepository.findByUsername(request.username().trim())
-                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED,
-                        "Tên đăng nhập hoặc mật khẩu không đúng"));
+        User user = userRepository.findByUsername(request.username().trim()).orElse(null);
+        if (user == null) {
+            auditLogService.recordLoginFailure(null, request.username(), "UNKNOWN_USER");
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "Tên đăng nhập hoặc mật khẩu không đúng");
+        }
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
+            auditLogService.recordLoginFailure(user, user.getUsername(), "BAD_CREDENTIALS");
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Tên đăng nhập hoặc mật khẩu không đúng");
         }
         if (!user.isTrangThai()) {
+            auditLogService.recordLoginFailure(user, user.getUsername(), "ACCOUNT_LOCKED");
             throw new ApiException(HttpStatus.FORBIDDEN, "Tài khoản đã bị khóa, vui lòng liên hệ phòng đào tạo");
         }
 
         String hoTen = "";
         String ma = "";
         if (user.getRole() == com.edu.registration.entity.Role.SINH_VIEN) {
-            SinhVien sv = sinhVienRepository.findByUser(user).orElse(null);
+            Student sv = sinhVienRepository.findByUser(user).orElse(null);
             if (sv != null) {
                 hoTen = sv.getHoTen();
                 ma = sv.getMa();
             }
         } else if (user.getRole() == com.edu.registration.entity.Role.GIANG_VIEN) {
-            GiangVien gv = giangVienRepository.findByUser(user).orElse(null);
+            Lecturer gv = giangVienRepository.findByUser(user).orElse(null);
             if (gv != null) {
                 hoTen = gv.getHoTen();
                 ma = gv.getMa();
@@ -88,14 +95,14 @@ public class AuthService {
         String soDienThoai = null;
 
         if (user.getRole() == com.edu.registration.entity.Role.SINH_VIEN) {
-            SinhVien sv = sinhVienRepository.findByUser(user)
+            Student sv = sinhVienRepository.findByUser(user)
                     .orElseThrow(() -> ApiException.notFound("Không tìm thấy hồ sơ sinh viên"));
             hoTen = sv.getHoTen();
             ma = sv.getMa();
             email = sv.getEmail();
             soDienThoai = sv.getSoDienThoai();
         } else if (user.getRole() == com.edu.registration.entity.Role.GIANG_VIEN) {
-            GiangVien gv = giangVienRepository.findByUser(user)
+            Lecturer gv = giangVienRepository.findByUser(user)
                     .orElseThrow(() -> ApiException.notFound("Không tìm thấy hồ sơ giảng viên"));
             hoTen = gv.getHoTen();
             ma = gv.getMa();
@@ -113,13 +120,13 @@ public class AuthService {
     public AuthDtos.ProfileDto updateProfile(AuthDtos.UpdateProfileRequest request) {
         User user = currentUser.get();
         if (user.getRole() == com.edu.registration.entity.Role.SINH_VIEN) {
-            SinhVien sv = sinhVienRepository.findByUser(user)
+            Student sv = sinhVienRepository.findByUser(user)
                     .orElseThrow(() -> ApiException.notFound("Không tìm thấy hồ sơ sinh viên"));
             sv.setHoTen(request.hoTen().trim());
             sv.setEmail(request.email());
             sv.setSoDienThoai(request.soDienThoai());
         } else if (user.getRole() == com.edu.registration.entity.Role.GIANG_VIEN) {
-            GiangVien gv = giangVienRepository.findByUser(user)
+            Lecturer gv = giangVienRepository.findByUser(user)
                     .orElseThrow(() -> ApiException.notFound("Không tìm thấy hồ sơ giảng viên"));
             gv.setHoTen(request.hoTen().trim());
             gv.setEmail(request.email());

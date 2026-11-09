@@ -1,6 +1,9 @@
 package com.edu.registration.controller;
 
+import com.edu.registration.dto.AttendanceAlertDtos;
 import com.edu.registration.dto.AttendanceDtos;
+import com.edu.registration.entity.AlertStatus;
+import com.edu.registration.service.AttendanceAlertService;
 import com.edu.registration.service.AttendanceService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -22,13 +25,16 @@ import java.util.List;
 public class AttendanceController {
 
     private final AttendanceService attendanceService;
+    private final AttendanceAlertService attendanceAlertService;
 
-    public AttendanceController(AttendanceService attendanceService) {
+    public AttendanceController(AttendanceService attendanceService,
+                                AttendanceAlertService attendanceAlertService) {
         this.attendanceService = attendanceService;
+        this.attendanceAlertService = attendanceAlertService;
     }
 
     // =========================================================================
-    // Endpoints cho Giảng viên & Quản trị viên
+    // Endpoints cho Giảng viên & Quản trị viên (QLSV-70)
     // =========================================================================
 
     @PostMapping({"/giang-vien/lop-hoc-phan/{lopId}/buoi-hoc", "/giang-vien/buoi-hoc"})
@@ -107,6 +113,32 @@ public class AttendanceController {
     }
 
     // =========================================================================
+    // Endpoints Cảnh báo quá ngưỡng (QLSV-71 / TASK-LC-06)
+    // =========================================================================
+
+    @GetMapping({"/giang-vien/lop-hoc-phan/{lopId}/canh-bao", "/admin/lop-hoc-phan/{lopId}/canh-bao"})
+    @PreAuthorize("hasAnyRole('GIANG_VIEN', 'QUAN_TRI')")
+    public ResponseEntity<AttendanceAlertDtos.BaoCaoCanhBaoLopDto> layCanhBaoLop(
+            @PathVariable("lopId") Long lopId) {
+        return ResponseEntity.ok(attendanceAlertService.layBaoCaoCanhBaoLop(lopId));
+    }
+
+    @PutMapping({"/giang-vien/lop-hoc-phan/{lopId}/cau-hinh-canh-bao", "/admin/lop-hoc-phan/{lopId}/cau-hinh-canh-bao"})
+    @PreAuthorize("hasAnyRole('GIANG_VIEN', 'QUAN_TRI')")
+    public ResponseEntity<AttendanceAlertDtos.BaoCaoCanhBaoLopDto> capNhatCauHinhCanhBao(
+            @PathVariable("lopId") Long lopId,
+            @Valid @RequestBody AttendanceAlertDtos.CauHinhNguongLopRequest request) {
+        return ResponseEntity.ok(attendanceAlertService.capNhatCauHinhNguongLop(lopId, request));
+    }
+
+    @GetMapping({"/giang-vien/canh-bao-diem-danh", "/admin/canh-bao-diem-danh"})
+    @PreAuthorize("hasAnyRole('GIANG_VIEN', 'QUAN_TRI')")
+    public ResponseEntity<List<AttendanceAlertDtos.CanhBaoDiemDanhDto>> danhSachCanhBaoGiangVien(
+            @RequestParam(value = "trangThai", required = false) AlertStatus trangThai) {
+        return ResponseEntity.ok(attendanceAlertService.danhSachCanhBaoCuaGiangVien(trangThai));
+    }
+
+    // =========================================================================
     // Endpoints cho Sinh viên
     // =========================================================================
 
@@ -122,5 +154,12 @@ public class AttendanceController {
     public ResponseEntity<List<AttendanceDtos.BaoCaoChuyenCanSinhVienDto>> baoCaoChuyenCanCuaToi(
             @RequestParam(value = "hocKyId", required = false) Long hocKyId) {
         return ResponseEntity.ok(attendanceService.baoCaoChuyenCanCuaSinhVienHienTai(hocKyId));
+    }
+
+    @GetMapping("/sinh-vien/me/canh-bao-diem-danh")
+    @PreAuthorize("hasRole('SINH_VIEN')")
+    public ResponseEntity<List<AttendanceAlertDtos.CanhBaoDiemDanhDto>> danhSachCanhBaoCuaToi(
+            @RequestParam(value = "trangThai", required = false) AlertStatus trangThai) {
+        return ResponseEntity.ok(attendanceAlertService.danhSachCanhBaoCuaSinhVien(trangThai));
     }
 }

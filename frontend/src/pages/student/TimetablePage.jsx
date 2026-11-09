@@ -41,14 +41,14 @@ export default function TimetablePage() {
         }
       />
 
-      <div className="grid gap-4 xl:grid-cols-[330px_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[330px_minmax(0,1fr)]">
         <AnnouncementPanel
           announcements={thongBao || []}
           hocKy={hocKy}
           editable={false}
         />
 
-        <div className="card p-4">
+        <div className="card min-w-0 p-4">
           {error && <Alert tone="error" className="mb-4">{error}</Alert>}
           {loading ? (
             <Spinner />

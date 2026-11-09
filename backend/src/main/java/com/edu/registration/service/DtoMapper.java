@@ -1,70 +1,155 @@
 package com.edu.registration.service;
 
 import com.edu.registration.dto.CatalogDtos;
-import com.edu.registration.dto.LopHocPhanDtos;
+import com.edu.registration.dto.CourseClassDtos;
 import com.edu.registration.dto.RegistrationDtos;
 import com.edu.registration.dto.UserDtos;
-import com.edu.registration.entity.DangKyHocPhan;
-import com.edu.registration.entity.Diem;
-import com.edu.registration.entity.GiangVien;
-import com.edu.registration.entity.HocKy;
-import com.edu.registration.entity.Khoa;
-import com.edu.registration.entity.LopHanhChinh;
-import com.edu.registration.entity.LopHocPhan;
-import com.edu.registration.entity.MonHoc;
-import com.edu.registration.entity.MonTienQuyet;
-import com.edu.registration.entity.Nganh;
-import com.edu.registration.entity.SinhVien;
+import com.edu.registration.entity.AcademicCohort;
+import com.edu.registration.entity.AdministrativeClass;
+import com.edu.registration.entity.CourseClass;
+import com.edu.registration.entity.CourseRegistration;
+import com.edu.registration.entity.Faculty;
+import com.edu.registration.entity.Grade;
+import com.edu.registration.entity.Lecturer;
+import com.edu.registration.entity.Major;
+import com.edu.registration.entity.PrerequisiteSubject;
+import com.edu.registration.entity.Semester;
+import com.edu.registration.entity.Student;
+import com.edu.registration.entity.Subject;
+import com.edu.registration.entity.SubjectRelationType;
 import org.springframework.stereotype.Component;
 
 @Component
 public class DtoMapper {
 
-    public CatalogDtos.KhoaDto khoa(Khoa khoa) {
+    public CatalogDtos.KhoaDto khoa(Faculty khoa) {
         return new CatalogDtos.KhoaDto(khoa.getId(), khoa.getMa(), khoa.getTen());
     }
 
-    public CatalogDtos.NganhDto nganh(Nganh nganh) {
+    public CatalogDtos.NganhDto nganh(Major nganh) {
         return new CatalogDtos.NganhDto(nganh.getId(), nganh.getMa(), nganh.getTen(),
                 nganh.getKhoa().getId(), nganh.getKhoa().getTen());
     }
 
-    public CatalogDtos.LopHanhChinhDto lopHanhChinh(LopHanhChinh lop) {
+    public CatalogDtos.LopHanhChinhDto lopHanhChinh(AdministrativeClass lop) {
         return new CatalogDtos.LopHanhChinhDto(lop.getId(), lop.getMa(), lop.getTen(),
                 lop.getNganh().getId(), lop.getNganh().getTen(),
                 lop.getNganh().getKhoa().getId(), lop.getNganh().getKhoa().getTen());
     }
 
-    public CatalogDtos.MonHocDto monHoc(MonHoc monHoc) {
-        return new CatalogDtos.MonHocDto(monHoc.getId(), monHoc.getMa(), monHoc.getTen(),
-                monHoc.getSoTinChi(), monHoc.getKhoa().getId(), monHoc.getKhoa().getTen());
+    public CatalogDtos.MonHocDto monHoc(Subject monHoc) {
+        return new CatalogDtos.MonHocDto(
+                monHoc.getId(),
+                monHoc.getMa(),
+                monHoc.getTen(),
+                monHoc.getSoTinChi(),
+                monHoc.getKhoa() != null ? monHoc.getKhoa().getId() : null,
+                monHoc.getKhoa() != null ? monHoc.getKhoa().getTen() : null,
+                monHoc.getNguoiTaoId(),
+                monHoc.getNguoiTaoUsername(),
+                monHoc.getTaoLuc(),
+                monHoc.getNguoiCapNhatId(),
+                monHoc.getNguoiCapNhatUsername(),
+                monHoc.getCapNhatLuc());
     }
 
-    public CatalogDtos.MonTienQuyetDto monTienQuyet(MonTienQuyet lienKet) {
-        MonHoc tienQuyet = lienKet.getMonTienQuyet();
-        return new CatalogDtos.MonTienQuyetDto(lienKet.getId(), lienKet.getMonHoc().getId(),
-                tienQuyet.getId(), tienQuyet.getMa(), tienQuyet.getTen(), tienQuyet.getSoTinChi());
+    public CatalogDtos.MonTienQuyetDto monTienQuyet(PrerequisiteSubject lienKet) {
+        Subject monHoc = lienKet.getMonHoc();
+        Subject tienQuyet = lienKet.getMonTienQuyet();
+        SubjectRelationType loai = lienKet.getLoaiQuanHeHieuLuc();
+        Semester hkTu = lienKet.getHocKyHieuLucTu();
+        Semester hkDen = lienKet.getHocKyHieuLucDen();
+        return new CatalogDtos.MonTienQuyetDto(
+                lienKet.getId(),
+                monHoc != null ? monHoc.getId() : null,
+                monHoc != null ? monHoc.getMa() : null,
+                monHoc != null ? monHoc.getTen() : null,
+                monHoc != null ? monHoc.getSoTinChi() : 0,
+                tienQuyet != null ? tienQuyet.getId() : null,
+                tienQuyet != null ? tienQuyet.getId() : null,
+                tienQuyet != null ? tienQuyet.getMa() : null,
+                tienQuyet != null ? tienQuyet.getTen() : null,
+                tienQuyet != null ? tienQuyet.getSoTinChi() : 0,
+                loai.name(),
+                loai.getTenHienThi(),
+                lienKet.getDieuKienDat(),
+                lienKet.isYeuCauDatHieuLuc(),
+                lienKet.getMaNhomTuChon(),
+                lienKet.getTinChiTuChonYeuCau(),
+                lienKet.getKhoaNhapHoc(),
+                hkTu != null ? hkTu.getId() : null,
+                hkTu != null ? (hkTu.getTen() + " (" + hkTu.getNamHoc() + ")") : null,
+                hkDen != null ? hkDen.getId() : null,
+                hkDen != null ? (hkDen.getTen() + " (" + hkDen.getNamHoc() + ")") : null,
+                lienKet.getHieuLucTu(),
+                lienKet.getHieuLucDen(),
+                lienKet.isDangHieuLucHieuLuc(),
+                loai.isQuyCheDaChot(),
+                loai.getMoTaQuyCheHienHanh(),
+                loai.getPhanCanChuDuAnChot(),
+                lienKet.getGhiChu(),
+                lienKet.getNguoiTaoId(),
+                lienKet.getNguoiTaoUsername(),
+                lienKet.getTaoLuc(),
+                lienKet.getNguoiCapNhatId(),
+                lienKet.getNguoiCapNhatUsername(),
+                lienKet.getCapNhatLuc());
     }
 
-    public CatalogDtos.HocKyDto hocKy(HocKy hocKy) {
+    public CatalogDtos.KhoaHocDto khoaHoc(AcademicCohort cohort) {
+        Semester hkBatDau = cohort.getHocKyBatDau();
+        Semester hkKetThuc = cohort.getHocKyKetThuc();
+        return new CatalogDtos.KhoaHocDto(
+                cohort.getId(),
+                cohort.getMa(),
+                cohort.getTen(),
+                cohort.getNienKhoa(),
+                cohort.getNamBatDau(),
+                cohort.getNamKetThuc(),
+                hkBatDau != null ? hkBatDau.getId() : null,
+                hkBatDau != null ? (hkBatDau.getTen() + " (" + hkBatDau.getNamHoc() + ")") : null,
+                hkKetThuc != null ? hkKetThuc.getId() : null,
+                hkKetThuc != null ? (hkKetThuc.getTen() + " (" + hkKetThuc.getNamHoc() + ")") : null,
+                cohort.getHieuLucTu(),
+                cohort.getHieuLucDen(),
+                cohort.isDangHieuLuc(),
+                cohort.getMoTa(),
+                cohort.getNguoiTaoId(),
+                cohort.getNguoiTaoUsername(),
+                cohort.getTaoLuc(),
+                cohort.getNguoiCapNhatId(),
+                cohort.getNguoiCapNhatUsername(),
+                cohort.getCapNhatLuc());
+    }
+
+    public CatalogDtos.HocKyDto hocKy(Semester hocKy) {
         return new CatalogDtos.HocKyDto(hocKy.getId(), hocKy.getTen(), hocKy.getNamHoc(),
                 hocKy.getNgayBatDau(), hocKy.getNgayKetThuc(), hocKy.getDangKyTu(), hocKy.getDangKyDen(),
                 hocKy.getSoTinChiToiThieu(), hocKy.getSoTinChiToiDa(), hocKy.dangMoDangKy());
     }
 
-    public LopHocPhanDtos.LopHocPhanDto lopHocPhan(LopHocPhan lop) {
-        return new LopHocPhanDtos.LopHocPhanDto(lop.getId(), lop.getMa(),
+    public CourseClassDtos.LopHocPhanDto lopHocPhan(CourseClass lop) {
+        return new CourseClassDtos.LopHocPhanDto(lop.getId(), lop.getMa(),
                 lop.getMonHoc().getId(), lop.getMonHoc().getMa(), lop.getMonHoc().getTen(),
                 lop.getMonHoc().getSoTinChi(), lop.getHocKy().getId(), lop.getHocKy().getTen(),
                 lop.getGiangVien().getId(), lop.getGiangVien().getHoTen(), lop.getPhong(),
                 lop.getThu(), lop.getTietBatDau(), lop.getSoTiet(), lop.getSiSoToiDa(),
                 lop.getSiSoHienTai(), lop.getConLai(),
                 lop.getTrangThaiBangDiemHieuLuc().name(), lop.getPhienBanCongBo(),
-                lop.getGuiDuyetBangDiemLuc(), lop.getDuyetBangDiemLuc(), lop.getCongBoBangDiemLuc());
+                lop.getGuiDuyetBangDiemLuc(),
+                lop.getTraVeBangDiemLuc(),
+                lop.getLyDoTraVeBangDiem(),
+                lop.getDuyetBangDiemLuc(),
+                lop.getCongBoBangDiemLuc(),
+                lop.getKhoaBangDiemLuc(),
+                lop.getMoKhoaBangDiemLuc(),
+                lop.getLyDoMoKhoaBangDiem(),
+                lop.isChoPhepSuaDiem(),
+                lop.isBangDiemDaKhoa());
     }
 
-    public RegistrationDtos.DangKyDto dangKy(DangKyHocPhan dangKy, Diem diem) {
-        LopHocPhan lop = dangKy.getLopHocPhan();
+    public RegistrationDtos.DangKyDto dangKy(CourseRegistration dangKy, Grade diem) {
+        CourseClass lop = dangKy.getLopHocPhan();
         boolean daCongBo = lop != null && lop.isBangDiemDaCongBo() && diem != null && diem.getDiemTongKet() != null;
         return new RegistrationDtos.DangKyDto(dangKy.getId(), lop.getId(), lop.getMa(),
                 lop.getMonHoc().getId(), lop.getMonHoc().getMa(), lop.getMonHoc().getTen(),
@@ -77,7 +162,7 @@ public class DtoMapper {
                 daCongBo ? diem.getDiemTongKet() : null);
     }
 
-    public RegistrationDtos.DiemDto diem(DangKyHocPhan dangKy, Diem diem) {
+    public RegistrationDtos.DiemDto diem(CourseRegistration dangKy, Grade diem) {
         return new RegistrationDtos.DiemDto(dangKy.getId(), dangKy.getSinhVien().getId(),
                 dangKy.getSinhVien().getMa(), dangKy.getSinhVien().getHoTen(),
                 dangKy.getSinhVien().getEmail(),
@@ -86,14 +171,14 @@ public class DtoMapper {
                 diem != null ? diem.getDiemTongKet() : null);
     }
 
-    public RegistrationDtos.ThoiKhoaBieuDto thoiKhoaBieu(DangKyHocPhan dangKy) {
-        LopHocPhan lop = dangKy.getLopHocPhan();
+    public RegistrationDtos.ThoiKhoaBieuDto thoiKhoaBieu(CourseRegistration dangKy) {
+        CourseClass lop = dangKy.getLopHocPhan();
         return new RegistrationDtos.ThoiKhoaBieuDto(lop.getId(), lop.getMa(), lop.getMonHoc().getTen(),
                 lop.getPhong(), lop.getThu(), lop.getTietBatDau(), lop.getSoTiet(),
                 lop.getGiangVien().getHoTen());
     }
 
-    public UserDtos.SinhVienDto sinhVien(SinhVien sinhVien) {
+    public UserDtos.SinhVienDto sinhVien(Student sinhVien) {
         return new UserDtos.SinhVienDto(sinhVien.getId(), sinhVien.getMa(), sinhVien.getHoTen(),
                 sinhVien.getEmail(), sinhVien.getSoDienThoai(),
                 sinhVien.getKhoa() != null ? sinhVien.getKhoa().getId() : null,
@@ -105,7 +190,7 @@ public class DtoMapper {
                 sinhVien.getUser().getUsername(), sinhVien.getUser().isTrangThai());
     }
 
-    public UserDtos.GiangVienDto giangVien(GiangVien giangVien) {
+    public UserDtos.GiangVienDto giangVien(Lecturer giangVien) {
         return new UserDtos.GiangVienDto(giangVien.getId(), giangVien.getMa(), giangVien.getHoTen(),
                 giangVien.getEmail(), giangVien.getSoDienThoai(),
                 giangVien.getKhoa() != null ? giangVien.getKhoa().getId() : null,

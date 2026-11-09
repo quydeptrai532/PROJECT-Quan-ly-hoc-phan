@@ -1,18 +1,31 @@
 package com.edu.registration.exception;
 
+import com.edu.registration.dto.ValidationErrorDetail;
 import org.springframework.http.HttpStatus;
+
+import java.util.List;
 
 public class ApiException extends RuntimeException {
 
     private final HttpStatus status;
+    private final List<ValidationErrorDetail> errors;
 
     public ApiException(HttpStatus status, String message) {
+        this(status, message, List.of());
+    }
+
+    public ApiException(HttpStatus status, String message, List<ValidationErrorDetail> errors) {
         super(message);
         this.status = status;
+        this.errors = errors != null ? errors : List.of();
     }
 
     public HttpStatus getStatus() {
         return status;
+    }
+
+    public List<ValidationErrorDetail> getErrors() {
+        return errors;
     }
 
     public static ApiException badRequest(String message) {
@@ -29,5 +42,9 @@ public class ApiException extends RuntimeException {
 
     public static ApiException forbidden(String message) {
         return new ApiException(HttpStatus.FORBIDDEN, message);
+    }
+
+    public static ApiException validation(String message, List<ValidationErrorDetail> errors) {
+        return new ApiException(HttpStatus.BAD_REQUEST, message, errors);
     }
 }

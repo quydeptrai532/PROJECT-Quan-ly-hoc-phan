@@ -63,3 +63,29 @@ app:
     # Mẫu số tỷ lệ chuyên cần: SO_BUOI_DA_DIEM_DANH (thực tế đã điểm danh) hoặc SO_BUOI_QUY_DINH
     mau-so-chuyen-can: ${ATTENDANCE_MAU_SO_CHUYEN_CAN:SO_BUOI_DA_DIEM_DANH}
     ghi-chu-quy-che: ${ATTENDANCE_GHI_CHU_QUY_CHE:Chính sách quy đổi muộn sang vắng, xử lý vắng có phép và mẫu số tỷ lệ chuyên cần đang áp dụng cấu hình dự kiến và chờ Chủ dự án phê duyệt chính thức.}
+    # QLSV-71: Cấu hình cảnh báo vắng quá ngưỡng (chờ Chủ dự án phê duyệt quy chế chính thức)
+    # Mặc định tắt (false); chỉ kích hoạt cảnh báo khi có ngưỡng xác nhận cho môn/lớp hoặc tập trung.
+    canh-bao-kich-hoat: ${ATTENDANCE_CANH_BAO_KICH_HOAT:false}
+    # Ngưỡng số buổi vắng cấu hình tập trung (mặc định để trống)
+    nguong-so-buoi-vang: ${ATTENDANCE_NGUONG_SO_BUOI_VANG:}
+    # Ngưỡng tỷ lệ vắng (%) cấu hình tập trung (mặc định để trống)
+    nguong-ty-le-vang: ${ATTENDANCE_NGUONG_TY_LE_VANG:}
+    ghi-chu-nguong: ${ATTENDANCE_GHI_CHU_NGUONG:Quy chế ngưỡng số buổi vắng và tỷ lệ vắng để kích hoạt cảnh báo chuyên cần chưa được Chủ dự án chốt chính thức. Hệ thống chỉ kích hoạt cảnh báo khi có ngưỡng xác nhận cho môn/lớp hoặc tập trung.}
+  grade-import:
+    # QLSV-73 (TASK-LC-08): Cấu hình giới hạn tệp và chính sách import điểm từ Excel (.xlsx)
+    temp-dir: ${GRADE_IMPORT_TEMP_DIR:./data/temp-grade-imports}
+    max-file-size-bytes: ${GRADE_IMPORT_MAX_FILE_SIZE_BYTES:2097152}
+    max-rows: ${GRADE_IMPORT_MAX_ROWS:500}
+    max-sheets: ${GRADE_IMPORT_MAX_SHEETS:1}
+    parse-timeout-ms: ${GRADE_IMPORT_PARSE_TIMEOUT_MS:5000}
+    preview-ttl-seconds: ${GRADE_IMPORT_PREVIEW_TTL_SECONDS:900}
+    max-zip-entry-size-bytes: ${GRADE_IMPORT_MAX_ZIP_ENTRY_SIZE_BYTES:10485760}
+    max-zip-entries: ${GRADE_IMPORT_MAX_ZIP_ENTRIES:50}
+    transaction-policy: ${GRADE_IMPORT_TRANSACTION_POLICY:ALL_OR_NOTHING}
+    update-policy: ${GRADE_IMPORT_UPDATE_POLICY:OVERWRITE_EXISTING}
+    policy-note: ${GRADE_IMPORT_POLICY_NOTE:Mẫu Excel chính thức gồm các cột maSinhVien, hoTen, diemQuaTrinh, diemCuoiKy trên 1 sheet BangDiem. Chính sách giao dịch mặc định là ALL_OR_NOTHING (chỉ ghi khi toàn bộ tệp hợp lệ) và chính sách cập nhật là OVERWRITE_EXISTING (ghi đè điểm nháp hiện có, không tạo bản ghi trùng). Các quyết định này đang áp dụng theo cấu hình mặc định và chờ Chủ dự án xác nhận chính thức.}
+  grade-analytics:
+    # QLSV-75 (TASK-LC-10): Cấu hình tập trung cho khoảng phân bố điểm và chính sách xử lý điểm thiếu (chờ Chủ dự án xác nhận, chưa phải quy chế chính thức)
+    missing-grade-policy: ${GRADE_ANALYTICS_MISSING_POLICY:EXCLUDE_FROM_DENOMINATOR}
+    official-regulation: ${GRADE_ANALYTICS_OFFICIAL_REGULATION:false}
+    policy-note: ${GRADE_ANALYTICS_POLICY_NOTE:Khoảng phân bố điểm ([0.0, 4.0), [4.0, 5.0), [5.0, 6.5), [6.5, 8.0), [8.0, 10.0]) và chính sách loại bản ghi chưa có điểm tổng kết công bố khỏi mẫu số tính điểm trung bình / tỷ lệ đạt-trượt (EXCLUDE_FROM_DENOMINATOR — không tự gán 0.0) đang áp dụng theo cấu hình tập trung dự kiến và chờ Chủ dự án chốt chính thức (không phải quy chế chính thức). Ngưỡng đạt lấy từ AcademicRules.DIEM_DAT = 5.0.}
