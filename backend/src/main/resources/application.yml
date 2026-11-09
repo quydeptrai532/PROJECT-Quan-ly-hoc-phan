@@ -95,3 +95,8 @@ app:
     multi-cohort-priority-policy: ${REGISTRATION_MULTI_COHORT_PRIORITY:HIGHEST_PRIORITY}
     official-regulation: ${REGISTRATION_OFFICIAL_REGULATION:false}
     policy-note: ${REGISTRATION_POLICY_NOTE:Chính sách thứ tự ưu tiên khi sinh viên thuộc nhiều nhóm đối tượng/đợt đăng ký khác nhau đang áp dụng cấu hình dự kiến (HIGHEST_PRIORITY - chọn đợt có thứ tự ưu tiên cao nhất hoặc đợt đang mở) và chưa có quy chế chính thức được Chủ dự án / Phòng Đào tạo phê duyệt.}
+  class-schedule-conflict:
+    # QLSV-78 (TASK-AD-03): Cấu hình chính sách kiểm tra và xử lý xung đột lịch giảng viên / phòng học khi mở lớp
+    enforcement-policy: ${CLASS_SCHEDULE_CONFLICT_ENFORCEMENT:BLOCK_ON_CONFLICT}
+    official-regulation: ${CLASS_SCHEDULE_CONFLICT_OFFICIAL_REGULATION:false}
+    policy-note: ${CLASS_SCHEDULE_CONFLICT_POLICY_NOTE:Chính sách chặn lưu hay cho phép cảnh báo/ghi đè khi phát hiện trùng lịch giảng viên hoặc phòng học chưa được Chủ dự án chốt chính thức. Hệ thống hiện đang áp dụng chính sách chặn lưu (BLOCK_ON_CONFLICT) để đảm bảo không vi phạm quy chế thời khóa biểu.}

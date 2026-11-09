@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
+  AlertTriangle,
   Ban,
   CheckCircle2,
   ClipboardCheck,
@@ -69,6 +70,8 @@ export default function CourseClassPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [conflictLoading, setConflictLoading] = useState(false);
+  const [conflictResult, setConflictResult] = useState(null);
 
   // Grade sheet review / reason modal state (QLSV-74)
   const [reasonModalOpen, setReasonModalOpen] = useState(false);
@@ -110,6 +113,7 @@ export default function CourseClassPage() {
     setEditing(null);
     setForm({ ...EMPTY_FORM, hocKyId: hocKyId || "" });
     setFormError("");
+    setConflictResult(null);
     setModalOpen(true);
   };
 
@@ -127,8 +131,74 @@ export default function CourseClassPage() {
       siSoToiDa: String(row.siSoToiDa),
     });
     setFormError("");
+    setConflictResult(null);
     setModalOpen(true);
   };
+
+  // Tự động kiểm tra xung đột thời khóa biểu với cùng thuật toán backend (QLSV-78)
+  useEffect(() => {
+    if (!modalOpen) {
+      setConflictResult(null);
+      return;
+    }
+
+    const hocKyIdNum = Number(form.hocKyId);
+    const giangVienIdNum = Number(form.giangVienId);
+    const thuNum = Number(form.thu);
+    const tietBatDauNum = Number(form.tietBatDau);
+    const soTietNum = Number(form.soTiet);
+    const phongTrim = form.phong ? form.phong.trim() : "";
+
+    if (
+      !hocKyIdNum ||
+      !giangVienIdNum ||
+      !phongTrim ||
+      !thuNum ||
+      !tietBatDauNum ||
+      !soTietNum ||
+      tietBatDauNum < 1 ||
+      tietBatDauNum > 12 ||
+      soTietNum < 1 ||
+      soTietNum > 6 ||
+      tietBatDauNum + soTietNum - 1 > 12
+    ) {
+      setConflictResult(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setConflictLoading(true);
+      try {
+        const { data } = await api.post("/admin/lop-hoc-phan/kiem-tra-xung-dot", {
+          lopHocPhanId: editing ? editing.id : null,
+          hocKyId: hocKyIdNum,
+          monHocId: form.monHocId ? Number(form.monHocId) : null,
+          giangVienId: giangVienIdNum,
+          phong: phongTrim,
+          thu: thuNum,
+          tietBatDau: tietBatDauNum,
+          soTiet: soTietNum,
+        });
+        setConflictResult(data);
+      } catch (err) {
+        console.error("Lỗi khi kiểm tra xung đột lịch học:", err);
+      } finally {
+        setConflictLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [
+    modalOpen,
+    editing,
+    form.hocKyId,
+    form.giangVienId,
+    form.phong,
+    form.thu,
+    form.tietBatDau,
+    form.soTiet,
+    form.monHocId,
+  ]);
 
   const submit = async (event) => {
     event.preventDefault();
@@ -786,7 +856,13 @@ export default function CourseClassPage() {
         footer={
           <>
             <button type="button" className="btn-secondary" onClick={() => setModalOpen(false)}>Hủy</button>
-            <button type="submit" form="course-class-form" className="btn-primary" disabled={saving}>
+            <button
+              type="submit"
+              form="course-class-form"
+              className="btn-primary"
+              disabled={saving || (conflictResult?.coXungDot && !conflictResult?.choPhepLuu)}
+              title={conflictResult?.coXungDot && !conflictResult?.choPhepLuu ? "Bị chặn do xung đột lịch học" : undefined}
+            >
               {saving ? "Đang lưu..." : "Lưu"}
             </button>
           </>
@@ -795,6 +871,66 @@ export default function CourseClassPage() {
         <form id="course-class-form" className="grid gap-4 sm:grid-cols-2" onSubmit={submit}>
           {formError && (
             <div className="sm:col-span-2"><Alert tone="error">{formError}</Alert></div>
+          )}
+
+          {conflictLoading && (
+            <div className="sm:col-span-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-xs text-slate-600">
+              <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+              <span>Đang đối chiếu lịch giảng viên và phòng học...</span>
+            </div>
+          )}
+
+          {conflictResult?.coXungDot && (
+            <div className="sm:col-span-2 rounded-xl border border-rose-200 bg-rose-50/70 p-4 text-xs space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-rose-100 text-rose-700 font-bold">
+                    !
+                  </span>
+                  <span className="font-semibold text-rose-900 text-sm">
+                    Phát hiện {conflictResult.soLuongXungDot} xung đột lịch học
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {conflictResult.xungDotGiangVien && (
+                    <Badge tone="rose">Trùng lịch giảng viên</Badge>
+                  )}
+                  {conflictResult.xungDotPhong && (
+                    <Badge tone="amber">Trùng phòng học</Badge>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-1.5 divide-y divide-rose-100 rounded-lg bg-white/90 p-2.5 border border-rose-100 text-slate-700">
+                {conflictResult.danhSachXungDot.map((item, idx) => (
+                  <div key={idx} className={idx > 0 ? "pt-1.5" : ""}>
+                    <p className="font-medium text-slate-800">
+                      • {item.moTa}
+                    </p>
+                    <p className="text-[11px] text-slate-500 pl-2">
+                      Lớp đối chiếu: <span className="font-mono text-indigo-700">{item.maLopLienQuan}</span> ({item.tenMonLienQuan || "—"}) · Phòng: {item.phong} · {item.thu === 8 ? "Chủ nhật" : `Thứ ${item.thu}`}, tiết {item.tietBatDau}-{item.tietKetThuc}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-rose-800">
+                <p>
+                  <span className="font-semibold">Chính sách áp dụng:</span>{" "}
+                  {conflictResult.chinhSachEnforcement === "BLOCK_ON_CONFLICT"
+                    ? "Chặn lưu khi phát hiện xung đột"
+                    : conflictResult.chinhSachEnforcement}
+                  {!conflictResult.chinhSachDaChot && (
+                    <span className="italic ml-1 text-slate-600">(Chờ chủ dự án phê duyệt quy định chính thức)</span>
+                  )}
+                </p>
+                {!conflictResult.choPhepLuu && (
+                  <span className="rounded bg-rose-200/80 px-2 py-0.5 font-semibold text-rose-950">
+                    Không cho phép lưu
+                  </span>
+                )}
+              </div>
+            </div>
           )}
           <Field label="Mã lớp học phần" required>
             <input
