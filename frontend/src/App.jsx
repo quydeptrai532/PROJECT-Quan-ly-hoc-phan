@@ -110,6 +110,7 @@ export default function App() {
       />
       <Route path="/chuyen-can-cua-toi" element={<ProtectedRoute roles={["SINH_VIEN"]}><StudentAttendancePage /></ProtectedRoute>} />
       <Route path="/tien-do" element={<ProtectedRoute roles={["SINH_VIEN"]}><ProgressPlannerPage /></ProtectedRoute>} />
+      <Route path="/ke-hoach-mon-thieu" element={<ProtectedRoute roles={["SINH_VIEN"]}><ProgressPlannerPage /></ProtectedRoute>} />
       <Route path="/yeu-cau-ho-tro" element={<ProtectedRoute roles={["SINH_VIEN"]}><SupportRequestsPage /></ProtectedRoute>} />
       <Route path="/phuc-khao-diem" element={<ProtectedRoute roles={["SINH_VIEN"]}><GradeAppealsPage /></ProtectedRoute>} />
       <Route

@@ -19,6 +19,7 @@ public class AcademicProgressController {
  private final CourseRegistrationRepository registrations; private final GradeRepository grades; private final PrerequisiteSubjectRepository prereqs;
  public AcademicProgressController(AcademicProgressService p,CurriculumRepository pr,MajorRepository m,SubjectRepository s,StudentRepository st,CurrentUser c,PersonalPlanRepository kp,CourseClassRepository cl,CourseRegistrationRepository r,GradeRepository g,PrerequisiteSubjectRepository q){progress=p;programs=pr;majors=m;subjects=s;students=st;current=c;plans=kp;classes=cl;registrations=r;grades=g;prereqs=q;}
  @GetMapping("/sinh-vien/me/tien-do") @PreAuthorize("hasRole('SINH_VIEN')") public Map<String,Object> progress(){return progress.get();}
+ @GetMapping("/sinh-vien/me/ke-hoach-mon-thieu") @PreAuthorize("hasRole('SINH_VIEN')") public Map<String,Object> missingCoursesPlan(@RequestParam(required=false) Long hocKyId){return progress.getMissingCoursesPlan(hocKyId);}
  public record GroupRequest(String name,CurriculumGroup.LoaiNhom type,int requiredCredits,List<Long> subjectIds){}
  public record ProgramRequest(Long majorId,String cohort,String version,List<GroupRequest> groups){}
  @GetMapping("/admin/chuong-trinh") @PreAuthorize("hasRole('QUAN_TRI')") public List<Map<String,Object>> listPrograms(){return programs.findAll().stream().map(p->Map.<String,Object>of("id",p.getId(),"majorId",p.getNganh().getId(),"major",p.getNganh().getTen(),"cohort",p.getKhoaNhapHoc(),"version",p.getPhienBan(),"groups",p.getNhom().size())).toList();}
