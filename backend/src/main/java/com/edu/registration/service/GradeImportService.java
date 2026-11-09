@@ -15,8 +15,10 @@ import com.edu.registration.entity.User;
 import com.edu.registration.exception.ApiException;
 import com.edu.registration.repository.CourseClassRepository;
 import com.edu.registration.repository.CourseRegistrationRepository;
+import com.edu.registration.importer.ImportSecurityValidator;
 import com.edu.registration.repository.GradeRepository;
 import com.edu.registration.security.CurrentUser;
+import com.edu.registration.util.CsvUtils;
 import com.edu.registration.util.XlsxWorkbookSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +30,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -186,7 +189,7 @@ public class GradeImportService {
         gradeService.kiemTraBangDiemChoPhepSua(lop);
 
         validateUploadMetadata(file);
-        String sanitizedFilename = sanitizeOriginalFilename(file.getOriginalFilename());
+        String sanitizedFilename = ImportSecurityValidator.sanitizeAndValidateFileName(file.getOriginalFilename(), ".xlsx");
 
         Path tempFile = null;
         try {
@@ -636,9 +639,28 @@ public class GradeImportService {
         if (lowerName.endsWith(".xls")) {
             throw ApiException.badRequest("Không chấp nhận định dạng Excel cũ (.xls). Vui lòng sử dụng tệp .xlsx");
         }
-        if (!lowerName.endsWith(".xlsx")) {
-            throw ApiException.badRequest("Định dạng tệp không được hỗ trợ. Chỉ chấp nhận tệp .xlsx");
+        ImportSecurityValidator.sanitizeAndValidateFileName(originalFilename, ".xlsx");
+    }
+
+    public byte[] xuatFileLoiCsv(Long lopHocPhanId, List<ValidationErrorDetail> danhSachLoi) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(CsvUtils.BOM);
+        sb.append(CsvUtils.row(List.of("Dòng", "Mã SV", "Cột", "Cột Excel", "Giá trị nhập", "Nguyên nhân lỗi")));
+
+        if (danhSachLoi != null) {
+            for (ValidationErrorDetail err : danhSachLoi) {
+                sb.append(CsvUtils.row(List.of(
+                        err.dong() != null ? String.valueOf(err.dong()) : "",
+                        err.maSinhVien() != null ? err.maSinhVien() : "",
+                        err.cot() != null ? err.cot() : (err.field() != null ? err.field() : ""),
+                        err.cotExcel() != null ? err.cotExcel() : "",
+                        err.giaTriNhap() != null ? err.giaTriNhap() : "",
+                        err.message() != null ? err.message() : ""
+                )));
+            }
         }
+
+        return sb.toString().getBytes(StandardCharsets.UTF_8);
     }
 
     private TempUpload writeToBoundedTempFile(MultipartFile file) {

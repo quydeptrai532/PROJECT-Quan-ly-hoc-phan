@@ -565,4 +565,37 @@ class GradeImportServiceTest {
         assertTrue(expiredEx.getMessage().contains("hết hạn"));
         verify(diemRepository, never()).saveAll(any());
     }
+
+    @Test
+    void testXuatFileLoiCsv() {
+        List<ValidationErrorDetail> errors = List.of(
+                new ValidationErrorDetail(10L, 20L, "SV001", "BangDiem", 2, "diemQuaTrinh", "C", "diemQuaTrinh", "15", "Điểm phải nằm trong khoảng [0, 10]"),
+                new ValidationErrorDetail(11L, 21L, "SV002", "BangDiem", 3, "diemCuoiKy", "D", "diemCuoiKy", "=SUM(A1)", "Không được chứa công thức")
+        );
+
+        byte[] csv = gradeImportService.xuatFileLoiCsv(500L, errors);
+        assertNotNull(csv);
+        String text = new String(csv, StandardCharsets.UTF_8);
+        assertTrue(text.contains("SV001"));
+        assertTrue(text.contains("SV002"));
+        assertTrue(text.contains("Điểm phải nằm trong khoảng"));
+    }
+
+    @Test
+    void testXemTruocChặnPathTraversalFilename() {
+        loginAs(userGv1, gv1);
+        when(lopHocPhanRepository.findWithDetailsById(500L)).thenReturn(Optional.of(lop));
+
+        MockMultipartFile badFile = new MockMultipartFile(
+                "file",
+                "../../evil.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                new byte[] { 0x50, 0x4B, 0x03, 0x04 }
+        );
+
+        ApiException ex = assertThrows(ApiException.class, () ->
+                gradeImportService.xemTruocImport(500L, badFile));
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
+        assertTrue(ex.getMessage().contains("Path Traversal"));
+    }
 }

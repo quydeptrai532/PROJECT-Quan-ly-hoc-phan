@@ -90,6 +90,14 @@ app:
     # Ngưỡng tỷ lệ vắng (%) cấu hình tập trung (mặc định để trống)
     nguong-ty-le-vang: ${ATTENDANCE_NGUONG_TY_LE_VANG:}
     ghi-chu-nguong: ${ATTENDANCE_GHI_CHU_NGUONG:Quy chế ngưỡng số buổi vắng và tỷ lệ vắng để kích hoạt cảnh báo chuyên cần chưa được Chủ dự án chốt chính thức. Hệ thống chỉ kích hoạt cảnh báo khi có ngưỡng xác nhận cho môn/lớp hoặc tập trung.}
+  user-import:
+    # QLSV-90 (TASK-OP-03 / TASK-AD-07): Cấu hình giới hạn tệp và chính sách import người dùng (sinh viên / giảng viên) từ CSV
+    max-file-size-bytes: ${USER_IMPORT_MAX_FILE_SIZE_BYTES:5242880}
+    max-rows: ${USER_IMPORT_MAX_ROWS:2000}
+    preview-ttl-seconds: ${USER_IMPORT_PREVIEW_TTL_SECONDS:900}
+    transaction-policy: ${USER_IMPORT_TRANSACTION_POLICY:ROW_BY_ROW}
+    idempotency-policy: ${USER_IMPORT_IDEMPOTENCY_POLICY:SKIP_IF_EXISTS}
+    policy-note: ${USER_IMPORT_POLICY_NOTE:Chính sách giao dịch ROW_BY_ROW (mỗi dòng hợp lệ được ghi nhận trong transaction độc lập) và chống trùng lặp SKIP_IF_EXISTS (không tự ý ghi đè nếu mã định danh hoặc email đã tồn tại trong hệ thống).}
   grade-import:
     # QLSV-73 (TASK-LC-08): Cấu hình giới hạn tệp và chính sách import điểm từ Excel (.xlsx)
     temp-dir: ${GRADE_IMPORT_TEMP_DIR:./data/temp-grade-imports}

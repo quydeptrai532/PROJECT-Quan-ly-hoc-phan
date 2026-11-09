@@ -276,6 +276,20 @@ public class LecturerController {
         return gradeImportService.xacNhanImport(id, request);
     }
 
+    @PostMapping({"/giang-vien/lop-hoc-phan/{id}/diem/import-xlsx/export-errors",
+                  "/diem/lop-hoc-phan/{id}/import-xlsx/export-errors"})
+    public ResponseEntity<byte[]> xuatLoiImportDiemXlsx(
+            @PathVariable Long id,
+            @RequestBody List<com.edu.registration.dto.ValidationErrorDetail> danhSachLoi) {
+        byte[] csv = gradeImportService.xuatFileLoiCsv(id, danhSachLoi);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType("text/csv; charset=UTF-8"));
+        headers.setContentDisposition(ContentDisposition.attachment()
+                .filename("loi-import-diem-lop-" + id + ".csv", StandardCharsets.UTF_8).build());
+        headers.setCacheControl(CacheControl.noStore());
+        return new ResponseEntity<>(csv, headers, HttpStatus.OK);
+    }
+
     // --- Grade Sheet Approval & Locking Workflow (QLSV-74 / TASK-LC-09) ---
 
     @GetMapping({"/giang-vien/lop-hoc-phan/{id}/trang-thai-bang-diem", "/diem/lop-hoc-phan/{id}/trang-thai"})

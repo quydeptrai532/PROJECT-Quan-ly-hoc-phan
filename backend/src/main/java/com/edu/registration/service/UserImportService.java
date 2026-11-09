@@ -1,5 +1,7 @@
 package com.edu.registration.service;
 
+import com.edu.registration.config.UserImportProperties;
+import com.edu.registration.dto.GradeImportDtos;
 import com.edu.registration.dto.UserDtos;
 import com.edu.registration.dto.ValidationErrorDetail;
 import com.edu.registration.entity.AdministrativeClass;
@@ -10,6 +12,9 @@ import com.edu.registration.entity.Role;
 import com.edu.registration.entity.Student;
 import com.edu.registration.entity.User;
 import com.edu.registration.exception.ApiException;
+import com.edu.registration.importer.ImportPipelineContract;
+import com.edu.registration.importer.ImportSecurityValidator;
+import com.edu.registration.importer.ImportType;
 import com.edu.registration.repository.AdministrativeClassRepository;
 import com.edu.registration.repository.FacultyRepository;
 import com.edu.registration.repository.LecturerRepository;
@@ -22,6 +27,7 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,7 +44,6 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.HashSet;
@@ -54,12 +59,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 
 @Service
-public class UserImportService {
+public class UserImportService implements ImportPipelineContract<UserDtos.UserImportPreviewResponse, UserDtos.UserConfirmImportRequest, UserDtos.ImportResultDto> {
 
     private static final Logger log = LoggerFactory.getLogger(UserImportService.class);
     private static final String MAT_KHAU_MAC_DINH = "123456";
-    private static final long MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
-    private static final long PREVIEW_TTL_SECONDS = 900; // 15 phút
     public static final String TRANSACTION_POLICY = "ROW_BY_ROW";
     public static final String IDEMPOTENCY_POLICY = "SKIP_IF_EXISTS";
 
@@ -80,6 +83,7 @@ public class UserImportService {
     private final PasswordEncoder passwordEncoder;
     private final AuditLogService auditLogService;
     private final TransactionTemplate transactionTemplate;
+    private final UserImportProperties properties;
     private Clock clock;
 
     private final ConcurrentHashMap<String, UserImportSession> previewSessions = new ConcurrentHashMap<>();
@@ -95,6 +99,24 @@ public class UserImportService {
             AuditLogService auditLogService,
             TransactionTemplate transactionTemplate
     ) {
+        this(userRepository, sinhVienRepository, giangVienRepository, khoaRepository,
+                nganhRepository, lopHanhChinhRepository, passwordEncoder, auditLogService,
+                transactionTemplate, UserImportProperties.defaults());
+    }
+
+    @Autowired
+    public UserImportService(
+            UserRepository userRepository,
+            StudentRepository sinhVienRepository,
+            LecturerRepository giangVienRepository,
+            FacultyRepository khoaRepository,
+            MajorRepository nganhRepository,
+            AdministrativeClassRepository lopHanhChinhRepository,
+            PasswordEncoder passwordEncoder,
+            AuditLogService auditLogService,
+            TransactionTemplate transactionTemplate,
+            UserImportProperties properties
+    ) {
         this.userRepository = userRepository;
         this.sinhVienRepository = sinhVienRepository;
         this.giangVienRepository = giangVienRepository;
@@ -104,6 +126,7 @@ public class UserImportService {
         this.passwordEncoder = passwordEncoder;
         this.auditLogService = auditLogService;
         this.transactionTemplate = transactionTemplate;
+        this.properties = properties != null ? properties : UserImportProperties.defaults();
         this.clock = Clock.systemUTC();
     }
 
@@ -111,6 +134,78 @@ public class UserImportService {
         if (clock != null) {
             this.clock = clock;
         }
+    }
+
+    public UserImportProperties getProperties() {
+        return properties;
+    }
+
+    @Override
+    public ImportType getImportType() {
+        return ImportType.SINH_VIEN;
+    }
+
+    @Override
+    public byte[] exportTemplate(Object context) {
+        TargetType targetType = (context instanceof TargetType t) ? t : TargetType.SINH_VIEN;
+        return xuatTemplateCsv(targetType);
+    }
+
+    @Override
+    public UserDtos.UserImportPreviewResponse preview(Object context, Object file) {
+        TargetType targetType = (context instanceof TargetType t) ? t : TargetType.SINH_VIEN;
+        MultipartFile multipartFile = (MultipartFile) file;
+        return preview(targetType, multipartFile);
+    }
+
+    @Override
+    public UserDtos.ImportResultDto confirm(Object context, UserDtos.UserConfirmImportRequest confirmRequest) {
+        TargetType targetType = (context instanceof TargetType t) ? t : TargetType.SINH_VIEN;
+        return confirm(targetType, confirmRequest);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public byte[] exportErrorReport(Object context, List<?> errorRows) {
+        return xuatFileLoiCsv((List<UserDtos.UserImportRowDetailDto>) errorRows);
+    }
+
+    // --- CONFIGURATION INFO ---
+
+    public UserDtos.UserImportConfigDto layCauHinhImport(TargetType targetType) {
+        boolean isStudent = targetType == TargetType.SINH_VIEN;
+        ImportType type = isStudent ? ImportType.SINH_VIEN : ImportType.GIANG_VIEN;
+        List<GradeImportDtos.TemplateColumnDto> columns = isStudent
+                ? List.of(
+                        new GradeImportDtos.TemplateColumnDto("A", "ma", "Mã sinh viên", true, "Mã số sinh viên duy nhất trong hệ thống, tối đa 20 ký tự"),
+                        new GradeImportDtos.TemplateColumnDto("B", "hoTen", "Họ và tên", true, "Họ và tên đầy đủ của sinh viên, tối đa 150 ký tự"),
+                        new GradeImportDtos.TemplateColumnDto("C", "email", "Thư điện tử", true, "Địa chỉ email sinh viên hợp lệ và chưa từng sử dụng trong hệ thống"),
+                        new GradeImportDtos.TemplateColumnDto("D", "khoaId", "Mã khoa", true, "ID khoa đào tạo hợp lệ trong hệ thống"),
+                        new GradeImportDtos.TemplateColumnDto("E", "nganhId", "Mã ngành", false, "ID ngành hợp lệ và trực thuộc khoa đã chọn (tùy chọn)"),
+                        new GradeImportDtos.TemplateColumnDto("F", "lopId", "Mã lớp hành chính", false, "ID lớp hành chính hợp lệ thuộc ngành/khoa đã chọn (tùy chọn)"),
+                        new GradeImportDtos.TemplateColumnDto("G", "soDienThoai", "Số điện thoại", false, "Số điện thoại liên hệ (tùy chọn)")
+                )
+                : List.of(
+                        new GradeImportDtos.TemplateColumnDto("A", "ma", "Mã giảng viên", true, "Mã số giảng viên duy nhất trong hệ thống, tối đa 20 ký tự"),
+                        new GradeImportDtos.TemplateColumnDto("B", "hoTen", "Họ và tên", true, "Họ và tên đầy đủ của giảng viên, tối đa 150 ký tự"),
+                        new GradeImportDtos.TemplateColumnDto("C", "email", "Thư điện tử", true, "Địa chỉ email giảng viên hợp lệ và chưa từng sử dụng trong hệ thống"),
+                        new GradeImportDtos.TemplateColumnDto("D", "soDienThoai", "Số điện thoại", false, "Số điện thoại liên hệ (tùy chọn)"),
+                        new GradeImportDtos.TemplateColumnDto("E", "khoaId", "Mã khoa", false, "ID khoa công tác của giảng viên trong hệ thống (tùy chọn)")
+                );
+
+        return new UserDtos.UserImportConfigDto(
+                type.getCode(),
+                type.getTenHienThi(),
+                type.getDinhDangTep(),
+                type.getPhanMoRong(),
+                properties.maxFileSizeBytes(),
+                properties.maxRows(),
+                properties.previewTtlSeconds(),
+                properties.transactionPolicy(),
+                properties.idempotencyPolicy(),
+                properties.policyNote(),
+                columns
+        );
     }
 
     // --- TEMPLATE EXPORT ---
@@ -134,13 +229,14 @@ public class UserImportService {
     public UserDtos.UserImportPreviewResponse preview(TargetType targetType, MultipartFile file) {
         byte[] bytes = validateFile(file);
         String sha256 = tinhSha256(bytes);
-        String tenTep = file.getOriginalFilename() != null ? file.getOriginalFilename() : "import.csv";
+        String tenTep = ImportSecurityValidator.sanitizeAndValidateFileName(
+                file.getOriginalFilename() != null ? file.getOriginalFilename() : "import.csv", ".csv");
 
         CleanParsedData parsed = parseAndValidate(targetType, bytes);
         cleanExpiredSessions();
 
         String token = UUID.randomUUID().toString();
-        Instant expiresAt = Instant.now(clock).plusSeconds(PREVIEW_TTL_SECONDS);
+        Instant expiresAt = Instant.now(clock).plusSeconds(properties.previewTtlSeconds());
 
         UserImportSession session = new UserImportSession(
                 token, sha256, tenTep, targetType, expiresAt,
@@ -171,8 +267,8 @@ public class UserImportService {
                 soDongHopLe, // soTaoMoiDuKien
                 0, // soCapNhatDuKien
                 coTheXacNhan,
-                TRANSACTION_POLICY,
-                IDEMPOTENCY_POLICY,
+                properties.transactionPolicy(),
+                properties.idempotencyPolicy(),
                 parsed.allRows(),
                 allErrors
         );
@@ -212,7 +308,8 @@ public class UserImportService {
 
     public UserDtos.ImportResultDto directImport(TargetType targetType, MultipartFile file) {
         byte[] bytes = validateFile(file);
-        String tenTep = file.getOriginalFilename() != null ? file.getOriginalFilename() : "import.csv";
+        String tenTep = ImportSecurityValidator.sanitizeAndValidateFileName(
+                file.getOriginalFilename() != null ? file.getOriginalFilename() : "import.csv", ".csv");
         CleanParsedData parsed = transactionTemplate.execute(status -> parseAndValidate(targetType, bytes));
         return executeImport(targetType, parsed.allRows(), tenTep);
     }
@@ -320,7 +417,7 @@ public class UserImportService {
             }
         }
 
-        // Ghi log tổng quan quá trình import
+        // Ghi log tổng quan quá trình import (tuyệt đối không log mật khẩu/token)
         String batchAction = targetType == TargetType.SINH_VIEN ? "STUDENT_IMPORTED_CSV" : "LECTURER_IMPORTED_CSV";
         String batchEntity = targetType == TargetType.SINH_VIEN ? "STUDENT_IMPORT" : "LECTURER_IMPORT";
         final int finalSoTaoMoi = soTaoMoi;
@@ -333,8 +430,8 @@ public class UserImportService {
                 details.put("soTaoMoi", finalSoTaoMoi);
                 details.put("soCapNhat", 0);
                 details.put("soThatBai", finalSoThatBai);
-                details.put("transactionPolicy", TRANSACTION_POLICY);
-                details.put("updatePolicy", IDEMPOTENCY_POLICY);
+                details.put("transactionPolicy", properties.transactionPolicy());
+                details.put("updatePolicy", properties.idempotencyPolicy());
                 audit.changes(Map.of(), details);
                 return null;
             });
@@ -349,8 +446,8 @@ public class UserImportService {
                 soTaoMoi,
                 0,
                 soThatBai,
-                TRANSACTION_POLICY,
-                IDEMPOTENCY_POLICY,
+                properties.transactionPolicy(),
+                properties.idempotencyPolicy(),
                 finalResults
         );
     }
@@ -392,6 +489,8 @@ public class UserImportService {
             Map<String, Integer> colMap = buildColumnMapping(headerRecord);
             validateHeaderStructure(targetType, colMap);
 
+            int dataRowCount = 0;
+
             while (iterator.hasNext()) {
                 CSVRecord record = iterator.next();
                 int rowNumber = (int) record.getRecordNumber();
@@ -399,6 +498,12 @@ public class UserImportService {
                 // Skip completely empty lines
                 if (isRecordEmpty(record)) {
                     continue;
+                }
+
+                dataRowCount++;
+                if (dataRowCount > properties.maxRows()) {
+                    throw ApiException.badRequest("Số lượng dòng dữ liệu trong tệp (" + dataRowCount
+                            + " dòng) vượt quá giới hạn tối đa cho phép (" + properties.maxRows() + " dòng)");
                 }
 
                 List<ValidationErrorDetail> rowErrors = new ArrayList<>();
@@ -681,19 +786,19 @@ public class UserImportService {
         if (file == null || file.isEmpty()) {
             throw ApiException.badRequest("Vui lòng chọn file CSV để tải lên");
         }
-        if (file.getSize() > MAX_FILE_SIZE_BYTES) {
-            throw ApiException.badRequest("Dung lượng file vượt quá giới hạn cho phép (5 MB)");
-        }
+
         String originalFilename = file.getOriginalFilename();
-        if (originalFilename != null && !originalFilename.toLowerCase(Locale.ROOT).endsWith(".csv")
-                && !originalFilename.toLowerCase(Locale.ROOT).endsWith(".txt")) {
-            throw ApiException.badRequest("Định dạng file không hợp lệ. Chỉ chấp nhận file CSV (.csv)");
-        }
+        ImportSecurityValidator.sanitizeAndValidateFileName(originalFilename, ".csv");
+
+        byte[] bytes;
         try {
-            return file.getBytes();
+            bytes = file.getBytes();
         } catch (IOException ex) {
             throw ApiException.badRequest("Không thể đọc nội dung file: " + ex.getMessage());
         }
+
+        ImportSecurityValidator.validateFileSecurity(bytes, properties.maxFileSizeBytes(), "CSV");
+        return bytes;
     }
 
     private String tinhSha256(byte[] data) {
@@ -732,12 +837,12 @@ public class UserImportService {
                     }
                 } else if (!row.hopLe()) {
                     sb.append(CsvUtils.row(List.of(
-                            String.valueOf(row.dong()),
-                            row.ma() != null ? row.ma() : "",
-                            row.hoTen() != null ? row.hoTen() : "",
-                            "",
-                            "",
-                            "Dữ liệu dòng không hợp lệ"
+                                String.valueOf(row.dong()),
+                                row.ma() != null ? row.ma() : "",
+                                row.hoTen() != null ? row.hoTen() : "",
+                                "",
+                                "",
+                                "Dữ liệu dòng không hợp lệ"
                     )));
                 }
             }
