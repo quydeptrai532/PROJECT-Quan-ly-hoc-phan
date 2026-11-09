@@ -178,6 +178,38 @@ CREATE TABLE IF NOT EXISTS diem (
     CONSTRAINT fk_diem_dangky FOREIGN KEY (dang_ky_id) REFERENCES dang_ky_hoc_phan(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- QLSV-93 (TASK-OP-06): Bang tac vu nen va retry
+CREATE TABLE IF NOT EXISTS background_jobs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    job_type VARCHAR(64) NOT NULL,
+    idempotency_key VARCHAR(180) UNIQUE,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    payload VARCHAR(4000),
+    retry_count INT NOT NULL DEFAULT 0,
+    max_retries INT NOT NULL DEFAULT 3,
+    backoff_seconds INT NOT NULL DEFAULT 30,
+    next_run_at DATETIME(6) NOT NULL,
+    locked_by VARCHAR(100),
+    locked_at DATETIME(6),
+    lease_expires_at DATETIME(6),
+    last_error VARCHAR(2000),
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    completed_at DATETIME(6),
+    INDEX idx_background_jobs_status_next_run (status, next_run_at),
+    INDEX idx_background_jobs_lease_expires (status, lease_expires_at),
+    INDEX idx_background_jobs_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- QLSV-93 (TASK-OP-06): Bang khoa phan tan chong chay trung
+CREATE TABLE IF NOT EXISTS distributed_lock (
+    lock_name VARCHAR(100) NOT NULL PRIMARY KEY,
+    locked_by VARCHAR(100) NOT NULL,
+    locked_at DATETIME(6) NOT NULL,
+    expires_at DATETIME(6) NOT NULL,
+    INDEX idx_dist_lock_expires (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Làm sạch dữ liệu rác cũ nếu có
 DELETE FROM diem;
 DELETE FROM dang_ky_hoc_phan;
