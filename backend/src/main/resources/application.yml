@@ -25,6 +25,19 @@ spring:
       max-request-size: ${SUPPORT_MAX_REQUEST_SIZE:16MB}
 
 app:
+  background-jobs:
+    # QLSV-93 (TASK-OP-06): Tác vụ nền và retry trong dự án QLSV
+    enabled: ${BACKGROUND_JOBS_ENABLED:true}
+    worker-id: ${BACKGROUND_JOBS_WORKER_ID:}
+    poll-interval-ms: ${BACKGROUND_JOBS_POLL_INTERVAL_MS:5000}
+    default-max-retries: ${BACKGROUND_JOBS_DEFAULT_MAX_RETRIES:3}
+    default-backoff-seconds: ${BACKGROUND_JOBS_DEFAULT_BACKOFF_SECONDS:30}
+    backoff-multiplier: ${BACKGROUND_JOBS_BACKOFF_MULTIPLIER:2.0}
+    max-backoff-seconds: ${BACKGROUND_JOBS_MAX_BACKOFF_SECONDS:3600}
+    lease-timeout-seconds: ${BACKGROUND_JOBS_LEASE_TIMEOUT_SECONDS:300}
+    batch-size: ${BACKGROUND_JOBS_BATCH_SIZE:10}
+    timezone: ${BACKGROUND_JOBS_TIMEZONE:Asia/Ho_Chi_Minh}
+    retention-days: ${BACKGROUND_JOBS_RETENTION_DAYS:30}
   notification:
     email:
       # QLSV-92 (TASK-OP-05): Chuẩn hóa trung tâm thông báo và email
