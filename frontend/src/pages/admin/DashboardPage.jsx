@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  BarChart3,
   BookMarked,
   BookOpen,
   CalendarRange,
@@ -279,6 +280,15 @@ export default function DashboardPage() {
               <BookOpen size={16} />
               Từ điển KPI
             </button>
+
+            <Link
+              to="/quan-tri/learning-analytics"
+              className="btn-secondary flex items-center gap-1.5"
+              title="Xem phân tích học tập chuyên sâu, xu hướng GPA và so sánh lớp"
+            >
+              <BarChart3 size={16} />
+              Phân tích học tập
+            </Link>
           </div>
         }
       />

@@ -15,6 +15,8 @@ public interface SemesterRepository extends JpaRepository<Semester, Long> {
 
     List<Semester> findAllByOrderByNgayBatDauDesc();
 
+    List<Semester> findAllByOrderByNgayBatDauAsc();
+
     Optional<Semester> findFirstByDangKyTuLessThanEqualAndDangKyDenGreaterThanEqualOrderByDangKyDenDesc(
             LocalDate ngay, LocalDate cungNgay);
 
