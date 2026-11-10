@@ -301,6 +301,7 @@ export default function GradeAnalyticsPanel({
   initialKhoaId = "",
   singleClassId = null,
   reloadTrigger = 0,
+  hideTitle = false,
 }) {
   const isSingleClass = Boolean(singleClassId);
 
@@ -491,22 +492,24 @@ export default function GradeAnalyticsPanel({
   return (
     <section className="card mb-6 overflow-hidden" aria-label="Thống kê điểm lớp và phân bố">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-5 py-4">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <BarChart3 size={18} className="text-indigo-600" />
-            <h2 className="text-base font-semibold text-slate-900">
-              Thống kê điểm lớp học phần & phân bố điểm
-            </h2>
-            <Badge tone="green">Chỉ tính bảng điểm Đã công bố / Đã khóa</Badge>
-            {report?.cauHinh && !report.cauHinh.laQuyCheChinhThuc && (
-              <Badge tone="amber">Cấu hình tập trung — Chờ chủ dự án chốt</Badge>
-            )}
+        {!hideTitle && (
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <BarChart3 size={18} className="text-indigo-600" />
+              <h2 className="text-base font-semibold text-slate-900">
+                Thống kê điểm lớp học phần & phân bố điểm
+              </h2>
+              <Badge tone="green">Chỉ tính bảng điểm Đã công bố / Đã khóa</Badge>
+              {report?.cauHinh && !report.cauHinh.laQuyCheChinhThuc && (
+                <Badge tone="amber">Cấu hình tập trung — Chờ chủ dự án chốt</Badge>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-slate-500">
+              Tổng hợp không chứa thông tin danh tính sinh viên (PII). Sinh viên chưa có điểm công bố{" "}
+              <strong>không bị tính ngầm thành 0.0</strong> mà tách riêng ngoài mẫu số.
+            </p>
           </div>
-          <p className="mt-1 text-xs text-slate-500">
-            Tổng hợp không chứa thông tin danh tính sinh viên (PII). Sinh viên chưa có điểm công bố{" "}
-            <strong>không bị tính ngầm thành 0.0</strong> mà tách riêng ngoài mẫu số.
-          </p>
-        </div>
+        )}
 
         {/* Bộ lọc môn học & lớp học phần trong phạm vi quyền */}
         <div className="flex flex-wrap items-center gap-2">
@@ -602,7 +605,7 @@ export default function GradeAnalyticsPanel({
           </div>
 
           {/* Tổng hợp chính thức trên các lớp ĐÃ CÔNG BỐ */}
-          <div>
+          <div id="tk-tong-hop" className="scroll-mt-24">
             <h3 className="mb-2.5 flex items-center gap-2 text-sm font-semibold text-slate-800">
               <FileCheck2 size={16} className="text-emerald-600" />
               Tổng hợp chính thức (Chỉ tính trên {report.soLopDaCongBo} lớp đã công bố / khóa bảng điểm)
@@ -614,12 +617,16 @@ export default function GradeAnalyticsPanel({
             />
           </div>
 
-          {/* Bảng thống kê theo môn học (khi có từ 1 môn trở lên) */}
-          {(report.theoMon || []).length > 0 && (
-            <div>
-              <h3 className="mb-2.5 text-sm font-semibold text-slate-800">
-                Thống kê tổng hợp theo môn học (Chỉ tính lớp đã công bố)
-              </h3>
+          {/* Bảng thống kê theo môn học */}
+          <div id="tk-theo-mon" className="scroll-mt-24">
+            <h3 className="mb-2.5 text-sm font-semibold text-slate-800">
+              Thống kê tổng hợp theo môn học (Chỉ tính lớp đã công bố)
+            </h3>
+            {(report.theoMon || []).length === 0 ? (
+              <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-5 text-center text-xs text-slate-500">
+                Chưa có môn học nào có bảng điểm đã công bố trong phạm vi lọc hiện tại.
+              </p>
+            ) : (
               <div className="overflow-x-auto rounded-xl border border-slate-200">
                 <table className="w-full min-w-[780px] text-xs">
                   <thead className="bg-slate-50 text-slate-600">
@@ -693,11 +700,11 @@ export default function GradeAnalyticsPanel({
                   </tbody>
                 </table>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Bảng chi tiết theo từng lớp học phần */}
-          <div>
+          <div id="tk-theo-lop" className="scroll-mt-24">
             <h3 className="mb-2.5 text-sm font-semibold text-slate-800">
               Chi tiết theo từng lớp học phần ({report.theoLop?.length || 0} lớp)
             </h3>

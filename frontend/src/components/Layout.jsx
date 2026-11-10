@@ -60,6 +60,7 @@ const NAV = {
     { to: "/tro-ly-ai", label: "Trợ lý ảo AI", icon: Bot },
     { to: "/lop-cua-toi", label: "Lớp học phần", icon: Layers },
     { to: "/lop-cua-toi/thoi-khoa-bieu", label: "Thời khóa biểu", icon: CalendarDays },
+    { to: "/lop-cua-toi/thong-ke-diem", label: "Thống kê điểm", icon: ChartNoAxesCombined },
     { to: "/thong-bao", label: "Thông báo", icon: Bell },
   ],
   QUAN_TRI: [
