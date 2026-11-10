@@ -26,6 +26,10 @@ public class VietnameseNluEngine {
         TKB_CA_NHAN,
         THONG_KE,
         TRO_GIUP,
+        GREETING,
+        THANKS,
+        GOODBYE,
+        SMALL_TALK,
         UNKNOWN
     }
 
@@ -48,6 +52,21 @@ public class VietnameseNluEngine {
     private static final Pattern MA_LOP_PATTERN = Pattern.compile("\\b([A-Z0-9]{2,8}\\.[0-9]{2}(?:-HK[0-9]+)?|LHP[-_]?[0-9A-Za-z]+)\\b", Pattern.CASE_INSENSITIVE);
     private static final Pattern MA_MON_PATTERN = Pattern.compile("\\b([A-Z]{2,4}[0-9]{2,4})\\b");
     private static final Pattern SELECTION_NUM_PATTERN = Pattern.compile("^\\s*([1-9]|10)\\s*$|^\\s*(?:chon|so|lop)\\s*([1-9]|10)\\s*$", Pattern.CASE_INSENSITIVE);
+
+    // Các mẫu hội thoại xã giao: chỉ khớp khi toàn bộ câu là lời chào/cảm ơn/tạm biệt,
+    // tránh nuốt mất các câu có nội dung tra cứu phía sau.
+    private static final Pattern GREETING_PATTERN = Pattern.compile(
+            "^(?:xin\\s+)?(?:chao|hello|hi|hey|helo|halo|alo|yo)"
+                    + "(?:\\s+(?:ban|tro\\s+ly|bot|assistant|admin|moi\\s+nguoi|ca\\s+ban|a|oi|nhe|nha|nhi))*$");
+    private static final Pattern THANKS_PATTERN = Pattern.compile(
+            "^(?:cam on|thank you|thanks|thank|tks|thanks a lot)"
+                    + "(?:\\s+(?:ban|a|oi|nhe|nha|nhi|rat\\s+nhieu|nhieu|so\\s+much|very\\s+much))*$");
+    private static final Pattern GOODBYE_PATTERN = Pattern.compile(
+            "^(?:tam biet|bye|goodbye|hen gap lai|chao nhe|chao ban nhe|chao ca nha)"
+                    + "(?:\\s+(?:ban|nhe|nha|nhi))*$");
+    private static final Pattern SMALL_TALK_PATTERN = Pattern.compile(
+            "\\b(ban la ai|ban ten (?:la )?gi|ten (?:cua )?ban|may la ai|ai tao ra ban|ban khoe khong|"
+                    + "gioi thieu ve ban|ban la tro ly gi)\\b");
 
     public NluParseResult parse(String message) {
         if (message == null || message.isBlank()) {
@@ -164,6 +183,21 @@ public class VietnameseNluEngine {
                 || normalized.contains("bo qua")
                 || normalized.contains("cancel")) {
             return Intent.HUY_XAC_NHAN;
+        }
+
+        // Hội thoại xã giao (chào hỏi / cảm ơn / tạm biệt / giới thiệu)
+        String compact = normalized.replaceAll("[^a-z0-9\\s]", " ").replaceAll("\\s+", " ").trim();
+        if (GOODBYE_PATTERN.matcher(compact).matches()) {
+            return Intent.GOODBYE;
+        }
+        if (THANKS_PATTERN.matcher(compact).matches()) {
+            return Intent.THANKS;
+        }
+        if (GREETING_PATTERN.matcher(compact).matches()) {
+            return Intent.GREETING;
+        }
+        if (SMALL_TALK_PATTERN.matcher(compact).find()) {
+            return Intent.SMALL_TALK;
         }
 
         // Muốn đăng ký

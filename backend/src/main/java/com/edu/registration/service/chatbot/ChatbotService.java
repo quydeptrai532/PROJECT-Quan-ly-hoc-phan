@@ -27,6 +27,7 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -39,6 +40,36 @@ public class ChatbotService {
 
     private static final Logger log = LoggerFactory.getLogger(ChatbotService.class);
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+    private static final Pattern INFORMATION_QUESTION_PATTERN = Pattern.compile(
+            "\\b(khi nao|bao gio|lam sao|lam the nao|nhu the nao|the nao|o dau|tai sao|vi sao|"
+                    + "la gi|nghia la gi|co phai|huong dan|cach|ai day|giang vien nao|luc nao|ngay nao|may gio)\\b");
+
+    // Chỉ dùng cho các lượt hội thoại xã giao; mọi dữ liệu lớp học phần vẫn do hệ thống tra cứu quyết định.
+    private static final String CONVERSATIONAL_SYSTEM_PROMPT = """
+            Bạn là "Trợ lý AI Đăng ký Học phần" của một hệ thống quản lý đào tạo đại học.
+            Nhiệm vụ: trò chuyện thân thiện, ngắn gọn bằng tiếng Việt và hướng người dùng tới các chức năng của trợ lý:
+            tra cứu lớp học phần, số chỗ trống, lịch học, giảng viên, phòng học, thời khóa biểu và đăng ký học phần.
+            Quy tắc bắt buộc:
+            - Không bịa ra mã lớp, sĩ số, lịch học hay bất kỳ dữ liệu đào tạo nào; dữ liệu đó do hệ thống tra cứu trả về.
+            - Không hứa hẹn thay đổi dữ liệu; mọi thao tác đăng ký phải qua quy trình xác nhận của hệ thống.
+            - Trả lời tối đa 4-5 câu, thân thiện, có thể gợi ý 2-3 câu hỏi mẫu phù hợp.
+            - Nếu câu hỏi ngoài phạm vi học vụ/đăng ký học phần, lịch sự nói rằng bạn chỉ hỗ trợ các vấn đề đó.
+
+            Kiến thức học vụ của hệ thống (chỉ dùng các dữ kiện dưới đây):
+            - Sinh viên đăng ký/hủy học phần tại trang Đăng ký; chỉ thực hiện được trong thời gian đăng ký của học kỳ.
+            - Điều kiện đăng ký: đạt tất cả môn tiên quyết (điểm tổng kết >= 5.0 đã công bố), không trùng thứ/tiết với lớp đã đăng ký,
+              không vượt sĩ số, không vượt giới hạn tín chỉ của học kỳ, không đăng ký hai lớp cùng một môn trong cùng học kỳ.
+            - Điểm tổng kết = 0.4 x điểm quá trình + 0.6 x điểm cuối kỳ, làm tròn 1 chữ số, thang 0-10; điểm đạt >= 5.0.
+            - GPA hệ 4 quy đổi: >=8.5 -> 4.0; >=8.0 -> 3.5; >=7.0 -> 3.0; >=6.5 -> 2.5; >=5.5 -> 2.0; >=5.0 -> 1.5; >=4.0 -> 1.0; còn lại 0.
+              Tín chỉ tích lũy chỉ tính các môn đạt (>= 5.0).
+            - Điểm chỉ hiển thị khi bảng điểm lớp học phần đã được công bố.
+            - Các trang chức năng: Đăng ký (/dang-ky), Thời khóa biểu (/thoi-khoa-bieu), Điểm & GPA (/diem),
+              Lịch sử học tập (/lich-su-hoc-tap), Học lại/cải thiện (/dang-ky-hoc-lai), Thông báo (/thong-bao),
+              Phiếu hỗ trợ (/yeu-cau-ho-tro), Cảnh báo học vụ (/canh-bao-hoc-vu).
+            - Hệ thống không quản lý học phí; nếu được hỏi, hướng dẫn liên hệ phòng Tài chính - Kế toán của trường.
+            """;
 
     private final ChatbotAiProperties properties;
     private final ChatbotSessionManager sessionManager;
@@ -165,6 +196,47 @@ public class ChatbotService {
             VietnameseNluEngine.NluParseResult nlu,
             String thoiDiem,
             Role role) {
+
+        // --- Intent: CHÀO HỎI ---
+        if (nlu.intent() == VietnameseNluEngine.Intent.GREETING) {
+            String fallback = buildGreeting(session, role);
+            return buildResponse(session, conversationalReply(session, hocKy, nlu.rawMessage(), fallback),
+                    ChatbotDtos.ChatActionType.NONE, null, null, greetingSuggestions(role), hocKy.getTen(), thoiDiem, false);
+        }
+
+        // --- Intent: CẢM ƠN ---
+        if (nlu.intent() == VietnameseNluEngine.Intent.THANKS) {
+            String fallback = "Rất vui được hỗ trợ bạn! 😊 Nếu còn thắc mắc gì về lớp học phần, lịch học, phòng học hay đăng ký, bạn cứ nhắn mình nhé.";
+            return buildResponse(session, conversationalReply(session, hocKy, nlu.rawMessage(), fallback),
+                    ChatbotDtos.ChatActionType.NONE, null, null, greetingSuggestions(role), hocKy.getTen(), thoiDiem, false);
+        }
+
+        // --- Intent: TẠM BIỆT ---
+        if (nlu.intent() == VietnameseNluEngine.Intent.GOODBYE) {
+            String fallback = "Tạm biệt bạn! 👋 Chúc bạn một ngày tốt lành. Khi cần tra cứu lớp học phần hay đăng ký, mình luôn ở đây.";
+            return buildResponse(session, conversationalReply(session, hocKy, nlu.rawMessage(), fallback),
+                    ChatbotDtos.ChatActionType.NONE, null, null, null, hocKy.getTen(), thoiDiem, false);
+        }
+
+        // --- Intent: GIỚI THIỆU VỀ TRỢ LÝ ---
+        if (nlu.intent() == VietnameseNluEngine.Intent.SMALL_TALK) {
+            String fallback = "Mình là **Trợ lý AI Đăng ký Học phần (QLSV Assistant)** — trợ lý ảo của hệ thống quản lý đào tạo.\n\n" +
+                    "Mình tra cứu trực tiếp CSDL thời gian thực để giúp bạn tìm lớp học phần, kiểm tra chỗ trống, " +
+                    "xem lịch học, tra cứu giảng viên/phòng học và hướng dẫn đăng ký an toàn.\n\n" +
+                    "Bạn cần mình giúp gì không?";
+            return buildResponse(session, conversationalReply(session, hocKy, nlu.rawMessage(), fallback),
+                    ChatbotDtos.ChatActionType.NONE, null, null, greetingSuggestions(role), hocKy.getTen(), thoiDiem, false);
+        }
+
+        // --- Câu hỏi mang tính giải thích/hướng dẫn (không có mã lớp cụ thể) ---
+        // Ưu tiên trả lời tự nhiên thay vì hiểu nhầm thành lệnh đăng ký/tra cứu.
+        if (shouldAnswerConversationally(nlu)) {
+            String fallback = "Mình chưa có đủ dữ liệu để trả lời chính xác câu hỏi này. " +
+                    "Bạn có thể hỏi mình về đăng ký/hủy học phần, thời khóa biểu, lớp học phần, điểm/GPA, " +
+                    "học lại/cải thiện, thông báo hoặc phiếu hỗ trợ nhé.";
+            return buildResponse(session, conversationalReply(session, hocKy, nlu.rawMessage(), fallback),
+                    ChatbotDtos.ChatActionType.NONE, null, null, greetingSuggestions(role), hocKy.getTen(), thoiDiem, false);
+        }
 
         // --- Intent: XÁC NHẬN ĐĂNG KÝ ---
         if (nlu.intent() == VietnameseNluEngine.Intent.XAC_NHAN) {
@@ -342,6 +414,19 @@ public class ChatbotService {
         if (nlu.intent() == VietnameseNluEngine.Intent.TRO_GIUP) {
             String guide = getHelpText(role);
             return buildResponse(session, guide, ChatbotDtos.ChatActionType.NONE, null, null, null, hocKy.getTen(), thoiDiem, false);
+        }
+
+        // --- Intent: KHÔNG XÁC ĐỊNH ---
+        // Không tự động liệt kê toàn bộ lớp học phần khi câu hỏi ngoài phạm vi hiểu biết.
+        if (nlu.intent() == VietnameseNluEngine.Intent.UNKNOWN) {
+            String fallback = "Xin lỗi, mình chưa hiểu rõ ý bạn. Bạn có thể hỏi mình về:\n" +
+                    "- Tìm lớp học phần và số chỗ còn trống\n" +
+                    "- Xem thời khóa biểu của bạn\n" +
+                    "- Tra cứu giảng viên, phòng học, lịch học\n" +
+                    "- Hướng dẫn đăng ký học phần\n\n" +
+                    "Bạn thử diễn đạt lại giúp mình, hoặc gõ \"Hướng dẫn\" để xem đầy đủ nhé.";
+            return buildResponse(session, conversationalReply(session, hocKy, nlu.rawMessage(), fallback),
+                    ChatbotDtos.ChatActionType.NONE, null, null, greetingSuggestions(role), hocKy.getTen(), thoiDiem, false);
         }
 
         // --- Intent: TRA CỨU LỚP / SĨ SỐ / CÒN CHỖ / LỊCH / GIẢNG VIÊN / PHÒNG ---
@@ -657,6 +742,97 @@ public class ChatbotService {
                 null,
                 false
         );
+    }
+
+    /**
+     * Với các lượt hội thoại xã giao, ưu tiên phản hồi tự nhiên từ AI Provider nếu đã cấu hình.
+     * Không có API key hoặc provider lỗi thì dùng lại câu trả lời quy chuẩn (fallback).
+     */
+    private String conversationalReply(
+            ChatbotSessionManager.UserSession session,
+            Semester hocKy,
+            String userMessage,
+            String fallback) {
+        if (!properties.isEnabled() || !properties.isProviderConfigured()) {
+            return fallback;
+        }
+        List<ChatbotSessionManager.SessionMessage> history = session.getMessages();
+        if (!history.isEmpty()) {
+            ChatbotSessionManager.SessionMessage last = history.get(history.size() - 1);
+            if ("USER".equalsIgnoreCase(last.sender())) {
+                history.remove(history.size() - 1);
+            }
+        }
+        return aiChatProvider.generateText(buildConversationalSystemPrompt(hocKy), userMessage, history)
+                .map(String::trim)
+                .filter(text -> !text.isBlank())
+                .orElse(fallback);
+    }
+
+    private String buildConversationalSystemPrompt(Semester hocKy) {
+        if (hocKy == null) {
+            return CONVERSATIONAL_SYSTEM_PROMPT;
+        }
+        return CONVERSATIONAL_SYSTEM_PROMPT + "\nThông tin học kỳ đang áp dụng (chỉ dùng đúng các dữ kiện này, không bịa thêm):\n"
+                + "- Học kỳ: " + hocKy.getTen() + " (năm học " + hocKy.getNamHoc() + ")\n"
+                + "- Thời gian đăng ký: " + DATE_FORMATTER.format(hocKy.getDangKyTu())
+                + " đến " + DATE_FORMATTER.format(hocKy.getDangKyDen())
+                + (hocKy.dangMoDangKy() ? " (đang mở đăng ký)" : " (hiện không trong thời gian đăng ký)") + "\n"
+                + "- Thời gian học: " + DATE_FORMATTER.format(hocKy.getNgayBatDau())
+                + " đến " + DATE_FORMATTER.format(hocKy.getNgayKetThuc()) + "\n"
+                + "- Giới hạn tín chỉ: tối thiểu " + hocKy.getSoTinChiToiThieu()
+                + ", tối đa " + hocKy.getSoTinChiToiDa() + "\n";
+    }
+
+    private boolean shouldAnswerConversationally(VietnameseNluEngine.NluParseResult nlu) {
+        if (nlu.maLop() != null || nlu.maMon() != null
+                || (nlu.tenMonOrKeyword() != null && !nlu.tenMonOrKeyword().isBlank())
+                || nlu.selectionIndex() != null
+                || nlu.onlyAvailableSeats() || nlu.onlyFullClasses()) {
+            return false;
+        }
+        VietnameseNluEngine.Intent intent = nlu.intent();
+        if (intent == VietnameseNluEngine.Intent.XAC_NHAN
+                || intent == VietnameseNluEngine.Intent.HUY_XAC_NHAN
+                || intent == VietnameseNluEngine.Intent.TKB_CA_NHAN
+                || intent == VietnameseNluEngine.Intent.THONG_KE
+                || intent == VietnameseNluEngine.Intent.TRO_GIUP) {
+            return false;
+        }
+        String normalized = nlu.normalizedMessage();
+        return INFORMATION_QUESTION_PATTERN.matcher(normalized).find() || normalized.contains("bao nhieu");
+    }
+
+    private String buildGreeting(ChatbotSessionManager.UserSession session, Role role) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Chào ").append(session.getUsername())
+                .append("! Mình là **Trợ lý AI Đăng ký Học phần**, rất vui được trò chuyện với bạn 😊\n\n");
+        sb.append("Bạn muốn mình giúp gì hôm nay? Mình có thể:\n");
+        if (role == Role.SINH_VIEN) {
+            sb.append("- 🔎 Tìm lớp học phần và kiểm tra chỗ trống\n");
+            sb.append("- 📅 Xem thời khóa biểu của bạn\n");
+            sb.append("- 📝 Hướng dẫn đăng ký học phần an toàn\n");
+            sb.append("- 🔁 Gợi ý lớp thay thế khi lớp đã đầy\n\n");
+        } else if (role == Role.GIANG_VIEN) {
+            sb.append("- 📚 Xem danh sách lớp mình phụ trách\n");
+            sb.append("- 📅 Xem lịch giảng dạy\n");
+            sb.append("- 👥 Kiểm tra sĩ số lớp học phần\n\n");
+        } else {
+            sb.append("- 📊 Xem thống kê tổng quan đào tạo\n");
+            sb.append("- 🔎 Tra cứu danh sách lớp học phần\n\n");
+        }
+        sb.append("Bạn cứ nhắn tự nhiên nhé, ví dụ: \"Tìm lớp còn chỗ\" hoặc gõ \"Hướng dẫn\" để xem đầy đủ.");
+        return sb.toString();
+    }
+
+    private List<String> greetingSuggestions(Role role) {
+        if (role == Role.SINH_VIEN) {
+            return List.of("Tìm lớp còn chỗ", "Thời khóa biểu của tôi", "Hướng dẫn trợ giúp");
+        }
+        if (role == Role.GIANG_VIEN) {
+            return List.of("Xem danh sách lớp tôi phụ trách", "Lịch giảng dạy của tôi", "Hướng dẫn trợ giúp");
+        }
+        return List.of("Xem thống kê tổng quan đào tạo", "Tra cứu danh sách lớp học phần", "Hướng dẫn trợ giúp");
     }
 
     private String getHelpText(Role role) {
