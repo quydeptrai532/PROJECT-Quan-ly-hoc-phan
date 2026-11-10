@@ -132,6 +132,17 @@ export default function Layout({ children }) {
         };
     }, [user?.role, location.pathname]);
 
+    // Tu dong dong thong bao sau 5s
+    useEffect(() => {
+        if (!auditAlert) return undefined;
+
+        const timer = setTimeout(() => {
+            setAuditAlert(null);
+        }, 5000);
+
+        return () => clearTimeout(timer);
+    }, [auditAlert]);
+
   useEffect(() => {
     if (!["SINH_VIEN", "GIANG_VIEN"].includes(user?.role)) {
       setUnreadCount(0);
