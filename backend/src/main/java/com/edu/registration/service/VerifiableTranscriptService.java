@@ -14,7 +14,9 @@ import com.edu.registration.repository.SemesterRepository;
 import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.repository.VerifiableTranscriptRepository;
 import com.edu.registration.security.CurrentUser;
+import com.edu.registration.util.ExportSecuritySupport;
 import com.edu.registration.util.VerifiableCodeSupport;
+import java.util.Locale;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -174,9 +176,10 @@ public class VerifiableTranscriptService {
                 "maXacMinhMasked", codeMasked
         ));
 
+        String maSvAnToan = ExportSecuritySupport.sanitizeFilename(sv.getMa());
         String tenTep = (hocKyId != null)
-                ? "bang-diem-xac-thuc-" + sv.getMa() + "-hk" + hocKyId + "-v" + phienBan + ".pdf"
-                : "bang-diem-xac-thuc-" + sv.getMa() + "-v" + phienBan + ".pdf";
+                ? String.format(Locale.ROOT, "bang-diem-%s-hk%d.pdf", maSvAnToan, hocKyId)
+                : String.format(Locale.ROOT, "bang-diem-%s.pdf", maSvAnToan);
 
         log.info("Phát hành bảng điểm điện tử xác thực thành công cho sinh viên {} phiên bản v{} (id={})",
                 sv.getMa(), phienBan, saved.getId());

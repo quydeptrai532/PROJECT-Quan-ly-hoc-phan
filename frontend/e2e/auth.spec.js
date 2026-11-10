@@ -2,11 +2,12 @@ import { expect, test } from "@playwright/test";
 import { login } from "./helpers";
 
 test.describe("Xác thực", () => {
-  test("hiển thị trang đăng nhập và tài khoản dùng thử", async ({ page }) => {
+  test("hiển thị trang đăng nhập", async ({ page }) => {
     await page.goto("/login");
     await expect(page.getByRole("heading", { name: "Đăng nhập" })).toBeVisible();
-    await expect(page.getByText("sv01 / 123456")).toBeVisible();
-    await expect(page.getByText("admin / admin123")).toBeVisible();
+    await expect(page.locator("#username")).toBeVisible();
+    await expect(page.locator("#password")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Đăng nhập", exact: true })).toBeVisible();
   });
 
   test("đăng nhập sai hiển thị thông báo lỗi", async ({ page }) => {
