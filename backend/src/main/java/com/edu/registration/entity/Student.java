@@ -2,6 +2,8 @@ package com.edu.registration.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -50,6 +52,10 @@ public class Student {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "chuong_trinh_id")
     private Curriculum chuongTrinh;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "trang_thai_hoc_tap", nullable = false, length = 30)
+    private StudentAcademicStatus trangThaiHocTap = StudentAcademicStatus.DANG_HOC;
 
     public Long getId() {
         return id;
@@ -125,4 +131,12 @@ public class Student {
 
     public Curriculum getChuongTrinh() { return chuongTrinh; }
     public void setChuongTrinh(Curriculum chuongTrinh) { this.chuongTrinh = chuongTrinh; }
+
+    public StudentAcademicStatus getTrangThaiHocTap() {
+        return trangThaiHocTap;
+    }
+
+    public void setTrangThaiHocTap(StudentAcademicStatus trangThaiHocTap) {
+        this.trangThaiHocTap = trangThaiHocTap;
+    }
 }

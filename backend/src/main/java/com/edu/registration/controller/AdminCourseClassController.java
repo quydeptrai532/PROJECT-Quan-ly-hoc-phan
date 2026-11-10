@@ -3,7 +3,10 @@ package com.edu.registration.controller;
 import com.edu.registration.dto.CourseClassDtos;
 import com.edu.registration.dto.RegistrationDtos;
 import com.edu.registration.service.CourseClassService;
+import com.edu.registration.entity.GradeSheetStatus;
 import com.edu.registration.service.GradeService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,6 +25,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin")
 @PreAuthorize("hasRole('QUAN_TRI')")
+@Tag(name = "Quản trị - Lớp học phần", description = "Quản lý mở lớp học phần, kiểm tra trùng lịch phòng học/giảng viên, hủy lớp và chuyển sinh viên")
 public class AdminCourseClassController {
 
     private final CourseClassService lopHocPhanService;
@@ -38,9 +42,29 @@ public class AdminCourseClassController {
     }
 
     @GetMapping("/lop-hoc-phan")
-    public List<CourseClassDtos.LopHocPhanDto> danhSach(@RequestParam(required = false) Long hocKyId,
-                                                       @RequestParam(required = false) String keyword) {
-        return lopHocPhanService.danhSach(hocKyId, keyword);
+    @Operation(summary = "Danh sách lớp học phần", description = "Lọc lớp học phần theo học kỳ, giảng viên, từ khóa hoặc trạng thái bảng điểm")
+    public List<CourseClassDtos.LopHocPhanDto> danhSach(
+            @RequestParam(required = false) Long hocKyId,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long giangVienId,
+            @RequestParam(required = false) GradeSheetStatus trangThaiBangDiem) {
+        return lopHocPhanService.danhSach(hocKyId, keyword, giangVienId, trangThaiBangDiem);
+    }
+
+    @GetMapping("/lop-hoc-phan/cho-duyet")
+    @Operation(summary = "Danh sách lớp có bảng điểm chờ duyệt", description = "Lấy các lớp học phần đang chờ Phòng Đào tạo duyệt bảng điểm")
+    public List<CourseClassDtos.LopHocPhanDto> danhSachChoDuyet(
+            @RequestParam(required = false) Long hocKyId,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long giangVienId) {
+        return lopHocPhanService.danhSach(hocKyId, keyword, giangVienId, GradeSheetStatus.CHO_DUYET);
+    }
+
+    @PostMapping("/lop-hoc-phan/kiem-tra-xung-dot")
+    @Operation(summary = "Kiểm tra xung đột lịch mở lớp", description = "Kiểm tra trùng phòng học hoặc trùng lịch giảng viên trước khi lưu lớp")
+    public CourseClassDtos.KetQuaKiemTraXungDotDto kiemTraXungDot(
+            @Valid @RequestBody CourseClassDtos.KiemTraXungDotRequest request) {
+        return lopHocPhanService.kiemTraXungDot(request);
     }
 
     @PostMapping("/lop-hoc-phan")
@@ -55,11 +79,49 @@ public class AdminCourseClassController {
         return lopHocPhanService.sua(id, request);
     }
 
+    @GetMapping("/lop-hoc-phan/{id}/khao-sat-huy")
+    public CourseClassDtos.KhaoSatHuyLopDto khaoSatHuy(@PathVariable Long id) {
+        return lopHocPhanService.khaoSatHuyLop(id);
+    }
+
     @PostMapping("/lop-hoc-phan/{id}/huy")
     public CourseClassDtos.HuyLopHocPhanResponse huy(
             @PathVariable Long id,
             @Valid @RequestBody(required = false) CourseClassDtos.HuyLopHocPhanRequest request) {
         return lopHocPhanService.huyLopHocPhan(id, request != null ? request.lyDo() : null);
+    }
+
+    @PostMapping("/lop-hoc-phan/{id}/kiem-tra-chuyen")
+    public CourseClassDtos.KetQuaKiemTraChuyenLopDto kiemTraChuyen(
+            @PathVariable Long id,
+            @Valid @RequestBody CourseClassDtos.KiemTraChuyenLopRequest request) {
+        return lopHocPhanService.kiemTraChuyenLop(id, request.lopDichId(), request.sinhVienIds());
+    }
+
+    @PostMapping("/lop-hoc-phan/{id}/chuyen-sinh-vien")
+    public CourseClassDtos.ChuyenSinhVienResponse chuyenSinhVien(
+            @PathVariable Long id,
+            @Valid @RequestBody CourseClassDtos.ChuyenSinhVienRequest request) {
+        return lopHocPhanService.chuyenSinhVien(id, request.lopDichId(), request.sinhVienId(), request.lyDo());
+    }
+
+    @PostMapping("/lop-hoc-phan/{id}/chuyen-hang-loat")
+    public CourseClassDtos.KetQuaChuyenHangLoatDto chuyenHangLoat(
+            @PathVariable Long id,
+            @Valid @RequestBody CourseClassDtos.ChuyenHangLoatRequest request) {
+        return lopHocPhanService.chuyenSinhVienHangLoat(id, request.lopDichId(), request.sinhVienIds(), request.lyDo());
+    }
+
+    @GetMapping("/lop-hoc-phan/{id}/lich-su-chuyen")
+    public List<CourseClassDtos.LichSuChuyenLopDto> lichSuChuyenTheoLop(@PathVariable Long id) {
+        return lopHocPhanService.danhSachLichSuChuyen(id, null);
+    }
+
+    @GetMapping("/lop-hoc-phan/lich-su-chuyen")
+    public List<CourseClassDtos.LichSuChuyenLopDto> lichSuChuyen(
+            @RequestParam(required = false) Long lopHocPhanId,
+            @RequestParam(required = false) Long hocKyId) {
+        return lopHocPhanService.danhSachLichSuChuyen(lopHocPhanId, hocKyId);
     }
 
     @GetMapping("/lop-hoc-phan/{id}/sinh-vien")

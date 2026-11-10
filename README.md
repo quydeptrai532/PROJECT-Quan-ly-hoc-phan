@@ -202,7 +202,16 @@ Dữ liệu mẫu gồm 2 khoa, 3 ngành, 3 lớp hành chính, 8 môn học (c�
 | GET | `/api/admin/yeu-cau-ho-tro` | Quản trị viên tra cứu danh sách phiếu hỗ trợ (lọc & phân trang) |
 | PATCH | `/api/admin/yeu-cau-ho-tro/{id}/trang-thai` | Quản trị viên cập nhật trạng thái xử lý phiếu hỗ trợ và ghi lịch sử |
 
-Swagger/OpenAPI chưa tích hợp; có thể bổ sung `springdoc-openapi` nếu cần.
+## Tài liệu Swagger / OpenAPI (QLSV-101)
+
+Hệ thống đã tích hợp tài liệu hóa OpenAPI 3.0 / Swagger UI sử dụng thư viện `springdoc-openapi-starter-webmvc-ui` (v2.7.0):
+- **Swagger UI (Dev)**: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html) hoặc [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+- **OpenAPI 3.0 JSON Spec**: [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
+- **Xác thực JWT**: Nhấn nút **Authorize** trên Swagger UI và nhập JWT token nhận được từ `POST /api/auth/login`.
+- **Kiểm soát môi trường**:
+  - `dev` / `h2`: Bật Swagger UI và OpenAPI docs.
+  - `prod`: Tắt hoàn toàn docs và trả về mã lỗi HTTP 404 an toàn (`OpenApiDisabledFallbackController`).
+- Chi tiết hướng dẫn xem tại: [docs/OPENAPI_DOCUMENTATION_QLSV_101.md](docs/OPENAPI_DOCUMENTATION_QLSV_101.md).
 
 ## Định dạng CSV nhập sinh viên
 

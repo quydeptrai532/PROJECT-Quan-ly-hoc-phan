@@ -143,4 +143,20 @@ public interface CourseRegistrationRepository extends JpaRepository<CourseRegist
     List<Student> findAssignedStudentsOfLecturer(@Param("giangVienId") Long giangVienId,
                                                  @Param("lopHocPhanId") Long lopHocPhanId,
                                                  @Param("trangThai") RegistrationStatus trangThai);
+
+    @EntityGraph(attributePaths = {"lopHocPhan", "lopHocPhan.monHoc", "lopHocPhan.hocKy", "lopHocPhan.giangVien"})
+    @Query("""
+        select d from CourseRegistration d
+        where d.sinhVien.id = :sinhVienId
+          and (:hocKyId is null or d.lopHocPhan.hocKy.id = :hocKyId)
+        """)
+    List<CourseRegistration> findAllForAdminHistory(@Param("sinhVienId") Long sinhVienId,
+                                                    @Param("hocKyId") Long hocKyId);
+
+    @Query("""
+        select d.lopHocPhan.id, count(d) from CourseRegistration d
+        where d.lopHocPhan.id in :ids and d.trangThai = :trangThai
+        group by d.lopHocPhan.id
+        """)
+    List<Object[]> countByLopIds(@Param("ids") Collection<Long> ids, @Param("trangThai") RegistrationStatus trangThai);
 }

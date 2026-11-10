@@ -20,7 +20,7 @@ import {
 } from "recharts";
 import { Alert, Badge, EmptyState, Spinner, StatCard } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
-import { formatDate, formatDiem, lichHoc, THU_LABEL } from "../../lib/format";
+import { formatDate, formatDateTime, formatDiem, lichHoc, THU_LABEL } from "../../lib/format";
 import { useApi } from "../../lib/useApi";
 
 const CHART_TOOLTIP = {
@@ -37,8 +37,8 @@ export default function StudentDashboard() {
   const { data: ketQua, loading: loadingDiem } = useApi("/sinh-vien/me/diem");
   const { data: canhBao, loading: loadingCanhBao, error: loiCanhBao } = useApi("/sinh-vien/me/canh-bao-dashboard");
   const { data: thoiKhoaBieu, loading: loadingTkb } = useApi("/sinh-vien/me/thoi-khoa-bieu");
-
   const hocKy = hocKyList?.find((item) => item.dangMoDangKy) || hocKyList?.[0];
+  const { data: dotHienTai } = useApi(hocKy?.id ? "/dang-ky/dot-hien-tai" : null, hocKy?.id ? { hocKyId: hocKy.id } : undefined);
   const hocPhan = dangKy || [];
   const tongTinChi = hocPhan.reduce((sum, item) => sum + item.soTinChi, 0);
 

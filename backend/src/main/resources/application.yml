@@ -25,6 +25,37 @@ spring:
       max-request-size: ${SUPPORT_MAX_REQUEST_SIZE:16MB}
 
 app:
+  background-jobs:
+    # QLSV-93 (TASK-OP-06): Tác vụ nền và retry trong dự án QLSV
+    enabled: ${BACKGROUND_JOBS_ENABLED:true}
+    worker-id: ${BACKGROUND_JOBS_WORKER_ID:}
+    poll-interval-ms: ${BACKGROUND_JOBS_POLL_INTERVAL_MS:5000}
+    default-max-retries: ${BACKGROUND_JOBS_DEFAULT_MAX_RETRIES:3}
+    default-backoff-seconds: ${BACKGROUND_JOBS_DEFAULT_BACKOFF_SECONDS:30}
+    backoff-multiplier: ${BACKGROUND_JOBS_BACKOFF_MULTIPLIER:2.0}
+    max-backoff-seconds: ${BACKGROUND_JOBS_MAX_BACKOFF_SECONDS:3600}
+    lease-timeout-seconds: ${BACKGROUND_JOBS_LEASE_TIMEOUT_SECONDS:300}
+    batch-size: ${BACKGROUND_JOBS_BATCH_SIZE:10}
+    timezone: ${BACKGROUND_JOBS_TIMEZONE:Asia/Ho_Chi_Minh}
+    retention-days: ${BACKGROUND_JOBS_RETENTION_DAYS:30}
+  notification:
+    email:
+      # QLSV-92 (TASK-OP-05): Chuẩn hóa trung tâm thông báo và email
+      # Email là kênh thông báo bổ sung được kiểm soát bật/tắt độc lập.
+      # Khi tắt email (enabled: false), thông báo in-app vẫn hoạt động đầy đủ.
+      enabled: ${NOTIFICATION_EMAIL_ENABLED:false}
+      from-address: ${NOTIFICATION_EMAIL_FROM:no-reply@university.edu.vn}
+      from-name: ${NOTIFICATION_EMAIL_FROM_NAME:Hệ thống Quản lý Đào tạo}
+      max-retries: ${NOTIFICATION_EMAIL_MAX_RETRIES:3}
+      retry-delay-seconds: ${NOTIFICATION_EMAIL_RETRY_DELAY_SECONDS:60}
+      provider: ${NOTIFICATION_EMAIL_PROVIDER:smtp}
+      host: ${SMTP_HOST:}
+      port: ${SMTP_PORT:587}
+      username: ${SMTP_USERNAME:}
+      password: ${SMTP_PASSWORD:}
+      auth: ${SMTP_AUTH:true}
+      starttls: ${SMTP_STARTTLS:true}
+      policy-note: ${NOTIFICATION_EMAIL_POLICY_NOTE:Email là kênh thông báo bổ sung được kiểm soát bật/tắt độc lập. Lỗi gửi email không rollback nghiệp vụ đã commit. Không gửi điểm cá nhân hoặc thông tin nhạy cảm qua email mà chỉ gửi thông báo hướng dẫn đăng nhập tra cứu an toàn qua hệ thống nội bộ.}
   support-request:
     # Cấu hình tập trung tạm thời cho phiếu hỗ trợ/khiếu nại sinh viên (cần chủ dự án xác nhận danh mục/chính sách tệp/SLA chính thức).
     storage-dir: ${SUPPORT_UPLOAD_DIR:./data/support-attachments}
@@ -34,8 +65,27 @@ app:
     allowed-types: ${SUPPORT_ALLOWED_TYPES:HOC_PHAN,DIEM_SO,HOC_KY,HO_SO_HOC_VU,KHAC}
     allowed-statuses: ${SUPPORT_ALLOWED_STATUSES:MOI_TAO,DANG_XU_LY,CHO_PHAN_HOI_SINH_VIEN,DA_GIAI_QUYET,TU_CHOI,DA_DONG}
     comment-allowed-statuses: ${SUPPORT_COMMENT_ALLOWED_STATUSES:MOI_TAO,DANG_XU_LY,CHO_PHAN_HOI_SINH_VIEN,DA_GIAI_QUYET}
-    # Không tuyên bố SLA chính thức khi chưa có quyết định của chủ dự án.
-    sla-note: ${SUPPORT_SLA_NOTE:}
+    # QLSV-87 (TASK-AD-12): Cấu hình tập trung cho hàng đợi xử lý hỗ trợ, phân quyền, SLA và lịch làm việc
+    # Các thông số chưa được chốt chính thức và đang chờ Chủ dự án phê duyệt.
+    sla-note: ${SUPPORT_SLA_NOTE:Chính sách SLA xử lý yêu cầu hỗ trợ và thời hạn cam kết đang áp dụng theo cấu hình tập trung dự kiến (tham khảo), chưa phải quy chế chính thức của Nhà trường và chờ Chủ dự án phê duyệt.}
+    queue:
+      allowed-handler-roles: ${SUPPORT_HANDLER_ROLES:QUAN_TRI}
+      scope-mode: ${SUPPORT_QUEUE_SCOPE_MODE:ALL}
+      default-priority: ${SUPPORT_DEFAULT_PRIORITY:TRUNG_BINH}
+      policy-note: ${SUPPORT_QUEUE_POLICY_NOTE:Vai trò xử lý hàng đợi mặc định giới hạn QUAN_TRI để tránh mở quyền rộng; các vai trò hỗ trợ chuyên trách khác (nếu có) đang chờ Chủ dự án chốt chính thức.}
+    working-calendar:
+      working-days: ${SUPPORT_WORKING_DAYS:MONDAY,TUESDAY,WEDNESDAY,THURSDAY,FRIDAY}
+      start-time: ${SUPPORT_WORK_START_TIME:08:00}
+      end-time: ${SUPPORT_WORK_END_TIME:17:00}
+      lunch-start-time: ${SUPPORT_WORK_LUNCH_START:12:00}
+      lunch-end-time: ${SUPPORT_WORK_LUNCH_END:13:00}
+      timezone: ${SUPPORT_TIMEZONE:Asia/Ho_Chi_Minh}
+      policy-note: ${SUPPORT_WORKING_CALENDAR_NOTE:Lịch làm việc chuẩn (Thứ 2 - Thứ 6, 08:00 - 17:00, nghỉ trưa 12:00 - 13:00) đang áp dụng cấu hình dự kiến và chờ Chủ dự án phê duyệt chính thức.}
+    sla:
+      official-sla-enabled: ${SUPPORT_OFFICIAL_SLA_ENABLED:false}
+      pause-on-student-wait: ${SUPPORT_SLA_PAUSE_ON_STUDENT_WAIT:true}
+      nearing-due-threshold-hours: ${SUPPORT_SLA_NEARING_DUE_HOURS:4.0}
+      policy-note: ${SUPPORT_SLA_POLICY_NOTE:Chính sách SLA xử lý yêu cầu hỗ trợ và thời hạn cam kết đang áp dụng theo cấu hình tập trung dự kiến (tham khảo), chưa phải quy chế chính thức của Nhà trường và chờ Chủ dự án phê duyệt.}
   dashboard:
     # Học kỳ/đợt đăng ký được xem là "sắp tới" trong vòng 14 ngày; chỉnh tại cấu hình này.
     upcoming-window-days: ${DASHBOARD_UPCOMING_WINDOW_DAYS:14}
@@ -71,6 +121,14 @@ app:
     # Ngưỡng tỷ lệ vắng (%) cấu hình tập trung (mặc định để trống)
     nguong-ty-le-vang: ${ATTENDANCE_NGUONG_TY_LE_VANG:}
     ghi-chu-nguong: ${ATTENDANCE_GHI_CHU_NGUONG:Quy chế ngưỡng số buổi vắng và tỷ lệ vắng để kích hoạt cảnh báo chuyên cần chưa được Chủ dự án chốt chính thức. Hệ thống chỉ kích hoạt cảnh báo khi có ngưỡng xác nhận cho môn/lớp hoặc tập trung.}
+  user-import:
+    # QLSV-90 (TASK-OP-03 / TASK-AD-07): Cấu hình giới hạn tệp và chính sách import người dùng (sinh viên / giảng viên) từ CSV
+    max-file-size-bytes: ${USER_IMPORT_MAX_FILE_SIZE_BYTES:5242880}
+    max-rows: ${USER_IMPORT_MAX_ROWS:2000}
+    preview-ttl-seconds: ${USER_IMPORT_PREVIEW_TTL_SECONDS:900}
+    transaction-policy: ${USER_IMPORT_TRANSACTION_POLICY:ROW_BY_ROW}
+    idempotency-policy: ${USER_IMPORT_IDEMPOTENCY_POLICY:SKIP_IF_EXISTS}
+    policy-note: ${USER_IMPORT_POLICY_NOTE:Chính sách giao dịch ROW_BY_ROW (mỗi dòng hợp lệ được ghi nhận trong transaction độc lập) và chống trùng lặp SKIP_IF_EXISTS (không tự ý ghi đè nếu mã định danh hoặc email đã tồn tại trong hệ thống).}
   grade-import:
     # QLSV-73 (TASK-LC-08): Cấu hình giới hạn tệp và chính sách import điểm từ Excel (.xlsx)
     temp-dir: ${GRADE_IMPORT_TEMP_DIR:./data/temp-grade-imports}
@@ -89,3 +147,119 @@ app:
     missing-grade-policy: ${GRADE_ANALYTICS_MISSING_POLICY:EXCLUDE_FROM_DENOMINATOR}
     official-regulation: ${GRADE_ANALYTICS_OFFICIAL_REGULATION:false}
     policy-note: ${GRADE_ANALYTICS_POLICY_NOTE:Khoảng phân bố điểm ([0.0, 4.0), [4.0, 5.0), [5.0, 6.5), [6.5, 8.0), [8.0, 10.0]) và chính sách loại bản ghi chưa có điểm tổng kết công bố khỏi mẫu số tính điểm trung bình / tỷ lệ đạt-trượt (EXCLUDE_FROM_DENOMINATOR — không tự gán 0.0) đang áp dụng theo cấu hình tập trung dự kiến và chờ Chủ dự án chốt chính thức (không phải quy chế chính thức). Ngưỡng đạt lấy từ AcademicRules.DIEM_DAT = 5.0.}
+  registration:
+    # QLSV-77 (TASK-AD-02): Cấu hình timezone và thứ tự ưu tiên đối tượng đăng ký
+    timezone: ${REGISTRATION_TIMEZONE:Asia/Ho_Chi_Minh}
+    multi-cohort-priority-policy: ${REGISTRATION_MULTI_COHORT_PRIORITY:HIGHEST_PRIORITY}
+    official-regulation: ${REGISTRATION_OFFICIAL_REGULATION:false}
+    policy-note: ${REGISTRATION_POLICY_NOTE:Chính sách thứ tự ưu tiên khi sinh viên thuộc nhiều nhóm đối tượng/đợt đăng ký khác nhau đang áp dụng cấu hình dự kiến (HIGHEST_PRIORITY - chọn đợt có thứ tự ưu tiên cao nhất hoặc đợt đang mở) và chưa có quy chế chính thức được Chủ dự án / Phòng Đào tạo phê duyệt.}
+  class-schedule-conflict:
+    # QLSV-78 (TASK-AD-03): Cấu hình chính sách kiểm tra và xử lý xung đột lịch giảng viên / phòng học khi mở lớp
+    enforcement-policy: ${CLASS_SCHEDULE_CONFLICT_ENFORCEMENT:BLOCK_ON_CONFLICT}
+    official-regulation: ${CLASS_SCHEDULE_CONFLICT_OFFICIAL_REGULATION:false}
+    policy-note: ${CLASS_SCHEDULE_CONFLICT_POLICY_NOTE:Chính sách chặn lưu hay cho phép cảnh báo/ghi đè khi phát hiện trùng lịch giảng viên hoặc phòng học chưa được Chủ dự án chốt chính thức. Hệ thống hiện đang áp dụng chính sách chặn lưu (BLOCK_ON_CONFLICT) để đảm bảo không vi phạm quy chế thời khóa biểu.}
+  grade-appeal:
+    # QLSV-85 (TASK-AD-10): Cấu hình tập trung cho quy trình tiếp nhận và xử lý hồ sơ phúc khảo điểm
+    submission-window-days: ${GRADE_APPEAL_SUBMISSION_WINDOW_DAYS:15}
+    require-published-grade: ${GRADE_APPEAL_REQUIRE_PUBLISHED_GRADE:true}
+    auto-apply-grade-change: ${GRADE_APPEAL_AUTO_APPLY_GRADE_CHANGE:true}
+    official-regulation: ${GRADE_APPEAL_OFFICIAL_REGULATION:false}
+    sla-note: ${GRADE_APPEAL_SLA_NOTE:Thời hạn tiếp nhận hồ sơ phúc khảo (dự kiến 15 ngày kể từ ngày công bố điểm) và quy trình xử lý SLA đang áp dụng theo cấu hình tập trung dự kiến, chưa phải quy chế chính thức của Nhà trường và chờ Chủ dự án / Phòng Đào tạo phê duyệt.}
+  room-policy:
+    hoat-dong: ${ROOM_POLICY_HOAT_DONG:BAT_BUOC}
+    suc-chua: ${ROOM_POLICY_SUC_CHUA:CANH_BAO}
+
+  early-warning:
+    # QLSV-97 (TASK-OP-10): He thong Canh bao som hoc tap dua tren quy tac minh bach, giai thich duoc
+    enabled: ${EARLY_WARNING_ENABLED:true}
+    official-regulation: ${EARLY_WARNING_OFFICIAL_REGULATION:false}
+    policy-note: ${EARLY_WARNING_POLICY_NOTE:Cac nguong canh bao hoc tap som va chinh sach quyen rieng tu cho sinh vien dang ap dung cau hinh tap trung du kien, cho Hoi dong Dao tao / Chu du an phe duyet chinh thuc.}
+    diem-qua-trinh:
+      enabled: ${EARLY_WARNING_DIEM_QT_ENABLED:true}
+      nguong-diem: ${EARLY_WARNING_DIEM_QT_NGUONG:5.0}
+      muc-do: ${EARLY_WARNING_DIEM_QT_MUC_DO:CANH_BAO}
+      cho-phep-sinh-vien-xem: ${EARLY_WARNING_DIEM_QT_SV_XEM:true}
+      ghi-chu: ${EARLY_WARNING_DIEM_QT_GHI_CHU:Can xac nhan nguong diem qua trinh chinh thuc giua muc 4.0 (nguy co rot mon) va 5.0 (duoi chuan dat).}
+    diem-danh:
+      enabled: ${EARLY_WARNING_DIEM_DANH_ENABLED:true}
+      nguong-so-buoi-vang: ${EARLY_WARNING_DIEM_DANH_SO_BUOI:3}
+      nguong-ty-le-vang: ${EARLY_WARNING_DIEM_DANH_TY_LE:20.0}
+      muc-do: ${EARLY_WARNING_DIEM_DANH_MUC_DO:NGHIEM_TRONG}
+      cho-phep-sinh-vien-xem: ${EARLY_WARNING_DIEM_DANH_SV_XEM:true}
+      ghi-chu: ${EARLY_WARNING_DIEM_DANH_GHI_CHU:Can xac nhan nguong so buoi vang tuyet doi hay ty le vang phan tram de kich hoat canh bao/cam thi chinh thuc.}
+    gpa-giam:
+      enabled: ${EARLY_WARNING_GPA_GIAM_ENABLED:true}
+      so-hoc-ky-lien-tiep: ${EARLY_WARNING_GPA_GIAM_SO_KY:2}
+      muc-giam-toi-thieu: ${EARLY_WARNING_GPA_GIAM_MUC_GIAM:0.3}
+      muc-do: ${EARLY_WARNING_GPA_GIAM_MUC_DO:CANH_BAO}
+      cho-phep-sinh-vien-xem: ${EARLY_WARNING_GPA_GIAM_SV_XEM:false}
+      ghi-chu: ${EARLY_WARNING_GPA_GIAM_GHI_CHU:Chinh sach rieng tu - canh bao suy giam GPA hien chi mo cho Can bo Quan tri va Co van hoc tap; cho quyet dinh chinh thuc ve viec hien thi truc tiep cho Sinh vien.}
+    tien-do-tin-chi:
+      enabled: ${EARLY_WARNING_TIEN_DO_ENABLED:true}
+      tin-chi-chuan-moi-ky: ${EARLY_WARNING_TIEN_DO_TC_CHUAN:14}
+      nguong-tin-chi-thieu: ${EARLY_WARNING_TIEN_DO_TC_THIEU:8}
+      nguong-ty-le-hoan-thanh: ${EARLY_WARNING_TIEN_DO_TY_LE:70.0}
+      muc-do: ${EARLY_WARNING_TIEN_DO_MUC_DO:CANH_BAO}
+      cho-phep-sinh-vien-xem: ${EARLY_WARNING_TIEN_DO_SV_XEM:true}
+      ghi-chu: ${EARLY_WARNING_TIEN_DO_GHI_CHU:Can xac nhan tien do chuan 14 tin chi/ky va nguong thieu 8 tin chi co ap dung chung toan truong hay phan theo nganh/khoa.}
+
+  rate-limiting:
+    # QLSV-102 (TASK-OP-07B): Cau hinh Rate Limiting an toan, ho tro multi-instance va reverse proxy
+    enabled: ${RATE_LIMITING_ENABLED:true}
+    strategy: ${RATE_LIMITING_STRATEGY:IN_MEMORY}
+    trusted-proxies: ${RATE_LIMIT_TRUSTED_PROXIES:127.0.0.1,::1,0:0:0:0:0:0:0:1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
+    login:
+      ip:
+        capacity: ${RATE_LIMIT_LOGIN_IP_CAPACITY:60}
+        window-seconds: ${RATE_LIMIT_LOGIN_IP_WINDOW_SECONDS:60}
+      account:
+        capacity: ${RATE_LIMIT_LOGIN_ACCOUNT_CAPACITY:5}
+        window-seconds: ${RATE_LIMIT_LOGIN_ACCOUNT_WINDOW_SECONDS:60}
+    api:
+      capacity: ${RATE_LIMIT_API_CAPACITY:120}
+      window-seconds: ${RATE_LIMIT_API_WINDOW_SECONDS:60}
+    api-anonymous:
+      capacity: ${RATE_LIMIT_API_ANONYMOUS_CAPACITY:60}
+      window-seconds: ${RATE_LIMIT_API_ANONYMOUS_WINDOW_SECONDS:60}
+    verify:
+      capacity: ${RATE_LIMIT_VERIFY_CAPACITY:20}
+      window-seconds: ${RATE_LIMIT_VERIFY_WINDOW_SECONDS:60}
+    chatbot:
+      capacity: ${RATE_LIMIT_CHATBOT_CAPACITY:20}
+      window-seconds: ${RATE_LIMIT_CHATBOT_WINDOW_SECONDS:60}
+    heavy:
+      capacity: ${RATE_LIMIT_HEAVY_CAPACITY:15}
+      window-seconds: ${RATE_LIMIT_HEAVY_WINDOW_SECONDS:60}
+
+  verifiable-transcript:
+    # QLSV-99 (TASK-OP-12): Bang diem dien tu xac thuc
+    enabled: ${VERIFIABLE_TRANSCRIPT_ENABLED:true}
+    verification-base-url: ${VERIFIABLE_TRANSCRIPT_BASE_URL:https://daotao.edu.vn}
+    max-public-lookup-per-minute: ${VERIFIABLE_TRANSCRIPT_MAX_LOOKUP_PER_MIN:20}
+    qr-code-size: ${VERIFIABLE_TRANSCRIPT_QR_SIZE:150}
+
+  chatbot:
+    ai:
+      # QLSV-106 (TASK-AI-01): Chatbot AI tieng Viet tu van va ho tro dang ky hoc phan
+      enabled: ${CHATBOT_AI_ENABLED:true}
+      provider: ${CHATBOT_AI_PROVIDER:GEMINI}
+      api-key: ${CHATBOT_AI_API_KEY:}
+      model: ${CHATBOT_AI_MODEL:gemini-1.5-flash}
+      endpoint: ${CHATBOT_AI_ENDPOINT:}
+      temperature: ${CHATBOT_AI_TEMPERATURE:0.2}
+      max-tokens: ${CHATBOT_AI_MAX_TOKENS:1000}
+      rate-limit-per-minute: ${CHATBOT_AI_RATE_LIMIT_PER_MINUTE:30}
+      session-ttl-minutes: ${CHATBOT_AI_SESSION_TTL_MINUTES:60}
+      max-history-messages: ${CHATBOT_AI_MAX_HISTORY_MESSAGES:20}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: ${SPRINGDOC_API_DOCS_ENABLED:true}
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+    tagsSorter: alpha
+    tryItOutEnabled: true
+    displayRequestDuration: true
+    enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED:true}

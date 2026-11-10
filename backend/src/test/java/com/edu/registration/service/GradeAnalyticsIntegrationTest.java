@@ -3,6 +3,7 @@ package com.edu.registration.service;
 import com.edu.registration.entity.CourseClass;
 import com.edu.registration.entity.GradeSheetStatus;
 import com.edu.registration.repository.CourseClassRepository;
+import com.edu.registration.repository.NotificationRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -43,6 +44,9 @@ class GradeAnalyticsIntegrationTest {
     @Autowired
     private CourseClassRepository lopHocPhanRepository;
 
+    @Autowired
+    private NotificationRepository notificationRepository;
+
     private String login(String username, String password) throws Exception {
         MvcResult res = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -63,7 +67,7 @@ class GradeAnalyticsIntegrationTest {
         String tokenAdmin = login("admin", "admin123");
         String tokenSv01 = login("sv01", "123456");
 
-        // 1. Sinh viên không được phép truy cập bất kỳ API thống kê điểm lớp/môn nào
+        // 1. Sinh viÃªn khÃ´ng Ä‘Æ°á»£c phÃ©p truy cáº­p báº¥t ká»³ API thá»‘ng kÃª Ä‘iá»ƒm lá»›p/mÃ´n nÃ o
         mockMvc.perform(get("/api/giang-vien/thong-ke-diem")
                         .header("Authorization", "Bearer " + tokenSv01))
                 .andExpect(status().isForbidden());
@@ -71,12 +75,12 @@ class GradeAnalyticsIntegrationTest {
                         .header("Authorization", "Bearer " + tokenSv01))
                 .andExpect(status().isForbidden());
 
-        // 2. Giảng viên không được gọi API thống kê của Quản trị
+        // 2. Giáº£ng viÃªn khÃ´ng Ä‘Æ°á»£c gá»i API thá»‘ng kÃª cá»§a Quáº£n trá»‹
         mockMvc.perform(get("/api/admin/thong-ke/diem-lop")
                         .header("Authorization", "Bearer " + tokenGv01))
                 .andExpect(status().isForbidden());
 
-        // 3. Lấy danh sách lớp của gv01 và gv02
+        // 3. Láº¥y danh sÃ¡ch lá»›p cá»§a gv01 vÃ  gv02
         JsonNode lopGv01 = json(mockMvc.perform(get("/api/giang-vien/me/lop-hoc-phan")
                         .header("Authorization", "Bearer " + tokenGv01))
                 .andExpect(status().isOk())
@@ -90,7 +94,7 @@ class GradeAnalyticsIntegrationTest {
 
         long idLopGv02 = lopGv02.get(0).get("id").asLong();
 
-        // 4. Giảng viên gv01 truy cập thống kê lớp của gv02 phải bị chặn 403 Forbidden
+        // 4. Giáº£ng viÃªn gv01 truy cáº­p thá»‘ng kÃª lá»›p cá»§a gv02 pháº£i bá»‹ cháº·n 403 Forbidden
         mockMvc.perform(get("/api/giang-vien/lop-hoc-phan/" + idLopGv02 + "/thong-ke-diem")
                         .header("Authorization", "Bearer " + tokenGv01))
                 .andExpect(status().isForbidden());
@@ -99,7 +103,7 @@ class GradeAnalyticsIntegrationTest {
                         .header("Authorization", "Bearer " + tokenGv01))
                 .andExpect(status().isForbidden());
 
-        // 5. Tìm 1 lớp NHAP của gv01 có sinh viên đăng ký để kiểm chứng tách biệt dữ liệu chưa công bố vs đã công bố
+        // 5. TÃ¬m 1 lá»›p NHAP cá»§a gv01 cÃ³ sinh viÃªn Ä‘Äƒng kÃ½ Ä‘á»ƒ kiá»ƒm chá»©ng tÃ¡ch biá»‡t dá»¯ liá»‡u chÆ°a cÃ´ng bá»‘ vs Ä‘Ã£ cÃ´ng bá»‘
         Long targetLopId = null;
         JsonNode danhSachSv = null;
         for (JsonNode lop : lopGv01) {
@@ -114,14 +118,13 @@ class GradeAnalyticsIntegrationTest {
             if (svList.isArray() && !svList.isEmpty()) {
                 targetLopId = id;
                 danhSachSv = svList;
-                break;
             }
         }
         assertNotNull(targetLopId);
         final long lopId = targetLopId;
 
         try {
-            // Nhập điểm ở trạng thái NHAP cho các sinh viên trong lớp
+            // Nháº­p Ä‘iá»ƒm á»Ÿ tráº¡ng thÃ¡i NHAP cho cÃ¡c sinh viÃªn trong lá»›p
             List<Map<String, Object>> items = new ArrayList<>();
             int idx = 0;
             for (JsonNode sv : danhSachSv) {
@@ -139,9 +142,9 @@ class GradeAnalyticsIntegrationTest {
                             .content(objectMapper.writeValueAsString(Map.of("danhSach", items))))
                     .andExpect(status().isOk());
 
-            // 6. Khi lớp còn ở trạng thái NHAP:
-            // - thongKeCongBo.soBanGhiDuocTinh == 0 (không trộn điểm chưa công bố vào thống kê chính thức)
-            // - thongKeTamTinhChuaCongBo có dữ liệu tạm tính cho giảng viên phụ trách và gắn nhãn trạng thái rõ ràng
+            // 6. Khi lá»›p cÃ²n á»Ÿ tráº¡ng thÃ¡i NHAP:
+            // - thongKeCongBo.soBanGhiDuocTinh == 0 (khÃ´ng trá»™n Ä‘iá»ƒm chÆ°a cÃ´ng bá»‘ vÃ o thá»‘ng kÃª chÃ­nh thá»©c)
+            // - thongKeTamTinhChuaCongBo cÃ³ dá»¯ liá»‡u táº¡m tÃ­nh cho giáº£ng viÃªn phá»¥ trÃ¡ch vÃ  gáº¯n nhÃ£n tráº¡ng thÃ¡i rÃµ rÃ ng
             MvcResult resNhap = mockMvc.perform(get("/api/giang-vien/lop-hoc-phan/" + lopId + "/thong-ke-diem")
                             .header("Authorization", "Bearer " + tokenGv01))
                     .andExpect(status().isOk())
@@ -155,10 +158,10 @@ class GradeAnalyticsIntegrationTest {
                     .andReturn();
 
             String rawJsonNhap = resNhap.getResponse().getContentAsString(StandardCharsets.UTF_8);
-            assertFalse(rawJsonNhap.contains("maSinhVien"), "Response thống kê không được rò rỉ mã sinh viên");
-            assertFalse(rawJsonNhap.contains("sinhVienId"), "Response thống kê không được rò rỉ ID sinh viên");
+            assertFalse(rawJsonNhap.contains("maSinhVien"), "Response thá»‘ng kÃª khÃ´ng Ä‘Æ°á»£c rÃ² rá»‰ mÃ£ sinh viÃªn");
+            assertFalse(rawJsonNhap.contains("sinhVienId"), "Response thá»‘ng kÃª khÃ´ng Ä‘Æ°á»£c rÃ² rá»‰ ID sinh viÃªn");
 
-            // 7. Gửi duyệt -> Duyệt -> Công bố bảng điểm
+            // 7. Gá»­i duyá»‡t -> Duyá»‡t -> CÃ´ng bá»‘ báº£ng Ä‘iá»ƒm
             mockMvc.perform(post("/api/giang-vien/lop-hoc-phan/" + lopId + "/gui-duyet-diem")
                             .header("Authorization", "Bearer " + tokenGv01))
                     .andExpect(status().isOk());
@@ -169,7 +172,7 @@ class GradeAnalyticsIntegrationTest {
                             .header("Authorization", "Bearer " + tokenAdmin))
                     .andExpect(status().isOk());
 
-            // 8. Sau khi công bố: thongKeCongBo có đầy đủ chỉ số và tổng các nhóm phân bố khớp soBanGhiDuocTinh
+            // 8. Sau khi cÃ´ng bá»‘: thongKeCongBo cÃ³ Ä‘áº§y Ä‘á»§ chá»‰ sá»‘ vÃ  tá»•ng cÃ¡c nhÃ³m phÃ¢n bá»‘ khá»›p soBanGhiDuocTinh
             JsonNode tkSauCongBo = json(mockMvc.perform(get("/api/giang-vien/lop-hoc-phan/" + lopId + "/thong-ke-diem")
                             .header("Authorization", "Bearer " + tokenGv01))
                     .andExpect(status().isOk())
@@ -183,9 +186,9 @@ class GradeAnalyticsIntegrationTest {
             for (JsonNode b : tkSauCongBo.path("thongKeCongBo").path("phanBoDiem")) {
                 sumBuckets += b.path("soLuong").asLong();
             }
-            assertEquals(danhSachSv.size(), sumBuckets, "Tổng số lượng ở các khoảng điểm phải khớp số bản ghi hợp lệ");
+            assertEquals(danhSachSv.size(), sumBuckets, "Tá»•ng sá»‘ lÆ°á»£ng á»Ÿ cÃ¡c khoáº£ng Ä‘iá»ƒm pháº£i khá»›p sá»‘ báº£n ghi há»£p lá»‡");
 
-            // 9. Kiểm tra API báo cáo tổng hợp của Quản trị và Giảng viên với bộ lọc lopHocPhanId
+            // 9. Kiá»ƒm tra API bÃ¡o cÃ¡o tá»•ng há»£p cá»§a Quáº£n trá»‹ vÃ  Giáº£ng viÃªn vá»›i bá»™ lá»c lopHocPhanId
             mockMvc.perform(get("/api/admin/thong-ke/diem-lop")
                             .param("lopHocPhanId", String.valueOf(lopId))
                             .header("Authorization", "Bearer " + tokenAdmin))
@@ -203,7 +206,7 @@ class GradeAnalyticsIntegrationTest {
                     .andExpect(jsonPath("$.tongSoLopTrongPhamVi").value(1))
                     .andExpect(jsonPath("$.tongHopCongBo.soBanGhiDuocTinh").value(danhSachSv.size()));
         } finally {
-            // Khôi phục trạng thái lớp về NHAP để không ảnh hưởng dữ liệu mẫu
+            // KhÃ´i phá»¥c tráº¡ng thÃ¡i lá»›p vá» NHAP Ä‘á»ƒ khÃ´ng áº£nh hÆ°á»Ÿng dá»¯ liá»‡u máº«u
             CourseClass lop = lopHocPhanRepository.findById(lopId).orElse(null);
             if (lop != null) {
                 lop.setTrangThaiBangDiem(GradeSheetStatus.NHAP);

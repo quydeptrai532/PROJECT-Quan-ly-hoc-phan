@@ -15,8 +15,11 @@ import com.edu.registration.entity.User;
 import com.edu.registration.exception.ApiException;
 import com.edu.registration.repository.CourseClassRepository;
 import com.edu.registration.repository.CourseRegistrationRepository;
+import com.edu.registration.importer.ImportSecurityValidator;
 import com.edu.registration.repository.GradeRepository;
 import com.edu.registration.security.CurrentUser;
+import com.edu.registration.util.CsvUtils;
+import com.edu.registration.util.ExportSecuritySupport;
 import com.edu.registration.util.XlsxWorkbookSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +31,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -163,6 +167,7 @@ public class GradeImportService {
             ));
         }
 
+        ExportSecuritySupport.validateRowCount(templateRows.size(), "template Excel nhập điểm");
         byte[] bytes = XlsxWorkbookSupport.createGradeTemplateWorkbook(templateRows);
         String filename = "mau-nhap-diem-" + sanitizeFilenamePart(lop.getMa()) + ".xlsx";
         log.info("Giảng viên {} đã tải template .xlsx lớp {} ({} sinh viên)",
@@ -186,7 +191,7 @@ public class GradeImportService {
         gradeService.kiemTraBangDiemChoPhepSua(lop);
 
         validateUploadMetadata(file);
-        String sanitizedFilename = sanitizeOriginalFilename(file.getOriginalFilename());
+        String sanitizedFilename = ImportSecurityValidator.sanitizeAndValidateFileName(file.getOriginalFilename(), ".xlsx");
 
         Path tempFile = null;
         try {
@@ -386,7 +391,8 @@ public class GradeImportService {
                     List.copyOf(allErrors),
                     now,
                     expiresAt,
-                    new AtomicBoolean(false)
+                    new AtomicBoolean(false),
+                    lop.getPhienBanBangDiemHieuLuc()
             );
             storePreviewSession(session);
 
@@ -411,7 +417,8 @@ public class GradeImportService {
                     properties.updatePolicy(),
                     properties.policyNote(),
                     previewRows,
-                    allErrors
+                    allErrors,
+                    lop.getPhienBanBangDiemHieuLuc()
             );
         } finally {
             deleteTempFileSafely(tempFile);
@@ -438,10 +445,21 @@ public class GradeImportService {
 
         gradeService.kiemTraBangDiemChoPhepSua(lop);
 
+        int currentPhienBan = lop.getPhienBanBangDiemHieuLuc();
+        if (request.phienBanBangDiem() != null && !request.phienBanBangDiem().equals(currentPhienBan)) {
+            throw ApiException.gradeConflict("Bảng điểm lớp học phần đã bị thay đổi bởi người khác (phiên bản bảng điểm: "
+                    + currentPhienBan + "). Vui lòng tải lại và đối chiếu.", null, currentPhienBan);
+        }
+
         String token = request.previewToken().trim();
         PreviewSession session = previewSessions.get(token);
         if (session == null) {
             throw ApiException.badRequest("Phiên xem trước (preview) không tồn tại hoặc đã hết hạn. Vui lòng tải tệp lên và xem trước lại");
+        }
+
+        if (session.phienBanBangDiem() != null && !session.phienBanBangDiem().equals(currentPhienBan)) {
+            throw ApiException.gradeConflict("Bảng điểm lớp học phần đã bị thay đổi trong quá trình xem trước (phiên bản hiện tại: "
+                    + currentPhienBan + "). Vui lòng tải tệp lên và xem trước lại.", null, currentPhienBan);
         }
 
         if (clock.instant().isAfter(session.expiresAt())) {
@@ -574,12 +592,17 @@ public class GradeImportService {
                 ));
             }
 
-            diemRepository.saveAll(toSave);
-
+            int phienBanCu = currentPhienBan;
+            lop.tangPhienBanBangDiem();
             if (lop.getTrangThaiBangDiem() == null) {
                 lop.setTrangThaiBangDiem(GradeSheetStatus.NHAP);
-                lopHocPhanRepository.save(lop);
             }
+            lopHocPhanRepository.save(lop);
+            diemRepository.saveAll(toSave);
+
+            Map<String, Object> auditBefore = new LinkedHashMap<>();
+            auditBefore.put("lopHocPhanId", lop.getId());
+            auditBefore.put("phienBanBangDiemCu", phienBanCu);
 
             Map<String, Object> auditAfter = new LinkedHashMap<>();
             auditAfter.put("lopHocPhanId", lop.getId());
@@ -590,10 +613,12 @@ public class GradeImportService {
             auditAfter.put("soCapNhat", soCapNhat);
             auditAfter.put("soThatBai", 0);
             auditAfter.put("soBanGhiDiem", toSave.size());
+            auditAfter.put("phienBanBangDiemCu", phienBanCu);
+            auditAfter.put("phienBanBangDiemMoi", lop.getPhienBanBangDiemHieuLuc());
             auditAfter.put("transactionPolicy", properties.transactionPolicy());
             auditAfter.put("updatePolicy", properties.updatePolicy());
             auditAfter.put("trangThaiBangDiem", lop.getTrangThaiBangDiemHieuLuc().name());
-            audit.changes(Map.of(), auditAfter);
+            audit.changes(auditBefore, auditAfter);
 
             log.info("Đã xác nhận import .xlsx cho lớp {} (id={}): tổng={}, tạo mới={}, cập nhật={}",
                     lop.getMa(), lop.getId(), session.rows().size(), soTaoMoi, soCapNhat);
@@ -636,9 +661,32 @@ public class GradeImportService {
         if (lowerName.endsWith(".xls")) {
             throw ApiException.badRequest("Không chấp nhận định dạng Excel cũ (.xls). Vui lòng sử dụng tệp .xlsx");
         }
-        if (!lowerName.endsWith(".xlsx")) {
-            throw ApiException.badRequest("Định dạng tệp không được hỗ trợ. Chỉ chấp nhận tệp .xlsx");
+        ImportSecurityValidator.sanitizeAndValidateFileName(originalFilename, ".xlsx");
+    }
+
+    public byte[] xuatFileLoiCsv(Long lopHocPhanId, List<ValidationErrorDetail> danhSachLoi) {
+        if (lopHocPhanId != null) {
+            lopHocPhanRepository.findWithDetailsById(lopHocPhanId).ifPresent(gradeService::kiemTraQuyenSuaDiem);
         }
+        ExportSecuritySupport.validateRowCount(danhSachLoi != null ? danhSachLoi.size() : 0, "báo cáo lỗi import điểm");
+        StringBuilder sb = new StringBuilder();
+        sb.append(CsvUtils.BOM);
+        sb.append(CsvUtils.row(List.of("Dòng", "Mã SV", "Cột", "Cột Excel", "Giá trị nhập", "Nguyên nhân lỗi")));
+
+        if (danhSachLoi != null) {
+            for (ValidationErrorDetail err : danhSachLoi) {
+                sb.append(CsvUtils.row(List.of(
+                        err.dong() != null ? String.valueOf(err.dong()) : "",
+                        err.maSinhVien() != null ? err.maSinhVien() : "",
+                        err.cot() != null ? err.cot() : (err.field() != null ? err.field() : ""),
+                        err.cotExcel() != null ? err.cotExcel() : "",
+                        err.giaTriNhap() != null ? err.giaTriNhap() : "",
+                        err.message() != null ? err.message() : ""
+                )));
+            }
+        }
+
+        return sb.toString().getBytes(StandardCharsets.UTF_8);
     }
 
     private TempUpload writeToBoundedTempFile(MultipartFile file) {
@@ -950,7 +998,8 @@ public class GradeImportService {
             List<ValidationErrorDetail> errors,
             Instant createdAt,
             Instant expiresAt,
-            AtomicBoolean consumed
+            AtomicBoolean consumed,
+            Integer phienBanBangDiem
     ) {
     }
 

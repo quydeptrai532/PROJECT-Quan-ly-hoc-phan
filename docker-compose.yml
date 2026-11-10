@@ -28,6 +28,10 @@ services:
       CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173
       SEED_ENABLED: "true"
       SUPPORT_UPLOAD_DIR: /app/data/support-attachments
+      BACKGROUND_JOBS_ENABLED: "true"
+      BACKGROUND_JOBS_TIMEZONE: Asia/Ho_Chi_Minh
+      RATE_LIMITING_STRATEGY: ${RATE_LIMITING_STRATEGY:-IN_MEMORY}
+      RATE_LIMIT_TRUSTED_PROXIES: ${RATE_LIMIT_TRUSTED_PROXIES:-127.0.0.1,::1,0:0:0:0:0:0:0:1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
     volumes:
       - support_uploads:/app/data/support-attachments
     depends_on:

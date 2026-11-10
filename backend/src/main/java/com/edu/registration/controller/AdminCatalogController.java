@@ -2,6 +2,8 @@ package com.edu.registration.controller;
 
 import com.edu.registration.dto.CatalogDtos;
 import com.edu.registration.service.CatalogService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -19,6 +21,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin")
 @PreAuthorize("hasRole('QUAN_TRI')")
+@Tag(name = "Quản trị - Danh mục đào tạo", description = "Quản lý danh mục khoa, ngành, lớp hành chính, khóa học, môn học, quan hệ môn và học kỳ")
 public class AdminCatalogController {
 
     private final CatalogService catalogService;
@@ -27,29 +30,50 @@ public class AdminCatalogController {
         this.catalogService = catalogService;
     }
 
+    // ==================== KHOA ====================
+
     @GetMapping("/khoa")
-    public List<CatalogDtos.KhoaDto> danhSachKhoa() {
-        return catalogService.danhSachKhoa();
+    @Operation(summary = "Danh sách khoa", description = "Lấy danh sách tất cả các khoa trong trường")
+    public List<CatalogDtos.KhoaDto> danhSachKhoa(
+            @RequestParam(required = false) Boolean dangHieuLuc,
+            @RequestParam(required = false) Boolean includeInactive) {
+        return catalogService.danhSachKhoa(dangHieuLuc, includeInactive);
     }
 
     @PostMapping("/khoa")
+    @Operation(summary = "Tạo khoa mới", description = "Tạo mới một khoa quản lý bộ môn")
     public CatalogDtos.KhoaDto taoKhoa(@Valid @RequestBody CatalogDtos.KhoaRequest request) {
         return catalogService.taoKhoa(request);
     }
 
     @PutMapping("/khoa/{id}")
+    @Operation(summary = "Cập nhật khoa", description = "Chỉnh sửa mã hoặc tên khoa")
     public CatalogDtos.KhoaDto suaKhoa(@PathVariable Long id, @Valid @RequestBody CatalogDtos.KhoaRequest request) {
         return catalogService.suaKhoa(id, request);
     }
 
     @DeleteMapping("/khoa/{id}")
-    public void xoaKhoa(@PathVariable Long id) {
-        catalogService.xoaKhoa(id);
+    @Operation(summary = "Xóa hoặc lưu trữ khoa", description = "Xóa mềm hoặc xóa vĩnh viễn một khoa")
+    public void xoaKhoa(@PathVariable Long id,
+                         @RequestParam(required = false, defaultValue = "false") boolean permanent) {
+        catalogService.xoaKhoa(id, permanent);
     }
 
+    @PutMapping("/khoa/{id}/khoi-phuc")
+    @Operation(summary = "Khôi phục khoa đã lưu trữ", description = "Khôi phục hiệu lực hoạt động cho khoa")
+    public CatalogDtos.KhoaDto khoiPhucKhoa(@PathVariable Long id) {
+        return catalogService.khoiPhucKhoa(id);
+    }
+
+    // ==================== NGÀNH ====================
+
     @GetMapping("/nganh")
-    public List<CatalogDtos.NganhDto> danhSachNganh() {
-        return catalogService.danhSachNganh();
+    @Operation(summary = "Danh sách ngành đào tạo", description = "Lọc ngành theo khoa và trạng thái hiệu lực")
+    public List<CatalogDtos.NganhDto> danhSachNganh(
+            @RequestParam(required = false) Long khoaId,
+            @RequestParam(required = false) Boolean dangHieuLuc,
+            @RequestParam(required = false) Boolean includeInactive) {
+        return catalogService.danhSachNganh(khoaId, dangHieuLuc, includeInactive);
     }
 
     @PostMapping("/nganh")
@@ -64,13 +88,24 @@ public class AdminCatalogController {
     }
 
     @DeleteMapping("/nganh/{id}")
-    public void xoaNganh(@PathVariable Long id) {
-        catalogService.xoaNganh(id);
+    public void xoaNganh(@PathVariable Long id,
+                         @RequestParam(required = false, defaultValue = "false") boolean permanent) {
+        catalogService.xoaNganh(id, permanent);
     }
 
+    @PutMapping("/nganh/{id}/khoi-phuc")
+    public CatalogDtos.NganhDto khoiPhucNganh(@PathVariable Long id) {
+        return catalogService.khoiPhucNganh(id);
+    }
+
+    // ==================== LỚP HÀNH CHÍNH ====================
+
     @GetMapping("/lop-hanh-chinh")
-    public List<CatalogDtos.LopHanhChinhDto> danhSachLopHanhChinh() {
-        return catalogService.danhSachLopHanhChinh();
+    public List<CatalogDtos.LopHanhChinhDto> danhSachLopHanhChinh(
+            @RequestParam(required = false) Long nganhId,
+            @RequestParam(required = false) Boolean dangHieuLuc,
+            @RequestParam(required = false) Boolean includeInactive) {
+        return catalogService.danhSachLopHanhChinh(nganhId, dangHieuLuc, includeInactive);
     }
 
     @PostMapping("/lop-hanh-chinh")
@@ -86,9 +121,17 @@ public class AdminCatalogController {
     }
 
     @DeleteMapping("/lop-hanh-chinh/{id}")
-    public void xoaLopHanhChinh(@PathVariable Long id) {
-        catalogService.xoaLopHanhChinh(id);
+    public void xoaLopHanhChinh(@PathVariable Long id,
+                                @RequestParam(required = false, defaultValue = "false") boolean permanent) {
+        catalogService.xoaLopHanhChinh(id, permanent);
     }
+
+    @PutMapping("/lop-hanh-chinh/{id}/khoi-phuc")
+    public CatalogDtos.LopHanhChinhDto khoiPhucLopHanhChinh(@PathVariable Long id) {
+        return catalogService.khoiPhucLopHanhChinh(id);
+    }
+
+    // ==================== KHÓA HỌC / NIÊN KHÓA ====================
 
     @GetMapping({"/khoa-hoc", "/nien-khoa"})
     public List<CatalogDtos.KhoaHocDto> danhSachKhoaHoc(
@@ -116,11 +159,15 @@ public class AdminCatalogController {
         catalogService.xoaKhoaHoc(id);
     }
 
+    // ==================== MÔN HỌC ====================
+
     @GetMapping("/mon-hoc")
     public List<CatalogDtos.MonHocDto> danhSachMonHoc(
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) Long khoaId) {
-        return catalogService.danhSachMonHoc(keyword, khoaId);
+            @RequestParam(required = false) Long khoaId,
+            @RequestParam(required = false) Boolean dangHieuLuc,
+            @RequestParam(required = false) Boolean includeInactive) {
+        return catalogService.danhSachMonHoc(keyword, khoaId, dangHieuLuc, includeInactive);
     }
 
     @PostMapping("/mon-hoc")
@@ -135,9 +182,24 @@ public class AdminCatalogController {
     }
 
     @DeleteMapping("/mon-hoc/{id}")
-    public void xoaMonHoc(@PathVariable Long id) {
-        catalogService.xoaMonHoc(id);
+    public void xoaMonHoc(@PathVariable Long id,
+                           @RequestParam(required = false, defaultValue = "false") boolean permanent) {
+        catalogService.xoaMonHoc(id, permanent);
     }
+
+    @PutMapping("/mon-hoc/{id}/luu-tru")
+    public CatalogDtos.MonHocDto luuTruMonHoc(@PathVariable Long id,
+                                              @RequestBody(required = false) CatalogDtos.LuuTruRequest request) {
+        String lyDo = request != null ? request.lyDo() : null;
+        return catalogService.luuTruMonHoc(id, lyDo);
+    }
+
+    @PutMapping("/mon-hoc/{id}/khoi-phuc")
+    public CatalogDtos.MonHocDto khoiPhucMonHoc(@PathVariable Long id) {
+        return catalogService.khoiPhucMonHoc(id);
+    }
+
+    // ==================== QUAN HỆ MÔN HỌC ====================
 
     @GetMapping({"/mon-hoc/{id}/tien-quyet", "/mon-hoc/{id}/quan-he"})
     public List<CatalogDtos.MonTienQuyetDto> danhSachTienQuyet(
@@ -200,6 +262,8 @@ public class AdminCatalogController {
     public void xoaQuanHeMon(@PathVariable Long id) {
         catalogService.xoaQuanHeMon(id);
     }
+
+    // ==================== HỌC KỲ ====================
 
     @GetMapping("/hoc-ky")
     public List<CatalogDtos.HocKyDto> danhSachHocKy() {

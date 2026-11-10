@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -15,6 +17,7 @@ import java.util.Optional;
 public interface StudentRepository extends JpaRepository<Student, Long> {
 
     Optional<Student> findByUser(User user);
+    Optional<Student> findByUserId(Long userId);
 
     @EntityGraph(attributePaths = {"khoa", "nganh", "lopHanhChinh", "chuongTrinh"})
     Optional<Student> findWithAcademicProfileByUserId(Long userId);
@@ -29,13 +32,45 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     @Query("select sv from Student sv where sv.user.id = :userId")
     Optional<Student> findByUserIdForUpdate(@Param("userId") Long userId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select sv from Student sv where sv.id = :id")
+    Optional<Student> findByIdForUpdate(@Param("id") Long id);
+
     Optional<Student> findByMa(String ma);
 
     boolean existsByMa(String ma);
+
+    boolean existsByMaIgnoreCase(String ma);
+
+    boolean existsByEmailIgnoreCase(String email);
 
     @EntityGraph(attributePaths = {"user", "khoa", "nganh", "lopHanhChinh"})
     List<Student> findAllByOrderByMaAsc();
 
     @EntityGraph(attributePaths = {"user", "khoa", "nganh", "lopHanhChinh"})
     List<Student> findByHoTenContainingIgnoreCaseOrMaContainingIgnoreCaseOrderByMaAsc(String hoTen, String ma);
+
+    @EntityGraph(attributePaths = {"khoa", "nganh", "chuongTrinh"})
+    @Query("""
+            select sv from Student sv
+            where (:khoaId is null or sv.khoa.id = :khoaId)
+              and (:nganhId is null or sv.nganh.id = :nganhId)
+            """)
+    List<Student> findByKhoaIdAndNganhIdForAnalytics(@Param("khoaId") Long khoaId, @Param("nganhId") Long nganhId);
+
+    long countByKhoaId(Long khoaId);
+
+    long countByNganhId(Long nganhId);
+
+    long countByLopHanhChinhId(Long lopHanhChinhId);
+
+    @EntityGraph(attributePaths = {"user", "khoa", "nganh", "lopHanhChinh"})
+    @Query(value = """
+        select sv from Student sv
+        where lower(sv.ma) like concat('%', :kw, '%') or lower(sv.hoTen) like concat('%', :kw, '%')
+        """, countQuery = """
+        select count(sv) from Student sv
+        where lower(sv.ma) like concat('%', :kw, '%') or lower(sv.hoTen) like concat('%', :kw, '%')
+        """)
+    Page<Student> searchForAdminLookup(@Param("kw") String kw, Pageable pageable);
 }

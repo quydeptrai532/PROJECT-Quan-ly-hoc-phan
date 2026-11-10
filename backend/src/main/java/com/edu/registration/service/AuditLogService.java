@@ -38,7 +38,7 @@ public class AuditLogService {
             "soTinChiToiDa", "trangThai", "dangKyId", "lopHocPhanId", "active", "maMon", "tenMon", "soTinChi",
             "loaiDangKy", "khoaId", "nganhId", "lopId", "monTienQuyetId", "lyDoHuy", "soBanGhi",
             "maPhieu", "loaiYeuCau", "trangThaiCu", "trangThaiMoi", "soTepDinhKem", "diemId", "traoDoiId",
-            "trangThaiBangDiem", "phienBanCongBo", "phienBanBangDiem", "soSinhVienDangHoc", "soSinhVienDuDieuKien", "soBanGhiDiem", "soNguoiNhan", "thongBaoLopId", "tieuDe",
+            "trangThaiBangDiem", "phienBanCongBo", "phienBanBangDiem", "phienBanBangDiemCu", "phienBanBangDiemMoi", "version", "versionCu", "versionMoi", "diemQuaTrinhCu", "diemCuoiKyCu", "diemTongKetCu", "soSinhVienDangHoc", "soSinhVienDuDieuKien", "soBanGhiDiem", "soNguoiNhan", "thongBaoLopId", "tieuDe",
             "buoiHocId", "ngayHoc", "caHoc", "soSinhVienDiemDanh", "daKhoa", "thaoTacDiemDanh",
             "canhBaoId", "sinhVienId", "soBuoiVang", "tongBuoiHopLe", "tyLeVang", "loaiNguong", "giaTriNguong",
             "trangThaiCanhBao", "nguongSoBuoiVang", "nguongTyLeVang",
@@ -48,7 +48,14 @@ public class AuditLogService {
             "loaiQuanHe", "monLienQuanId", "maMonLienQuan", "dieuKienDat", "yeuCauDat",
             "maNhomTuChon", "tinChiTuChonYeuCau", "khoaNhapHoc", "hocKyHieuLucTuId", "hocKyHieuLucDenId",
             "hieuLucTu", "hieuLucDen", "dangHieuLuc", "maKhoaHoc", "tenKhoaHoc", "nienKhoa",
-            "namBatDau", "namKetThuc", "hocKyBatDauId", "hocKyKetThucId", "nguoiTaoUsername", "nguoiCapNhatUsername"
+            "namBatDau", "namKetThuc", "hocKyBatDauId", "hocKyKetThucId", "nguoiTaoUsername", "nguoiCapNhatUsername",
+            "maDot", "tenDot", "loaiDot", "thoiGianBatDau", "thoiGianKetThuc", "thuTuUuTien",
+            "lopHanhChinhId", "khoaHocId", "nhomDoiTuong", "dongSom", "thoiDiemDongSom",
+            "lyDoDongSom", "thoiGianKetThucGoc", "lyDoDieuChinh", "dotDangKyId", "thoiGianKetThucMoi", "xacNhanLuuDuXungDot", "lyDoXacNhan", "soLuongXungDot",
+            "daHuy", "thoiGianHuy", "nguoiHuyId", "nguoiHuyUsername", "lopNguonId", "maLopNguon", "lopDichId", "maLopDich", "soLuongChuyen", "loaiQuanHeMon", "soDangKyBiHuy", "phongHocId", "maPhong", "tenPhong", "toaNha", "tang", "viTri", "sucChua", "loaiPhong", "thietBi", "trangThaiPhong", "ghiChu",
+            "trangThaiHocTap", "trangThaiHocTapTruoc", "trangThaiHocTapSau", "ngayHieuLuc",
+            "phucKhaoId", "maHoSo", "diemQuaTrinhGoc", "diemCuoiKyGoc", "diemTongKetGoc", "diemQuaTrinhMoi", "diemCuoiKyMoi", "diemTongKetMoi", "loaiDiemPhucKhao", "ketQuaXuLy", "hanNop", "ghiChuXuLy", "diemMongMuon", "mucDich", "loaiTraCuu", "tuKhoa", "trang", "soTrang", "sinhVienMa", "giangVienMa",
+            "mucUuTien", "mucUuTienCu", "mucUuTienMoi", "hanXuLy", "hanXuLyCu", "hanXuLyMoi", "nguoiXuLyId", "nguoiXuLyCuId", "nguoiXuLyMoiId", "nguoiXuLyUsername", "nguoiXuLyCuUsername", "nguoiXuLyMoiUsername", "loaiThayDoi", "giaTriCu", "giaTriMoi", "yeuCauBoSungMinhChung", "noiDungYeuCauMinhChung", "congKhai", "isNoiBo", "maSinhVien", "maXacMinhMasked", "fileSha256", "phienBan", "phienBanCu", "phienBanMoi", "banGhiGocId", "banGhiThayTheId", "lyDoThuHoi", "soMonDaCongBo"
     );
 
     private final AuditLogRepository repository;

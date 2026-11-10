@@ -14,7 +14,11 @@ import com.edu.registration.repository.FacultyRepository;
 import com.edu.registration.repository.AdministrativeClassRepository;
 import com.edu.registration.repository.MajorRepository;
 import com.edu.registration.repository.StudentRepository;
+import com.edu.registration.entity.StudentAcademicStatus;
+import com.edu.registration.entity.StudentAcademicStatusHistory;
+import com.edu.registration.repository.StudentAcademicStatusHistoryRepository;
 import com.edu.registration.repository.UserRepository;
+import com.edu.registration.security.CurrentUser;
 import com.edu.registration.security.UserAuthCache;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -50,12 +54,30 @@ public class UserService {
     private final TransactionTemplate transactionTemplate;
     private final UserAuthCache userAuthCache;
     private final AuditLogService auditLogService;
+    private final UserImportService userImportService;
+    private final StudentAcademicStatusHistoryRepository studentAcademicStatusHistoryRepository;
+    private final CurrentUser currentUser;
 
     public UserService(UserRepository userRepository, StudentRepository sinhVienRepository,
                        LecturerRepository giangVienRepository, FacultyRepository khoaRepository,
                        MajorRepository nganhRepository, AdministrativeClassRepository lopHanhChinhRepository,
                        PasswordEncoder passwordEncoder, DtoMapper mapper, TransactionTemplate transactionTemplate,
-                       UserAuthCache userAuthCache, AuditLogService auditLogService) {
+                       UserAuthCache userAuthCache, AuditLogService auditLogService,
+                       UserImportService userImportService) {
+        this(userRepository, sinhVienRepository, giangVienRepository, khoaRepository,
+                nganhRepository, lopHanhChinhRepository, passwordEncoder, mapper, transactionTemplate,
+                userAuthCache, auditLogService, userImportService, null, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public UserService(UserRepository userRepository, StudentRepository sinhVienRepository,
+                       LecturerRepository giangVienRepository, FacultyRepository khoaRepository,
+                       MajorRepository nganhRepository, AdministrativeClassRepository lopHanhChinhRepository,
+                       PasswordEncoder passwordEncoder, DtoMapper mapper, TransactionTemplate transactionTemplate,
+                       UserAuthCache userAuthCache, AuditLogService auditLogService,
+                       UserImportService userImportService,
+                       StudentAcademicStatusHistoryRepository studentAcademicStatusHistoryRepository,
+                       CurrentUser currentUser) {
         this.userRepository = userRepository;
         this.sinhVienRepository = sinhVienRepository;
         this.giangVienRepository = giangVienRepository;
@@ -67,6 +89,9 @@ public class UserService {
         this.transactionTemplate = transactionTemplate;
         this.userAuthCache = userAuthCache;
         this.auditLogService = auditLogService;
+        this.userImportService = userImportService;
+        this.studentAcademicStatusHistoryRepository = studentAcademicStatusHistoryRepository;
+        this.currentUser = currentUser;
     }
 
     @Transactional(readOnly = true)
@@ -126,6 +151,84 @@ public class UserService {
             audit.changes(Map.of("active", before), Map.of("active", trangThai));
             return mapper.sinhVien(sinhVien);
         });
+    }
+
+    @Transactional
+    public UserDtos.SinhVienDto capNhatTrangThaiHocTap(Long id, UserDtos.CapNhatTrangThaiHocTapRequest request) {
+        if (request == null || request.trangThaiMoi() == null) {
+            throw ApiException.badRequest("Trạng thái học tập mới không được để trống");
+        }
+        if (request.ngayHieuLuc() == null) {
+            throw ApiException.badRequest("Ngày hiệu lực không được để trống");
+        }
+        if (request.lyDo() == null || request.lyDo().trim().isEmpty()) {
+            throw ApiException.badRequest("Lý do cập nhật trạng thái không được để trống");
+        }
+        if (request.lyDo().trim().length() > 500) {
+            throw ApiException.badRequest("Lý do không được vượt quá 500 ký tự");
+        }
+
+        return auditLogService.execute("STUDENT_ACADEMIC_STATUS_CHANGED", "STUDENT", id, audit -> {
+            Student sinhVien = sinhVienRepository.findByIdForUpdate(id)
+                    .orElseThrow(() -> ApiException.notFound("Sinh viên không tồn tại"));
+
+            StudentAcademicStatus trangThaiTruoc = sinhVien.getTrangThaiHocTap();
+            StudentAcademicStatus trangThaiMoi = request.trangThaiMoi();
+
+            if (trangThaiTruoc == trangThaiMoi) {
+                throw ApiException.badRequest("Trạng thái mới phải khác trạng thái học tập hiện tại của sinh viên");
+            }
+
+            User nguoiThucHien = currentUser != null ? currentUser.get() : null;
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+
+            StudentAcademicStatusHistory history = new StudentAcademicStatusHistory(
+                    sinhVien,
+                    trangThaiTruoc,
+                    trangThaiMoi,
+                    request.ngayHieuLuc(),
+                    request.lyDo().trim(),
+                    nguoiThucHien,
+                    now
+            );
+            studentAcademicStatusHistoryRepository.save(history);
+
+            sinhVien.setTrangThaiHocTap(trangThaiMoi);
+
+            Map<String, Object> before = Map.of(
+                    "trangThaiHocTap", trangThaiTruoc != null ? trangThaiTruoc.name() : "DANG_HOC"
+            );
+            Map<String, Object> after = Map.of(
+                    "trangThaiHocTap", trangThaiMoi.name(),
+                    "ngayHieuLuc", request.ngayHieuLuc().toString(),
+                    "lyDo", request.lyDo().trim()
+            );
+            audit.changes(before, after);
+
+            return mapper.sinhVien(sinhVien);
+        });
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserDtos.StudentAcademicStatusHistoryDto> layLichSuTrangThaiHocTap(Long sinhVienId) {
+        if (!sinhVienRepository.existsById(sinhVienId)) {
+            throw ApiException.notFound("Sinh viên không tồn tại");
+        }
+        List<StudentAcademicStatusHistory> list = studentAcademicStatusHistoryRepository
+                .findBySinhVienIdOrderByThoiDiemDescIdDesc(sinhVienId);
+        return list.stream().map(mapper::lichSuTrangThaiHocTap).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserDtos.StudentAcademicStatusHistoryDto> layLichSuTrangThaiHocTapSinhVienHienTai() {
+        if (currentUser == null) {
+            throw new ApiException(org.springframework.http.HttpStatus.UNAUTHORIZED, "Chưa đăng nhập");
+        }
+        Student sinhVien = sinhVienRepository.findByUser(currentUser.get())
+                .orElseThrow(() -> ApiException.notFound("Không tìm thấy hồ sơ sinh viên"));
+        List<StudentAcademicStatusHistory> list = studentAcademicStatusHistoryRepository
+                .findBySinhVienIdOrderByThoiDiemDescIdDesc(sinhVien.getId());
+        return list.stream().map(mapper::lichSuTrangThaiHocTap).toList();
     }
 
     @Transactional(readOnly = true)
@@ -197,45 +300,48 @@ public class UserService {
         });
     }
 
+    public UserDtos.UserImportConfigDto layCauHinhImportSinhVien() {
+        return userImportService.layCauHinhImport(UserImportService.TargetType.SINH_VIEN);
+    }
+
+    public UserDtos.UserImportConfigDto layCauHinhImportGiangVien() {
+        return userImportService.layCauHinhImport(UserImportService.TargetType.GIANG_VIEN);
+    }
+
     public UserDtos.ImportResultDto importSinhVien(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw ApiException.badRequest("Vui lòng chọn file CSV");
-        }
+        return userImportService.directImport(UserImportService.TargetType.SINH_VIEN, file);
+    }
 
-        List<String> loi = new ArrayList<>();
-        int thanhCong = 0;
+    public UserDtos.UserImportPreviewResponse previewImportSinhVien(MultipartFile file) {
+        return userImportService.preview(UserImportService.TargetType.SINH_VIEN, file);
+    }
 
-        try (Reader reader = new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8);
-             CSVParser parser = CSVFormat.DEFAULT.builder()
-                     .setTrim(true)
-                     .setIgnoreEmptyLines(true)
-                     .build()
-                     .parse(reader)) {
+    public UserDtos.ImportResultDto confirmImportSinhVien(UserDtos.UserConfirmImportRequest request) {
+        return userImportService.confirm(UserImportService.TargetType.SINH_VIEN, request);
+    }
 
-            for (CSVRecord record : parser) {
-                if (record.getRecordNumber() == 1 && "ma".equalsIgnoreCase(record.get(0))) {
-                    continue;
-                }
-                try {
-                    if (record.size() < 4) {
-                        throw ApiException.badRequest("Cần tối thiểu 4 cột: ma,hoTen,email,khoaId");
-                    }
-                    transactionTemplate.executeWithoutResult(status -> taoSinhVienTuRecord(
-                            record.get(0), record.get(1), record.get(2), null,
-                            parseLong(record, 3), parseLong(record, 4), parseLong(record, 5),
-                            record.get(0), MAT_KHAU_MAC_DINH));
-                    thanhCong++;
-                } catch (ApiException ex) {
-                    loi.add("Dòng " + record.getRecordNumber() + ": " + ex.getMessage());
-                } catch (RuntimeException ex) {
-                    loi.add("Dòng " + record.getRecordNumber() + ": dữ liệu không hợp lệ");
-                }
-            }
-        } catch (IOException ex) {
-            throw ApiException.badRequest("Không đọc được file CSV");
-        }
+    public byte[] getSinhVienTemplateCsv() {
+        return userImportService.xuatTemplateCsv(UserImportService.TargetType.SINH_VIEN);
+    }
 
-        return new UserDtos.ImportResultDto(thanhCong, loi);
+    public UserDtos.ImportResultDto importGiangVien(MultipartFile file) {
+        return userImportService.directImport(UserImportService.TargetType.GIANG_VIEN, file);
+    }
+
+    public UserDtos.UserImportPreviewResponse previewImportGiangVien(MultipartFile file) {
+        return userImportService.preview(UserImportService.TargetType.GIANG_VIEN, file);
+    }
+
+    public UserDtos.ImportResultDto confirmImportGiangVien(UserDtos.UserConfirmImportRequest request) {
+        return userImportService.confirm(UserImportService.TargetType.GIANG_VIEN, request);
+    }
+
+    public byte[] getGiangVienTemplateCsv() {
+        return userImportService.xuatTemplateCsv(UserImportService.TargetType.GIANG_VIEN);
+    }
+
+    public byte[] exportErrorReport(List<UserDtos.UserImportRowDetailDto> rows) {
+        return userImportService.xuatFileLoiCsv(rows);
     }
 
     private UserDtos.SinhVienDto taoSinhVienTuRecord(String ma, String hoTen, String email, String soDienThoai,

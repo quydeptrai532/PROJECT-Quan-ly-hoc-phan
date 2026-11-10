@@ -5,9 +5,13 @@ import {
   BookOpen,
   BookOpenCheck,
   Bell,
+  Bot,
   Building2,
+  DoorOpen,
+  FileCheck,
   CalendarCheck,
   CalendarDays,
+  CalendarClock,
   CalendarRange,
   ClipboardList,
   ChartNoAxesCombined,
@@ -24,14 +28,18 @@ import {
   UserCog,
   UserRound,
   Users,
+  ShieldAlert,
+  ShieldCheck,
   X,
 } from "lucide-react";
 import { ROLE_LABEL, useAuth } from "../context/AuthContext";
 import api from "../api/client";
+import ChatbotWidget from "./ChatbotWidget";
 
 const NAV = {
   SINH_VIEN: [
     { to: "/tong-quan", label: "Tổng quan", icon: LayoutDashboard },
+    { to: "/tro-ly-ai", label: "Trợ lý ảo AI", icon: Bot },
     { to: "/dang-ky", label: "Đăng ký học phần", icon: BookOpen },
     { to: "/dang-ky-hoc-lai", label: "Học lại / cải thiện", icon: BookOpenCheck },
     { to: "/ke-hoach-hoc-tap", label: "Kế hoạch học tập", icon: CalendarRange },
@@ -39,34 +47,45 @@ const NAV = {
     { to: "/lich-su-dang-ky", label: "Lịch sử đăng ký", icon: History },
     { to: "/thoi-khoa-bieu", label: "Thời khóa biểu", icon: CalendarDays },
     { to: "/diem", label: "Điểm & kết quả", icon: GraduationCap },
+    { to: "/phuc-khao-diem", label: "Phúc khảo điểm", icon: FileCheck },
     { to: "/chuyen-can-cua-toi", label: "Chuyên cần", icon: CalendarCheck },
     { to: "/lich-su-hoc-tap", label: "Lịch sử học tập", icon: ScrollText },
     { to: "/tien-do", label: "Tiến độ học tập", icon: ChartNoAxesCombined },
     { to: "/yeu-cau-ho-tro", label: "Hỗ trợ & khiếu nại", icon: LifeBuoy },
+    { to: "/canh-bao-hoc-vu", label: "Cảnh báo học vụ", icon: ShieldAlert },
     { to: "/thong-bao", label: "Thông báo", icon: Bell },
   ],
   GIANG_VIEN: [
     { to: "/tong-quan", label: "Tổng quan", icon: LayoutDashboard },
+    { to: "/tro-ly-ai", label: "Trợ lý ảo AI", icon: Bot },
     { to: "/lop-cua-toi", label: "Lớp học phần", icon: Layers },
     { to: "/lop-cua-toi/thoi-khoa-bieu", label: "Thời khóa biểu", icon: CalendarDays },
     { to: "/thong-bao", label: "Thông báo", icon: Bell },
   ],
   QUAN_TRI: [
     { to: "/quan-tri", label: "Tổng quan", icon: LayoutDashboard },
+    { to: "/tro-ly-ai", label: "Trợ lý ảo AI", icon: Bot },
+    { to: "/quan-tri/learning-analytics", label: "Phân tích học tập", icon: ChartNoAxesCombined },
     { to: "/quan-tri/hoc-ky", label: "Học kỳ", icon: CalendarRange },
+    { to: "/quan-tri/dot-dang-ky", label: "Đợt đăng ký & Đối tượng", icon: CalendarClock },
     { to: "/quan-tri/khoa", label: "Khoa", icon: Building2 },
     { to: "/quan-tri/nganh", label: "Ngành", icon: Network },
     { to: "/quan-tri/lop-hanh-chinh", label: "Lớp hành chính", icon: Users },
     { to: "/quan-tri/mon-hoc", label: "Môn học", icon: BookMarked },
     { to: "/quan-tri/quan-he-mon", label: "Quan hệ môn học", icon: Network },
     { to: "/quan-tri/khoa-hoc", label: "Khóa học / Niên khóa", icon: CalendarRange },
-    { to: "/quan-tri/lop-hoc-phan", label: "Lớp học phần", icon: Layers },
+    { to: "/quan-tri/phong-hoc", label: "Phòng học", icon: DoorOpen },
+    { to: "/quan-tri/lop-hoc-phan", label: "Lớp học phần & Duyệt điểm", icon: Layers },
+    { to: "/quan-tri/phuc-khao", label: "Phúc khảo điểm", icon: FileCheck },
+    { to: "/quan-tri/bang-diem-xac-thuc", label: "Bảng điểm xác thực", icon: ShieldCheck },
     { to: "/quan-tri/sinh-vien", label: "Sinh viên", icon: UserRound },
     { to: "/quan-tri/chuong-trinh-dao-tao", label: "Chương trình đào tạo", icon: LibraryBig },
     { to: "/quan-tri/giang-vien", label: "Giảng viên", icon: UserCog },
     { to: "/quan-tri/yeu-cau-ho-tro", label: "Yêu cầu hỗ trợ", icon: LifeBuoy },
     { to: "/quan-tri/nhat-ky-hoat-dong", label: "Nhật ký hoạt động", icon: History },
+      { to: "/quan-tri/canh-bao-hoc-tap", label: "Cảnh báo học tập sớm", icon: ShieldAlert },
       { to: "/quan-tri/canh-bao-audit", label: "Cảnh báo Audit", icon: Bell },
+      { to: "/quan-tri/tra-cuu-lich-su", label: "Tra cứu lịch sử", icon: UserRound },
   ],
 };
 
@@ -81,10 +100,53 @@ export default function Layout({ children }) {
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+    const [auditAlert, setAuditAlert] = useState(null);
 
   useEffect(() => {
     setOpen(false);
   }, [location.pathname]);
+
+    // Chi hien canh bao Audit tai trang tong quan Admin
+    useEffect(() => {
+        if (user?.role !== "QUAN_TRI" || location.pathname !== "/quan-tri") {
+            setAuditAlert(null);
+            return undefined;
+        }
+
+        let cancelled = false;
+
+        api.get("/admin/audit-alerts", {
+            params: {
+                status: "OPEN",
+                page: 0,
+                size: 5,
+            },
+        })
+            .then(({ data }) => {
+                if (cancelled) return;
+
+                const alerts = data?.content || [];
+                setAuditAlert(alerts.length > 0 ? alerts[0] : null);
+            })
+            .catch(() => {
+                if (!cancelled) setAuditAlert(null);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [user?.role, location.pathname]);
+
+    // Tu dong dong thong bao sau 5s
+    useEffect(() => {
+        if (!auditAlert) return undefined;
+
+        const timer = setTimeout(() => {
+            setAuditAlert(null);
+        }, 5000);
+
+        return () => clearTimeout(timer);
+    }, [auditAlert]);
 
   useEffect(() => {
     if (!["SINH_VIEN", "GIANG_VIEN"].includes(user?.role)) {
@@ -127,6 +189,51 @@ export default function Layout({ children }) {
           onClick={() => setOpen(false)}
         />
       )}
+        {auditAlert && user?.role === "QUAN_TRI" && location.pathname === "/quan-tri" && (
+            <div className="fixed right-4 top-24 z-[60] w-[calc(100%-2rem)] max-w-md">
+                <div className="rounded-2xl border border-red-300 bg-white shadow-2xl">
+                    <div className="flex items-start gap-3 p-4">
+                        <div className="rounded-xl bg-red-100 p-2 text-red-700">
+                            <ShieldAlert size={22} />
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold uppercase tracking-wider text-red-700">
+                                CẢNH BÁO AUDIT
+                            </p>
+
+                            <p className="mt-1 text-sm font-bold text-slate-900">
+                                {auditAlert.title || "Phát hiện hoạt động bất thường"}
+                            </p>
+
+                            <p className="mt-1 text-sm text-slate-600">
+                                Đối tượng: {auditAlert.subject || "Không xác định"}
+                            </p>
+
+                            <p className="mt-1 text-xs font-semibold text-red-600">
+                                Mức độ: {auditAlert.severity || "HIGH"}
+                            </p>
+
+                            <NavLink
+                                to="/quan-tri/canh-bao-audit"
+                                className="mt-3 inline-block text-xs font-bold text-red-700 underline hover:text-red-900"
+                            >
+                                Xem chi tiết cảnh báo
+                            </NavLink>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => setAuditAlert(null)}
+                            className="rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                            aria-label="Đóng cảnh báo"
+                        >
+                            <X size={18} />
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
 
       <aside
         className={`app-sidebar fixed inset-y-0 left-0 z-40 flex w-64 flex-col overflow-hidden transition-transform duration-300 lg:translate-x-0 ${
@@ -260,6 +367,9 @@ export default function Layout({ children }) {
           </div>
         </main>
       </div>
+
+      {/* Floating AI Chatbot Assistant Widget */}
+      {user && <ChatbotWidget />}
     </div>
   );
 }

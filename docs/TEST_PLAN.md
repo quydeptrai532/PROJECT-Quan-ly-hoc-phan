@@ -200,3 +200,42 @@ Gồm: đăng nhập, dashboard sinh viên, đăng ký học phần, điểm & G
 - Lệnh `cd backend && ./mvnw test`: 42/42 tests đạt (23 unit + 19 integration, H2).
 - Lệnh `cd frontend && npm run build`: đạt.
 - Chưa chạy E2E Playwright cho thay đổi Analytics hoặc database MySQL; E2E tập trung UI và MySQL không được cấu hình trong lần kiểm tra này.
+
+## 13. QLSV-77: Cấu hình đối tượng đăng ký và điều chỉnh đợt (TASK-AD-02)
+
+- **Phạm vi kiểm thử**:
+  - Cấu hình đợt đăng ký theo khóa, ngành, lớp hành chính hoặc nhóm đối tượng.
+  - Thứ tự ưu tiên và khoảng thời gian riêng cho từng nhóm đối tượng.
+  - Kiểm tra biên thời gian theo múi giờ Asia/Ho_Chi_Minh (UTC+7).
+  - Từ chối nghiêm ngặt ở backend đối với sinh viên ngoài đối tượng hoặc ngoài khung giờ mở đăng ký (kể cả gọi API trực tiếp).
+  - Thao tác điều chỉnh đợt: Gia hạn (/gia-han), Đóng sớm (/dong-som), Mở đợt bổ sung (/mo-bo-sung), Xóa đợt.
+  - Ghi nhận đầy đủ nhật ký Audit Log kèm lý do bắt buộc cho mọi thao tác điều chỉnh (REGISTRATION_PERIOD_EXTENDED, REGISTRATION_PERIOD_CLOSED_EARLY, REGISTRATION_PERIOD_SUPPLEMENTAL_OPENED, REGISTRATION_PERIOD_DELETED).
+  - Bảo toàn 100% dữ liệu đăng ký và lịch sử đăng ký của sinh viên qua các lần điều chỉnh cấu hình đợt.
+  - Xử lý xung đột đa nhóm đối tượng: áp dụng chính sách cấu hình HIGHEST_PRIORITY và công khai trạng thái chinhSachUuTienDaChot: false chờ quyết định chính thức từ Hội đồng Đào tạo.
+- **Tự động hóa**:
+  - Integration Test: RegistrationPeriodIntegrationTest bao phủ toàn bộ luồng tạo đợt, giới hạn đối tượng, từ chối backend, đăng ký thành công cho đối tượng hợp lệ, gia hạn, đóng sớm, từ chối sau đóng sớm, mở đợt bổ sung và audit log.
+  - Kết quả kiểm thử backend: 106/106 tests PASS trên H2.
+  - Kết quả frontend build: Vite build thành công không lỗi (0 warning/error).
+
+## 14. QLSV-78: Cảnh báo và kiểm soát xung đột khi mở lớp (TASK-AD-03)
+
+- **Phạm vi kiểm thử**:
+  - So sánh lịch học cùng học kỳ (`hocKyId`) và cùng thứ trong tuần (`thu`).
+  - Thuật toán giao thoa khoảng tiết: $[A_{\text{start}}, A_{\text{end}}]$ giao $[B_{\text{start}}, B_{\text{end}}] \iff (A_{\text{start}} \le B_{\text{end}}) \land (B_{\text{start}} \le A_{\text{end}})$.
+  - Quy tắc tiết liền kề: Tiết 1..3 và 4..6 kết thúc và bắt đầu liền kề mà không dùng chung tiết thì **không** được xem là trùng.
+  - Xung đột phòng học (`PHONG`): phát hiện hai lớp cùng phòng có khoảng tiết giao nhau, trả về chính xác tiết giao bắt đầu và tiết giao kết thúc.
+  - Xung đột giảng viên (`GIANG_VIEN`): phát hiện giảng viên bị phân công 2 lớp có khoảng tiết giao nhau.
+  - Phát hiện đồng thời cả xung đột phòng và giảng viên trong cùng một lượt kiểm tra.
+  - Kiểm tra khi tạo mới (`POST /api/admin/lop-hoc-phan`) và cập nhật (`PUT /api/admin/lop-hoc-phan/{id}`).
+  - Loại trừ tự xung đột: Khi cập nhật lớp hiện có, hệ thống bỏ qua chính lớp đang sửa (`boQuaId == lop.getId()`), không tự báo xung đột với chính nó.
+  - Chính sách lưu/chặn: Mặc định áp dụng `BLOCK_ON_CONFLICT`, từ chối lưu và ném HTTP 409 Conflict khi có xung đột; công khai trạng thái `chinhSachDaChot: false` chờ quyết định chính thức từ Chủ dự án.
+  - Đồng nhất Backend - Frontend: Frontend gọi trực tiếp endpoint `/api/admin/lop-hoc-phan/kiem-tra-xung-dot` với debounce 300ms, hiển thị đúng dữ liệu xung đột do backend tính toán, vô hiệu hóa nút Lưu khi vi phạm chính sách.
+- **Tự động hóa**:
+  - Integration Test: `ClassScheduleConflictIntegrationTest` bao phủ:
+    1. Tiết liền kề không giao nhau (`1..3` vs `4..6`).
+    2. Trùng phòng với giao thoa tiết (`2..4` vs `4..6` tại tiết 4).
+    3. Trùng cả giảng viên và phòng học đồng thời.
+    4. Cập nhật lớp không tự xung đột với chính nó.
+    5. Chặn lưu ở tầng backend ném HTTP 409 Conflict khi phát hiện xung đột.
+  - Kết quả kiểm thử: Toàn bộ test suite Spring Boot đạt 100% PASS.
+  - Kết quả build frontend: `npm run build` đạt thành công (0 warning/error).

@@ -1,0 +1,7 @@
+# Cấu hình môi trường phát triển (DEV) - QLSV-101 (TASK-OP-07A)
+# Bật OpenAPI Documentation và Swagger UI phục vụ kiểm thử và tích hợp API
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true

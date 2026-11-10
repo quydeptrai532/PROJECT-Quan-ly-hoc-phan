@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS khoa (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     ma VARCHAR(20) NOT NULL UNIQUE,
-    ten VARCHAR(150) NOT NULL
+    ten VARCHAR(150) NOT NULL,
+    dang_hieu_luc BOOLEAN NOT NULL DEFAULT TRUE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS nganh (
@@ -31,6 +32,7 @@ CREATE TABLE IF NOT EXISTS nganh (
     ma VARCHAR(20) NOT NULL UNIQUE,
     ten VARCHAR(150) NOT NULL,
     khoa_id BIGINT NOT NULL,
+    dang_hieu_luc BOOLEAN NOT NULL DEFAULT TRUE,
     CONSTRAINT fk_nganh_khoa FOREIGN KEY (khoa_id) REFERENCES khoa(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -39,6 +41,7 @@ CREATE TABLE IF NOT EXISTS lop_hanh_chinh (
     ma VARCHAR(20) NOT NULL UNIQUE,
     ten VARCHAR(150) NOT NULL,
     nganh_id BIGINT NOT NULL,
+    dang_hieu_luc BOOLEAN NOT NULL DEFAULT TRUE,
     CONSTRAINT fk_lop_nganh FOREIGN KEY (nganh_id) REFERENCES nganh(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -60,6 +63,9 @@ CREATE TABLE IF NOT EXISTS mon_hoc (
     ten VARCHAR(150) NOT NULL,
     so_tin_chi INT NOT NULL,
     khoa_id BIGINT NOT NULL,
+    dang_hieu_luc BOOLEAN NOT NULL DEFAULT TRUE,
+    ngay_luu_tru DATETIME NULL,
+    ly_do_luu_tru VARCHAR(255) NULL,
     CONSTRAINT fk_mon_khoa FOREIGN KEY (khoa_id) REFERENCES khoa(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -101,6 +107,23 @@ CREATE TABLE IF NOT EXISTS sinh_vien (
     CONSTRAINT fk_sv_lop FOREIGN KEY (lop_id) REFERENCES lop_hanh_chinh(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS phong_hoc (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    ma VARCHAR(30) NOT NULL UNIQUE,
+    ten VARCHAR(150) NOT NULL,
+    toa_nha VARCHAR(50),
+    tang INT,
+    vi_tri VARCHAR(150),
+    suc_chua INT NOT NULL,
+    loai_phong VARCHAR(50) NOT NULL DEFAULT 'LY_THUYET',
+    thiet_bi VARCHAR(500),
+    trang_thai VARCHAR(30) NOT NULL DEFAULT 'HOAT_DONG',
+    ghi_chu VARCHAR(500),
+    ngay_tao DATETIME(6),
+    ngay_cap_nhat DATETIME(6),
+    nguoi_cap_nhat_username VARCHAR(100)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS lop_hoc_phan (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     ma VARCHAR(30) NOT NULL UNIQUE,
@@ -122,9 +145,16 @@ CREATE TABLE IF NOT EXISTS lop_hoc_phan (
     nguoi_cong_bo_bang_diem_id BIGINT,
     nguong_so_buoi_vang INT,
     nguong_ty_le_vang DOUBLE,
+    da_huy BOOLEAN NOT NULL DEFAULT FALSE,
+    thoi_gian_huy DATETIME(6),
+    ly_do_huy VARCHAR(500),
+    nguoi_huy_id BIGINT,
+    nguoi_huy_username VARCHAR(100),
+    phong_hoc_id BIGINT,
     CONSTRAINT fk_lhp_mon FOREIGN KEY (mon_hoc_id) REFERENCES mon_hoc(id),
     CONSTRAINT fk_lhp_hk FOREIGN KEY (hoc_ky_id) REFERENCES hoc_ky(id),
-    CONSTRAINT fk_lhp_gv FOREIGN KEY (giang_vien_id) REFERENCES giang_vien(id)
+    CONSTRAINT fk_lhp_gv FOREIGN KEY (giang_vien_id) REFERENCES giang_vien(id),
+    CONSTRAINT fk_lhp_phong FOREIGN KEY (phong_hoc_id) REFERENCES phong_hoc(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS dang_ky_hoc_phan (
@@ -144,8 +174,41 @@ CREATE TABLE IF NOT EXISTS diem (
     diem_qua_trinh DOUBLE,
     diem_cuoi_ky DOUBLE,
     diem_tong_ket DOUBLE,
+    version BIGINT NOT NULL DEFAULT 0,
     cap_nhat_luc DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     CONSTRAINT fk_diem_dangky FOREIGN KEY (dang_ky_id) REFERENCES dang_ky_hoc_phan(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- QLSV-93 (TASK-OP-06): Bang tac vu nen va retry
+CREATE TABLE IF NOT EXISTS background_jobs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    job_type VARCHAR(64) NOT NULL,
+    idempotency_key VARCHAR(180) UNIQUE,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    payload VARCHAR(4000),
+    retry_count INT NOT NULL DEFAULT 0,
+    max_retries INT NOT NULL DEFAULT 3,
+    backoff_seconds INT NOT NULL DEFAULT 30,
+    next_run_at DATETIME(6) NOT NULL,
+    locked_by VARCHAR(100),
+    locked_at DATETIME(6),
+    lease_expires_at DATETIME(6),
+    last_error VARCHAR(2000),
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    completed_at DATETIME(6),
+    INDEX idx_background_jobs_status_next_run (status, next_run_at),
+    INDEX idx_background_jobs_lease_expires (status, lease_expires_at),
+    INDEX idx_background_jobs_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- QLSV-93 (TASK-OP-06): Bang khoa phan tan chong chay trung
+CREATE TABLE IF NOT EXISTS distributed_lock (
+    lock_name VARCHAR(100) NOT NULL PRIMARY KEY,
+    locked_by VARCHAR(100) NOT NULL,
+    locked_at DATETIME(6) NOT NULL,
+    expires_at DATETIME(6) NOT NULL,
+    INDEX idx_dist_lock_expires (expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Làm sạch dữ liệu rác cũ nếu có
@@ -4168,3 +4231,22 @@ INSERT INTO diem (id, dang_ky_id, diem_qua_trinh, diem_cuoi_ky, diem_tong_ket, c
 (1693, 1693, 8, 8.8, 8.5, NOW()),
 (1694, 1694, 8, 8.8, 8.5, NOW());
 
+
+-- Seed phong_hoc
+INSERT INTO phong_hoc (id, ma, ten, toa_nha, tang, vi_tri, suc_chua, loai_phong, thiet_bi, trang_thai, ghi_chu, ngay_tao, ngay_cap_nhat, nguoi_cap_nhat_username) VALUES
+(1, 'A101', 'Phòng học A101', 'Nhà A', 1, 'Tầng 1, Nhà A', 80, 'LY_THUYET', 'Máy chiếu, Điều hòa, Micro & Loa, Wi-Fi chuyên dụng', 'HOAT_DONG', 'Phòng học tiêu chuẩn khoa CNTT', NOW(), NOW(), 'admin'),
+(2, 'A102', 'Phòng học A102', 'Nhà A', 1, 'Tầng 1, Nhà A', 80, 'LY_THUYET', 'Máy chiếu, Điều hòa, Micro & Loa, Wi-Fi chuyên dụng', 'HOAT_DONG', 'Phòng học lý thuyết', NOW(), NOW(), 'admin'),
+(3, 'A103', 'Phòng học A103', 'Nhà A', 1, 'Tầng 1, Nhà A', 80, 'LY_THUYET', 'Máy chiếu, Điều hòa, Micro & Loa', 'HOAT_DONG', 'Phòng học lý thuyết', NOW(), NOW(), 'admin'),
+(4, 'A104', 'Phòng học A104', 'Nhà A', 1, 'Tầng 1, Nhà A', 80, 'LY_THUYET', 'Máy chiếu, Điều hòa, Micro & Loa', 'HOAT_DONG', 'Phòng học lý thuyết', NOW(), NOW(), 'admin'),
+(5, 'A105', 'Phòng học A105', 'Nhà A', 1, 'Tầng 1, Nhà A', 80, 'LY_THUYET', 'Máy chiếu, Điều hòa, Micro & Loa', 'HOAT_DONG', 'Phòng học lý thuyết', NOW(), NOW(), 'admin'),
+(6, 'B201', 'Phòng học B201', 'Nhà B', 2, 'Tầng 2, Nhà B', 60, 'LY_THUYET', 'Máy chiếu, Điều hòa, Micro & Loa', 'HOAT_DONG', 'Phòng học khoa Ngoại ngữ', NOW(), NOW(), 'admin'),
+(7, 'B202', 'Phòng học B202', 'Nhà B', 2, 'Tầng 2, Nhà B', 60, 'LY_THUYET', 'Máy chiếu, Điều hòa, Micro & Loa', 'HOAT_DONG', 'Phòng học khoa Ngoại ngữ', NOW(), NOW(), 'admin'),
+(8, 'LAB01', 'Phòng thực hành máy tính 01', 'Nhà B', 3, 'Tầng 3, Nhà B', 45, 'THUC_HANH_MAY_TINH', '45 Dàn máy tính (PC), Máy chiếu, Điều hòa, Mạng LAN Gigabit', 'HOAT_DONG', 'Lab thực hành lập trình', NOW(), NOW(), 'admin'),
+(9, 'LAB02', 'Phòng thực hành máy tính 02', 'Nhà B', 3, 'Tầng 3, Nhà B', 45, 'THUC_HANH_MAY_TINH', '45 Dàn máy tính (PC), Máy chiếu, Điều hòa, Mạng LAN Gigabit', 'HOAT_DONG', 'Lab thực hành mạng máy tính', NOW(), NOW(), 'admin'),
+(10, 'C301', 'Phòng học C301', 'Tòa C', 3, 'Tầng 3, Tòa C', 70, 'LY_THUYET', 'Máy chiếu, Điều hòa, Micro & Loa', 'HOAT_DONG', 'Phòng học khoa Kinh tế', NOW(), NOW(), 'admin'),
+(11, 'C302', 'Phòng học C302', 'Tòa C', 3, 'Tầng 3, Tòa C', 70, 'LY_THUYET', 'Máy chiếu, Điều hòa, Micro & Loa', 'HOAT_DONG', 'Phòng học khoa Kinh tế', NOW(), NOW(), 'admin'),
+(12, 'C303', 'Phòng học C303', 'Tòa C', 3, 'Tầng 3, Tòa C', 70, 'LY_THUYET', 'Máy chiếu, Điều hòa, Micro & Loa', 'HOAT_DONG', 'Phòng học đa năng', NOW(), NOW(), 'admin'),
+(13, 'D401', 'Giảng đường D401', 'Tòa D', 4, 'Tầng 4, Tòa D', 120, 'HOI_TRUONG', 'Máy chiếu công suất lớn, Âm thanh hội trường, Điều hòa, Camera Hybrid', 'HOAT_DONG', 'Giảng đường bậc thang', NOW(), NOW(), 'admin'),
+(14, 'HT01', 'Hội trường lớn A', 'Tòa Hiệu bộ', 1, 'Tầng 1, Tòa Hiệu bộ', 300, 'HOI_TRUONG', 'Màn hình LED P2.5, Âm thanh vòm, Hệ thống ánh sáng sân khấu, Điều hòa trung tâm', 'HOAT_DONG', 'Hội trường tổ chức sự kiện', NOW(), NOW(), 'admin'),
+(15, 'B204-BT', 'Phòng B204 (Bảo trì)', 'Nhà B', 2, 'Tầng 2, Nhà B', 50, 'LY_THUYET', 'Điều hòa', 'BAO_TRI', 'Đang bảo dưỡng hệ thống máy chiếu và trần nhà', NOW(), NOW(), 'admin'),
+(16, 'C305-NG', 'Phòng C305 (Ngừng dùng)', 'Tòa C', 3, 'Tầng 3, Tòa C', 40, 'DA_NANG', 'Bàn ghế cũ', 'NGUNG_SU_DUNG', 'Chuyển đổi thành kho thiết bị khoa', NOW(), NOW(), 'admin');

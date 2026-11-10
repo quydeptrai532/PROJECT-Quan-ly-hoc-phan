@@ -172,15 +172,60 @@ export default function GradeExcelImportModal({
                 {
                     previewToken: preview.previewToken,
                     fileSha256: preview.fileSha256,
+                    phienBanBangDiem: preview.phienBanBangDiem,
                 }
             );
             setImportResult(data);
             setPreview(null);
             onImportSuccess?.(data);
         } catch (err) {
-            setError(getErrorMessage(err));
+            const resp = err.response;
+            if (resp?.status === 409) {
+                setError(
+                    resp.data?.message ||
+                    "Bảng điểm đã bị người khác thay đổi trong quá trình xem trước (xung đột phiên bản). Vui lòng tải lại và thực hiện lại."
+                );
+            } else {
+                setError(getErrorMessage(err));
+            }
         } finally {
             setConfirmLoading(false);
+        }
+    };
+
+    const handleDownloadErrorReport = async () => {
+        if (!preview?.errors || preview.errors.length === 0) return;
+        try {
+            const response = await api.post(
+                `/giang-vien/lop-hoc-phan/${lopId}/diem/import-xlsx/export-errors`,
+                preview.errors,
+                { responseType: "blob" }
+            );
+            const blob = new Blob([response.data], { type: "text/csv;charset=utf-8" });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `loi-import-diem-${maLop}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch {
+            const rows = [
+                "\uFEFFDòng,Mã SV,Cột,Cột Excel,Giá trị nhập,Nguyên nhân lỗi",
+                ...preview.errors.map((e) =>
+                    `"${e.dong || ""}","${e.maSinhVien || ""}","${e.cot || e.field || ""}","${e.cotExcel || ""}","${e.giaTriNhap || ""}","${e.message || ""}"`
+                ),
+            ];
+            const blob = new Blob([rows.join("\r\n")], { type: "text/csv;charset=utf-8" });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `loi-import-diem-${maLop}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
         }
     };
 
@@ -369,9 +414,18 @@ export default function GradeExcelImportModal({
                         {/* Bảng chi tiết lỗi theo Sheet / Dòng / Cột */}
                         {Array.isArray(preview.errors) && preview.errors.length > 0 && (
                             <div className="overflow-hidden rounded-xl border border-rose-200 bg-white">
-                                <div className="flex items-center gap-2 border-b border-rose-100 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-800">
-                                    <AlertTriangle size={15} />
-                                    Chi tiết lỗi theo Sheet / Dòng / Cột ({preview.errors.length} lỗi)
+                                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rose-100 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-800">
+                                    <span className="flex items-center gap-2">
+                                        <AlertTriangle size={15} />
+                                        Chi tiết lỗi theo Sheet / Dòng / Cột ({preview.errors.length} lỗi)
+                                    </span>
+                                    <button
+                                        type="button"
+                                        className="flex items-center gap-1.5 rounded-lg border border-rose-300 bg-white px-2.5 py-1 text-xs font-medium text-rose-700 shadow-xs hover:bg-rose-50"
+                                        onClick={handleDownloadErrorReport}
+                                    >
+                                        <Download size={13} /> Tải tệp danh sách lỗi (.csv)
+                                    </button>
                                 </div>
                                 <div className="max-h-56 overflow-y-auto">
                                     <table className="w-full text-xs">

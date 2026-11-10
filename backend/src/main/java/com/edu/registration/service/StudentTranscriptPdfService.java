@@ -7,6 +7,8 @@ import com.edu.registration.entity.User;
 import com.edu.registration.exception.ApiException;
 import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.security.CurrentUser;
+import com.edu.registration.util.ExportSecuritySupport;
+import com.edu.registration.util.VerifiableCodeSupport;
 import com.lowagie.text.Document;
 import com.lowagie.text.DocumentException;
 import com.lowagie.text.Element;
@@ -51,7 +53,7 @@ public class StudentTranscriptPdfService {
     private static final Logger log = LoggerFactory.getLogger(StudentTranscriptPdfService.class);
     private static final String NOT_ASSIGNED = "Chưa cập nhật";
     private static final DateTimeFormatter ISSUE_TIME_FORMATTER =
-            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss '(GMT+7)'");
 
     private static final String FONT_REGULAR_RESOURCE = "liberation/LiberationSans-Regular.ttf";
     private static final String FONT_BOLD_RESOURCE = "liberation/LiberationSans-Bold.ttf";
@@ -76,6 +78,7 @@ public class StudentTranscriptPdfService {
     private final GradeService diemService;
     private final String donViPhatHanh;
     private final Clock clock;
+    private final AuditLogService auditLogService;
 
     @Autowired
     public StudentTranscriptPdfService(
@@ -83,9 +86,10 @@ public class StudentTranscriptPdfService {
             StudentRepository sinhVienRepository,
             StudentAcademicProfileService studentAcademicProfileService,
             GradeService diemService,
-            @Value("${app.export.bang-diem.don-vi-phat-hanh:}") String donViPhatHanh) {
+            @Value("${app.export.bang-diem.don-vi-phat-hanh:}") String donViPhatHanh,
+            @Autowired(required = false) AuditLogService auditLogService) {
         this(currentUser, sinhVienRepository, studentAcademicProfileService, diemService,
-                donViPhatHanh, Clock.systemDefaultZone());
+                donViPhatHanh, Clock.systemDefaultZone(), auditLogService);
     }
 
     StudentTranscriptPdfService(
@@ -95,21 +99,56 @@ public class StudentTranscriptPdfService {
             GradeService diemService,
             String donViPhatHanh,
             Clock clock) {
+        this(currentUser, sinhVienRepository, studentAcademicProfileService, diemService,
+                donViPhatHanh, clock, null);
+    }
+
+    StudentTranscriptPdfService(
+            CurrentUser currentUser,
+            StudentRepository sinhVienRepository,
+            StudentAcademicProfileService studentAcademicProfileService,
+            GradeService diemService,
+            String donViPhatHanh,
+            Clock clock,
+            AuditLogService auditLogService) {
         this.currentUser = currentUser;
         this.sinhVienRepository = sinhVienRepository;
         this.studentAcademicProfileService = studentAcademicProfileService;
         this.diemService = diemService;
         this.donViPhatHanh = donViPhatHanh == null || donViPhatHanh.isBlank() ? null : donViPhatHanh.trim();
         this.clock = clock;
+        this.auditLogService = auditLogService;
     }
 
     public PdfFile xuatBangDiemPdf(Long hocKyId) {
+        return xuatBangDiemPdf(hocKyId, null, null, null);
+    }
+
+    public PdfFile xuatBangDiemPdf(Long hocKyId, String verificationCode, String verificationUrl, Integer phienBan) {
         RegistrationDtos.BangDiemPdfDto duLieu = layDuLieuBangDiem(hocKyId);
-        byte[] noiDung = taoFilePdf(duLieu);
-        String tenTep = taoTenTep(duLieu.sinhVien().maSinhVien(), hocKyId);
-        log.info("Sinh viên {} xuất bảng điểm PDF ({} học phần đã công bố, hocKyId={})",
-                duLieu.sinhVien().maSinhVien(), duLieu.tongSoMonDaCongBo(), hocKyId);
-        return new PdfFile(tenTep, noiDung, duLieu.tongSoMonDaCongBo(), duLieu);
+        ExportSecuritySupport.validateRowCount(duLieu.tongSoMonDaCongBo(), 5000, "bảng điểm sinh viên PDF");
+
+        Student sv = laySinhVienHienTai();
+        return auditOrExecute("STUDENT_TRANSCRIPT_EXPORTED", "STUDENT_TRANSCRIPT", sv.getId(), audit -> {
+            audit.changes(Map.of(), Map.of(
+                    "maSinhVien", duLieu.sinhVien().maSinhVien(),
+                    "hocKyId", hocKyId != null ? hocKyId : "TAT_CA",
+                    "soMonDaCongBo", duLieu.tongSoMonDaCongBo()
+            ));
+            byte[] noiDung = taoFilePdf(duLieu, verificationCode, verificationUrl, phienBan);
+            String tenTep = taoTenTep(duLieu.sinhVien().maSinhVien(), hocKyId);
+            log.info("Sinh viên {} xuất bảng điểm PDF ({} học phần đã công bố, hocKyId={})",
+                    duLieu.sinhVien().maSinhVien(), duLieu.tongSoMonDaCongBo(), hocKyId);
+            return new PdfFile(tenTep, noiDung, duLieu.tongSoMonDaCongBo(), duLieu, verificationCode, verificationUrl, phienBan);
+        });
+    }
+
+    private <T> T auditOrExecute(String action, String entityType, Object entityId,
+                                 Function<AuditLogService.AuditContext, T> operation) {
+        if (auditLogService != null) {
+            return auditLogService.execute(action, entityType, entityId, operation);
+        }
+        return operation.apply(new AuditLogService.AuditContext(entityId == null ? null : String.valueOf(entityId)));
     }
 
     public RegistrationDtos.BangDiemPdfDto layDuLieuBangDiem(Long hocKyId) {
@@ -208,7 +247,12 @@ public class StudentTranscriptPdfService {
                 coNhieuLanHoc);
     }
 
-    private byte[] taoFilePdf(RegistrationDtos.BangDiemPdfDto duLieu) {
+    public byte[] taoFilePdf(RegistrationDtos.BangDiemPdfDto duLieu) {
+        return taoFilePdf(duLieu, null, null, null);
+    }
+
+    public byte[] taoFilePdf(RegistrationDtos.BangDiemPdfDto duLieu,
+                             String verificationCode, String verificationUrl, Integer phienBan) {
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             BaseFont bfRegular = BaseFont.createFont(
                     "LiberationSans-Regular.ttf", BaseFont.IDENTITY_H, BaseFont.EMBEDDED,
@@ -238,7 +282,7 @@ public class StudentTranscriptPdfService {
             Document document = new Document(PageSize.A4, 36, 36, 40, 48);
             PdfWriter writer = PdfWriter.getInstance(document, out);
             writer.setPageEvent(new TranscriptFooterPageEvent(
-                    bfRegular, duLieu.sinhVien().maSinhVien(), thoiDiemStr));
+                    bfRegular, duLieu.sinhVien().maSinhVien(), thoiDiemStr, verificationCode));
 
             document.open();
             document.addTitle("Bảng điểm cá nhân - " + duLieu.sinhVien().maSinhVien());
@@ -264,7 +308,7 @@ public class StudentTranscriptPdfService {
             document.add(subPara);
 
             document.add(taoBangThongTinSinhVien(duLieu.sinhVien(), fontLabel, fontValue));
-            document.add( taoBangTongHopToanKhoa(duLieu, fontLabel, fontValue));
+            document.add(taoBangTongHopToanKhoa(duLieu, fontLabel, fontValue));
 
             for (RegistrationDtos.HocKyBangDiemPdfDto ky : duLieu.hocKy()) {
                 Paragraph kyHeader = new Paragraph(
@@ -280,6 +324,11 @@ public class StudentTranscriptPdfService {
                         ky.items(), fontTableHeader, fontTableCell, fontTableCellBold, fontPass, fontFail));
             }
 
+            // Hiển thị khối xác thực bảng điểm điện tử có mã QR và mã xác minh (QLSV-99 / TASK-OP-12)
+            if (verificationCode != null && !verificationCode.isBlank() && verificationUrl != null && !verificationUrl.isBlank()) {
+                document.add(taoKhoiXacThucDienTu(verificationCode, verificationUrl, phienBan, fontSection, fontLabel, fontValue, fontNote));
+            }
+
             document.add(taoKhoiGhiChu(duLieu, fontLabel, fontNote));
 
             document.close();
@@ -287,6 +336,53 @@ public class StudentTranscriptPdfService {
         } catch (DocumentException | IOException ex) {
             throw new IllegalStateException("Không thể khởi tạo tệp bảng điểm PDF", ex);
         }
+    }
+
+    private PdfPTable taoKhoiXacThucDienTu(String verificationCode, String verificationUrl,
+                                           Integer phienBan, Font fontTitle,
+                                           Font fontLabel, Font fontValue, Font fontNote) throws DocumentException {
+        PdfPTable table = new PdfPTable(2);
+        table.setWidthPercentage(100f);
+        table.setWidths(new float[]{82f, 18f});
+        table.setSpacingBefore(8f);
+        table.setSpacingAfter(4f);
+
+        PdfPCell leftCell = new PdfPCell();
+        leftCell.setBorderColor(COLOR_BORDER);
+        leftCell.setBackgroundColor(COLOR_SUMMARY_BG);
+        leftCell.setPadding(6f);
+
+        Paragraph p = new Paragraph();
+        p.add(new Phrase("XÁC THỰC BẢNG ĐIỂM ĐIỆN TỬ (TASK-OP-12)\n", fontTitle));
+        p.add(new Phrase("Mã xác minh: ", fontLabel));
+        p.add(new Phrase(verificationCode + "\n", fontLabel));
+        p.add(new Phrase("Phiên bản phát hành: ", fontValue));
+        p.add(new Phrase("v" + (phienBan != null ? phienBan : 1) + "   |   Cổng tra cứu: ", fontValue));
+        p.add(new Phrase(verificationUrl + "\n", fontNote));
+        p.add(new Phrase("Quét mã QR bên cạnh bằng điện thoại hoặc truy cập cổng xác thực trên để đối soát tính hợp lệ và nguyên vẹn của văn bản. Mã xác nhận đúng phiên bản bảng điểm đã phát hành, không thể chỉnh sửa.", fontNote));
+        leftCell.addElement(p);
+        table.addCell(leftCell);
+
+        PdfPCell rightCell = new PdfPCell();
+        rightCell.setBorderColor(COLOR_BORDER);
+        rightCell.setBackgroundColor(Color.WHITE);
+        rightCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        rightCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        rightCell.setPadding(3f);
+
+        try {
+            byte[] qrBytes = VerifiableCodeSupport.generateQrCodePng(verificationUrl, 160, 160);
+            com.lowagie.text.Image qrImage = com.lowagie.text.Image.getInstance(qrBytes);
+            qrImage.scaleToFit(65f, 65f);
+            qrImage.setAlignment(Element.ALIGN_CENTER);
+            rightCell.addElement(qrImage);
+        } catch (Exception ex) {
+            log.warn("Không thể vẽ mã QR xác thực vào PDF: {}", ex.getMessage());
+            rightCell.addElement(new Phrase("QR Code", fontNote));
+        }
+        table.addCell(rightCell);
+
+        return table;
     }
 
     private PdfPTable taoBangThongTinSinhVien(RegistrationDtos.ThongTinSinhVienPdfDto sv,
@@ -467,8 +563,7 @@ public class StudentTranscriptPdfService {
     }
 
     private static String taoTenTep(String maSinhVien, Long hocKyId) {
-        String maAnToan = (maSinhVien == null || maSinhVien.isBlank() ? "sinh-vien" : maSinhVien)
-                .replaceAll("[^A-Za-z0-9._-]", "_");
+        String maAnToan = ExportSecuritySupport.sanitizeFilename(maSinhVien == null || maSinhVien.isBlank() ? "sinh-vien" : maSinhVien);
         if (hocKyId != null) {
             return "bang-diem-" + maAnToan + "-hk" + hocKyId + ".pdf";
         }
@@ -490,12 +585,18 @@ public class StudentTranscriptPdfService {
         private final BaseFont baseFont;
         private final String maSinhVien;
         private final String thoiDiemPhatHanh;
+        private final String verificationCode;
         private PdfTemplate totalPagesTemplate;
 
-        private TranscriptFooterPageEvent(BaseFont baseFont, String maSinhVien, String thoiDiemPhatHanh) {
+        private TranscriptFooterPageEvent(BaseFont baseFont, String maSinhVien, String thoiDiemPhatHanh, String verificationCode) {
             this.baseFont = baseFont;
             this.maSinhVien = maSinhVien;
             this.thoiDiemPhatHanh = thoiDiemPhatHanh;
+            this.verificationCode = verificationCode;
+        }
+
+        private TranscriptFooterPageEvent(BaseFont baseFont, String maSinhVien, String thoiDiemPhatHanh) {
+            this(baseFont, maSinhVien, thoiDiemPhatHanh, null);
         }
 
         @Override
@@ -519,9 +620,12 @@ public class StudentTranscriptPdfService {
             cb.beginText();
             cb.setFontAndSize(baseFont, 8f);
             cb.setColorFill(COLOR_MUTED);
-            cb.showTextAligned(Element.ALIGN_LEFT,
-                    "Bảng điểm cá nhân · Mã SV: " + maSinhVien + " · Phát hành: " + thoiDiemPhatHanh,
-                    document.left(), y, 0);
+
+            String footerLeft = (verificationCode != null && !verificationCode.isBlank())
+                    ? "Bảng điểm điện tử xác thực · Mã SV: " + maSinhVien + " · Mã XM: " + VerifiableCodeSupport.maskCode(verificationCode) + " · Phát hành: " + thoiDiemPhatHanh
+                    : "Bảng điểm cá nhân · Mã SV: " + maSinhVien + " · Phát hành: " + thoiDiemPhatHanh;
+
+            cb.showTextAligned(Element.ALIGN_LEFT, footerLeft, document.left(), y, 0);
 
             String pageText = "Trang " + writer.getPageNumber() + " / ";
             float textWidth = baseFont.getWidthPoint(pageText, 8f);
@@ -543,6 +647,10 @@ public class StudentTranscriptPdfService {
     }
 
     public record PdfFile(String tenTep, byte[] noiDung, int soMonDaCongBo,
-                          RegistrationDtos.BangDiemPdfDto duLieu) {
+                          RegistrationDtos.BangDiemPdfDto duLieu,
+                          String maXacMinh, String verificationUrl, Integer phienBan) {
+        public PdfFile(String tenTep, byte[] noiDung, int soMonDaCongBo, RegistrationDtos.BangDiemPdfDto duLieu) {
+            this(tenTep, noiDung, soMonDaCongBo, duLieu, null, null, null);
+        }
     }
 }

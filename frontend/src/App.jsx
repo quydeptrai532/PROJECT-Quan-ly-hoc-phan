@@ -23,6 +23,7 @@ import FacultyPage from "./pages/admin/FacultyPage";
 import MajorPage from "./pages/admin/MajorPage";
 import AdminClassPage from "./pages/admin/AdminClassPage";
 import SubjectPage from "./pages/admin/SubjectPage";
+import ClassroomPage from "./pages/admin/ClassroomPage";
 import CourseClassPage from "./pages/admin/CourseClassPage";
 import StudentPage from "./pages/admin/StudentPage";
 import LecturerPage from "./pages/admin/LecturerPage";
@@ -33,6 +34,15 @@ import CurriculumPage from "./pages/admin/CurriculumPage";
 import SupportRequestsPage from "./pages/student/SupportRequestsPage";
 import AdminSupportRequestsPage from "./pages/admin/AdminSupportRequestsPage";
 import AuditAlertsPage from "./pages/admin/AuditAlertsPage";
+import GradeAppealsPage from "./pages/student/GradeAppealsPage";
+import AdminGradeAppealsPage from "./pages/admin/AdminGradeAppealsPage";
+import AdminLookupPage from "./pages/admin/AdminLookupPage";
+import AdminEarlyWarningPage from "./pages/admin/AdminEarlyWarningPage";
+import LearningAnalyticsPage from "./pages/admin/LearningAnalyticsPage";
+import StudentAcademicAlertsPage from "./pages/student/StudentAcademicAlertsPage";
+import VerifyTranscriptPage from "./pages/public/VerifyTranscriptPage";
+import AdminVerifiableTranscriptsPage from "./pages/admin/AdminVerifiableTranscriptsPage";
+import ChatbotPage from "./pages/ChatbotPage";
 
 function RootRedirect() {
   const { user } = useAuth();
@@ -43,6 +53,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/xac-thuc-bang-diem" element={<VerifyTranscriptPage />} />
+      <Route path="/xac-thuc-bang-diem/:code" element={<VerifyTranscriptPage />} />
       <Route path="/" element={<RootRedirect />} />
 
       <Route
@@ -50,6 +62,15 @@ export default function App() {
         element={
           <ProtectedRoute roles={["SINH_VIEN", "GIANG_VIEN"]}>
             <RoleDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/tro-ly-ai"
+        element={
+          <ProtectedRoute>
+            <ChatbotPage />
           </ProtectedRoute>
         }
       />
@@ -106,7 +127,11 @@ export default function App() {
       />
       <Route path="/chuyen-can-cua-toi" element={<ProtectedRoute roles={["SINH_VIEN"]}><StudentAttendancePage /></ProtectedRoute>} />
       <Route path="/tien-do" element={<ProtectedRoute roles={["SINH_VIEN"]}><ProgressPlannerPage /></ProtectedRoute>} />
+      <Route path="/ke-hoach-mon-thieu" element={<ProtectedRoute roles={["SINH_VIEN"]}><ProgressPlannerPage /></ProtectedRoute>} />
       <Route path="/yeu-cau-ho-tro" element={<ProtectedRoute roles={["SINH_VIEN"]}><SupportRequestsPage /></ProtectedRoute>} />
+      <Route path="/phuc-khao-diem" element={<ProtectedRoute roles={["SINH_VIEN"]}><GradeAppealsPage /></ProtectedRoute>} />
+      <Route path="/canh-bao-hoc-vu" element={<ProtectedRoute roles={["SINH_VIEN"]}><StudentAcademicAlertsPage /></ProtectedRoute>} />
+      <Route path="/canh-bao-hoc-tap" element={<ProtectedRoute roles={["SINH_VIEN"]}><StudentAcademicAlertsPage /></ProtectedRoute>} />
       <Route
         path="/thong-bao"
         element={
@@ -214,6 +239,15 @@ export default function App() {
         }
       />
       <Route
+        path="/quan-tri/phong-hoc"
+        element={
+          <ProtectedRoute roles={["QUAN_TRI"]}>
+            <ClassroomPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         path="/quan-tri/lop-hoc-phan"
         element={
           <ProtectedRoute roles={["QUAN_TRI"]}>
@@ -247,6 +281,8 @@ export default function App() {
       />
       <Route path="/quan-tri/chuong-trinh-dao-tao" element={<ProtectedRoute roles={["QUAN_TRI"]}><CurriculumPage /></ProtectedRoute>} />
       <Route path="/quan-tri/yeu-cau-ho-tro" element={<ProtectedRoute roles={["QUAN_TRI"]}><AdminSupportRequestsPage /></ProtectedRoute>} />
+      <Route path="/quan-tri/phuc-khao" element={<ProtectedRoute roles={["QUAN_TRI"]}><AdminGradeAppealsPage /></ProtectedRoute>} />
+      <Route path="/quan-tri/bang-diem-xac-thuc" element={<ProtectedRoute roles={["QUAN_TRI"]}><AdminVerifiableTranscriptsPage /></ProtectedRoute>} />
 
       <Route
         path="/ho-so"
@@ -266,6 +302,13 @@ export default function App() {
         }
       />
       <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/quan-tri/learning-analytics" element={<ProtectedRoute roles={["QUAN_TRI"]}><LearningAnalyticsPage /></ProtectedRoute>} />
+        <Route path="/quan-tri/canh-bao-hoc-tap" element={<ProtectedRoute roles={["QUAN_TRI"]}><AdminEarlyWarningPage /></ProtectedRoute>} />
+        <Route path="/quan-tri/tra-cuu-lich-su"
+               element={
+            <ProtectedRoute roles={["QUAN_TRI"]}><AdminLookupPage />
+            </ProtectedRoute>}
+        />
     </Routes>
   );
 }

@@ -15,7 +15,11 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && !window.location.pathname.startsWith("/login")) {
+    if (
+      error.response?.status === 401 &&
+      !window.location.pathname.startsWith("/login") &&
+      !window.location.pathname.startsWith("/xac-thuc-bang-diem")
+    ) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       window.location.href = "/login";

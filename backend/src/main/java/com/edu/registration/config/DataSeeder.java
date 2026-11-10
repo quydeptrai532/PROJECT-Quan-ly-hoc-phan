@@ -25,6 +25,10 @@ import com.edu.registration.repository.GradeRepository;
 import com.edu.registration.repository.LecturerRepository;
 import com.edu.registration.repository.MajorRepository;
 import com.edu.registration.repository.PrerequisiteSubjectRepository;
+import com.edu.registration.entity.Classroom;
+import com.edu.registration.entity.ClassroomStatus;
+import com.edu.registration.repository.ClassroomRepository;
+import com.edu.registration.repository.RegistrationPeriodRepository;
 import com.edu.registration.repository.SemesterRepository;
 import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.repository.SubjectRepository;
@@ -66,6 +70,8 @@ public class DataSeeder implements CommandLineRunner {
     private final CourseRegistrationRepository dangKyHocPhanRepository;
     private final GradeRepository diemRepository;
     private final AcademicCohortRepository khoaHocRepository;
+    private final RegistrationPeriodRepository dotDangKyRepository;
+    private final ClassroomRepository phongHocRepository;
     private final PasswordEncoder passwordEncoder;
 
     private static final String[] LAST_NAMES = {
@@ -110,7 +116,7 @@ public class DataSeeder implements CommandLineRunner {
         this(userRepository, khoaRepository, nganhRepository, lopHanhChinhRepository,
                 monHocRepository, monTienQuyetRepository, hocKyRepository, giangVienRepository,
                 sinhVienRepository, lopHocPhanRepository, dangKyHocPhanRepository, diemRepository,
-                null, passwordEncoder);
+                null, null, null, passwordEncoder);
     }
 
     @Autowired
@@ -121,6 +127,8 @@ public class DataSeeder implements CommandLineRunner {
                       StudentRepository sinhVienRepository, CourseClassRepository lopHocPhanRepository,
                       CourseRegistrationRepository dangKyHocPhanRepository, GradeRepository diemRepository,
                       AcademicCohortRepository khoaHocRepository,
+                      @Autowired(required = false) RegistrationPeriodRepository dotDangKyRepository,
+                      @Autowired(required = false) ClassroomRepository phongHocRepository,
                       PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.khoaRepository = khoaRepository;
@@ -135,6 +143,8 @@ public class DataSeeder implements CommandLineRunner {
         this.dangKyHocPhanRepository = dangKyHocPhanRepository;
         this.diemRepository = diemRepository;
         this.khoaHocRepository = khoaHocRepository;
+        this.dotDangKyRepository = dotDangKyRepository;
+        this.phongHocRepository = phongHocRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -143,6 +153,7 @@ public class DataSeeder implements CommandLineRunner {
     public void run(String... args) {
         if (userRepository.count() > 0 && sinhVienRepository.count() >= 500) {
             seedKhoaHocNeuChuaCo(null, null);
+            seedPhongHocNeuChuaCo();
             log.info("Dữ liệu đầy đủ (500 sinh viên, 50 giảng viên, 50 môn học), bỏ qua bước tạo dữ liệu mẫu");
             return;
         }
@@ -161,6 +172,12 @@ public class DataSeeder implements CommandLineRunner {
             khoaRepository.deleteAllInBatch();
             if (khoaHocRepository != null) {
                 khoaHocRepository.deleteAllInBatch();
+            }
+            if (dotDangKyRepository != null) {
+                dotDangKyRepository.deleteAllInBatch();
+            }
+            if (phongHocRepository != null) {
+                phongHocRepository.deleteAllInBatch();
             }
             hocKyRepository.deleteAllInBatch();
             userRepository.deleteAllInBatch();
@@ -532,6 +549,7 @@ public class DataSeeder implements CommandLineRunner {
             }
         }
 
+        seedPhongHocNeuChuaCo();
         log.info("Đã tạo thành công bộ dữ liệu hoàn chỉnh: 500 sinh viên, 50 giảng viên, 50 môn học chia đều các kỳ!");
     }
 
@@ -733,5 +751,41 @@ public class DataSeeder implements CommandLineRunner {
         String prefix = prefixes[index % prefixes.length];
         String num = String.format("%07d", (1000000 + (index * 9871) % 9000000));
         return prefix + num;
+    }
+    private void seedPhongHocNeuChuaCo() {
+        if (phongHocRepository == null || phongHocRepository.count() > 0) {
+            return;
+        }
+        log.info("Khởi tạo danh mục phòng học mẫu...");
+        List<Classroom> danhSach = new ArrayList<>();
+        danhSach.add(new Classroom("A101", "Phòng học A101", "Nhà A", 1, "Tầng 1, Nhà A", 80, "LY_THUYET", "Máy chiếu, Điều hòa, Micro & Loa, Wi-Fi chuyên dụng", ClassroomStatus.HOAT_DONG, "Phòng học tiêu chuẩn khoa CNTT"));
+        danhSach.add(new Classroom("A102", "Phòng học A102", "Nhà A", 1, "Tầng 1, Nhà A", 80, "LY_THUYET", "Máy chiếu, Điều hòa, Micro & Loa, Wi-Fi chuyên dụng", ClassroomStatus.HOAT_DONG, "Phòng học lý thuyết"));
+        danhSach.add(new Classroom("A103", "Phòng học A103", "Nhà A", 1, "Tầng 1, Nhà A", 80, "LY_THUYET", "Máy chiếu, Điều hòa, Micro & Loa", ClassroomStatus.HOAT_DONG, "Phòng học lý thuyết"));
+        danhSach.add(new Classroom("A104", "Phòng học A104", "Nhà A", 1, "Tầng 1, Nhà A", 80, "LY_THUYET", "Máy chiếu, Điều hòa, Micro & Loa", ClassroomStatus.HOAT_DONG, "Phòng học lý thuyết"));
+        danhSach.add(new Classroom("A105", "Phòng học A105", "Nhà A", 1, "Tầng 1, Nhà A", 80, "LY_THUYET", "Máy chiếu, Điều hòa, Micro & Loa", ClassroomStatus.HOAT_DONG, "Phòng học lý thuyết"));
+
+        danhSach.add(new Classroom("B201", "Phòng học B201", "Nhà B", 2, "Tầng 2, Nhà B", 60, "LY_THUYET", "Máy chiếu, Điều hòa, Micro & Loa", ClassroomStatus.HOAT_DONG, "Phòng học khoa Ngoại ngữ"));
+        danhSach.add(new Classroom("B202", "Phòng học B202", "Nhà B", 2, "Tầng 2, Nhà B", 60, "LY_THUYET", "Máy chiếu, Điều hòa, Micro & Loa", ClassroomStatus.HOAT_DONG, "Phòng học khoa Ngoại ngữ"));
+        danhSach.add(new Classroom("LAB01", "Phòng thực hành máy tính 01", "Nhà B", 3, "Tầng 3, Nhà B", 45, "THUC_HANH_MAY_TINH", "45 Dàn máy tính (PC), Máy chiếu, Điều hòa, Mạng LAN Gigabit", ClassroomStatus.HOAT_DONG, "Lab thực hành lập trình"));
+        danhSach.add(new Classroom("LAB02", "Phòng thực hành máy tính 02", "Nhà B", 3, "Tầng 3, Nhà B", 45, "THUC_HANH_MAY_TINH", "45 Dàn máy tính (PC), Máy chiếu, Điều hòa, Mạng LAN Gigabit", ClassroomStatus.HOAT_DONG, "Lab thực hành mạng máy tính"));
+
+        danhSach.add(new Classroom("C301", "Phòng học C301", "Tòa C", 3, "Tầng 3, Tòa C", 70, "LY_THUYET", "Máy chiếu, Điều hòa, Micro & Loa", ClassroomStatus.HOAT_DONG, "Phòng học khoa Kinh tế"));
+        danhSach.add(new Classroom("C302", "Phòng học C302", "Tòa C", 3, "Tầng 3, Tòa C", 70, "LY_THUYET", "Máy chiếu, Điều hòa, Micro & Loa", ClassroomStatus.HOAT_DONG, "Phòng học khoa Kinh tế"));
+        danhSach.add(new Classroom("C303", "Phòng học C303", "Tòa C", 3, "Tầng 3, Tòa C", 70, "LY_THUYET", "Máy chiếu, Điều hòa, Micro & Loa", ClassroomStatus.HOAT_DONG, "Phòng học đa năng"));
+
+        danhSach.add(new Classroom("D401", "Giảng đường D401", "Tòa D", 4, "Tầng 4, Tòa D", 120, "HOI_TRUONG", "Máy chiếu công suất lớn, Âm thanh hội trường, Điều hòa, Camera Hybrid", ClassroomStatus.HOAT_DONG, "Giảng đường bậc thang"));
+        danhSach.add(new Classroom("HT01", "Hội trường lớn A", "Tòa Hiệu bộ", 1, "Tầng 1, Tòa Hiệu bộ", 300, "HOI_TRUONG", "Màn hình LED P2.5, Âm thanh vòm, Hệ thống ánh sáng sân khấu, Điều hòa trung tâm", ClassroomStatus.HOAT_DONG, "Hội trường tổ chức sự kiện"));
+
+        // Phòng bảo trì và phòng ngừng sử dụng để kiểm thử nghiệp vụ
+        danhSach.add(new Classroom("B204-BT", "Phòng B204 (Bảo trì)", "Nhà B", 2, "Tầng 2, Nhà B", 50, "LY_THUYET", "Điều hòa", ClassroomStatus.BAO_TRI, "Đang bảo dưỡng hệ thống máy chiếu và trần nhà"));
+        danhSach.add(new Classroom("C305-NG", "Phòng C305 (Ngừng dùng)", "Tòa C", 3, "Tầng 3, Tòa C", 40, "DA_NANG", "Bàn ghế cũ", ClassroomStatus.NGUNG_SU_DUNG, "Chuyển đổi thành kho thiết bị khoa"));
+
+        for (int i = 0; i < 50; i++) {
+            String maP = "P" + (100 + i);
+            danhSach.add(new Classroom(maP, "Phòng học " + maP, "Khu P", (i % 4) + 1, "Tầng " + ((i % 4) + 1) + ", Khu P", 60, "LY_THUYET", "Máy chiếu, Điều hòa, Bảng phấn", ClassroomStatus.HOAT_DONG, null));
+        }
+
+        phongHocRepository.saveAll(danhSach);
+        log.info("Đã tạo {} phòng học mẫu", danhSach.size());
     }
 }

@@ -19,7 +19,10 @@ import java.time.LocalDateTime;
 @Table(name = "yeu_cau_ho_tro", indexes = {
         @Index(name = "idx_ycht_sinh_vien_created", columnList = "sinh_vien_id,created_at"),
         @Index(name = "idx_ycht_trang_thai_created", columnList = "trang_thai,created_at"),
-        @Index(name = "idx_ycht_ma_phieu", columnList = "ma_phieu", unique = true)
+        @Index(name = "idx_ycht_ma_phieu", columnList = "ma_phieu", unique = true),
+        @Index(name = "idx_ycht_nguoi_xu_ly", columnList = "nguoi_xu_ly_user_id"),
+        @Index(name = "idx_ycht_muc_uu_tien", columnList = "muc_uu_tien"),
+        @Index(name = "idx_ycht_han_xu_ly", columnList = "han_xu_ly")
 })
 public class SupportRequest {
 
@@ -39,7 +42,7 @@ public class SupportRequest {
     private User nguoiTao;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "loai_yeu_cau", nullable = false, length = 40, updatable = false)
+    @Column(name = "loai_yeu_cau", nullable = false, length = 40)
     private SupportRequestType loaiYeuCau;
 
     @Column(name = "tieu_de", nullable = false, length = 200, updatable = false)
@@ -63,6 +66,28 @@ public class SupportRequest {
     @Enumerated(EnumType.STRING)
     @Column(name = "trang_thai", nullable = false, length = 40)
     private SupportRequestStatus trangThai = SupportRequestStatus.MOI_TAO;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "muc_uu_tien", nullable = false, length = 30)
+    private SupportRequestPriority mucUuTien = SupportRequestPriority.TRUNG_BINH;
+
+    @Column(name = "han_xu_ly")
+    private LocalDateTime hanXuLy;
+
+    @Column(name = "thoi_diem_phan_hoi_dau")
+    private LocalDateTime thoiDiemPhanHoiDau;
+
+    @Column(name = "thoi_diem_giai_quyet")
+    private LocalDateTime thoiDiemGiaiQuyet;
+
+    @Column(name = "thoi_diem_dong")
+    private LocalDateTime thoiDiemDong;
+
+    @Column(name = "yeu_cau_bo_sung_minh_chung", nullable = false)
+    private boolean yeuCauBoSungMinhChung = false;
+
+    @Column(name = "noi_dung_yeu_cau_minh_chung", length = 1000)
+    private String noiDungYeuCauMinhChung;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "nguoi_xu_ly_user_id")
@@ -160,6 +185,62 @@ public class SupportRequest {
 
     public void setTrangThai(SupportRequestStatus trangThai) {
         this.trangThai = trangThai;
+    }
+
+    public SupportRequestPriority getMucUuTien() {
+        return mucUuTien;
+    }
+
+    public void setMucUuTien(SupportRequestPriority mucUuTien) {
+        this.mucUuTien = mucUuTien;
+    }
+
+    public LocalDateTime getHanXuLy() {
+        return hanXuLy;
+    }
+
+    public void setHanXuLy(LocalDateTime hanXuLy) {
+        this.hanXuLy = hanXuLy;
+    }
+
+    public LocalDateTime getThoiDiemPhanHoiDau() {
+        return thoiDiemPhanHoiDau;
+    }
+
+    public void setThoiDiemPhanHoiDau(LocalDateTime thoiDiemPhanHoiDau) {
+        this.thoiDiemPhanHoiDau = thoiDiemPhanHoiDau;
+    }
+
+    public LocalDateTime getThoiDiemGiaiQuyet() {
+        return thoiDiemGiaiQuyet;
+    }
+
+    public void setThoiDiemGiaiQuyet(LocalDateTime thoiDiemGiaiQuyet) {
+        this.thoiDiemGiaiQuyet = thoiDiemGiaiQuyet;
+    }
+
+    public LocalDateTime getThoiDiemDong() {
+        return thoiDiemDong;
+    }
+
+    public void setThoiDiemDong(LocalDateTime thoiDiemDong) {
+        this.thoiDiemDong = thoiDiemDong;
+    }
+
+    public boolean isYeuCauBoSungMinhChung() {
+        return yeuCauBoSungMinhChung;
+    }
+
+    public void setYeuCauBoSungMinhChung(boolean yeuCauBoSungMinhChung) {
+        this.yeuCauBoSungMinhChung = yeuCauBoSungMinhChung;
+    }
+
+    public String getNoiDungYeuCauMinhChung() {
+        return noiDungYeuCauMinhChung;
+    }
+
+    public void setNoiDungYeuCauMinhChung(String noiDungYeuCauMinhChung) {
+        this.noiDungYeuCauMinhChung = noiDungYeuCauMinhChung;
     }
 
     public User getNguoiXuLy() {

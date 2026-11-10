@@ -33,6 +33,15 @@ public class Subject {
     @JoinColumn(name = "khoa_id", nullable = false)
     private Faculty khoa;
 
+    @Column(name = "dang_hieu_luc", nullable = false)
+    private boolean dangHieuLuc = true;
+
+    @Column(name = "ngay_luu_tru")
+    private LocalDateTime ngayLuuTru;
+
+    @Column(name = "ly_do_luu_tru", length = 500)
+    private String lyDoLuuTru;
+
     @Column(name = "nguoi_tao_id")
     private Long nguoiTaoId;
 
@@ -89,6 +98,30 @@ public class Subject {
 
     public void setKhoa(Faculty khoa) {
         this.khoa = khoa;
+    }
+
+    public boolean isDangHieuLuc() {
+        return dangHieuLuc;
+    }
+
+    public void setDangHieuLuc(boolean dangHieuLuc) {
+        this.dangHieuLuc = dangHieuLuc;
+    }
+
+    public LocalDateTime getNgayLuuTru() {
+        return ngayLuuTru;
+    }
+
+    public void setNgayLuuTru(LocalDateTime ngayLuuTru) {
+        this.ngayLuuTru = ngayLuuTru;
+    }
+
+    public String getLyDoLuuTru() {
+        return lyDoLuuTru;
+    }
+
+    public void setLyDoLuuTru(String lyDoLuuTru) {
+        this.lyDoLuuTru = lyDoLuuTru;
     }
 
     public Long getNguoiTaoId() {

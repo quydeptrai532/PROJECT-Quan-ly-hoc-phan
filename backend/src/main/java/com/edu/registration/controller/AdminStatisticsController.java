@@ -4,7 +4,11 @@ import com.edu.registration.dto.GradeAnalyticsDtos;
 import com.edu.registration.dto.StatDtos;
 import com.edu.registration.service.GradeAnalyticsService;
 import com.edu.registration.service.StatisticsService;
+import com.edu.registration.util.ExportSecuritySupport;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -17,11 +21,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/admin")
 @PreAuthorize("hasRole('QUAN_TRI')")
+@Tag(name = "Quản trị - Thống kê & Báo cáo", description = "Thống kê tổng quan đào tạo, số liệu đăng ký theo môn, tải đào tạo và phân tích phổ điểm")
 public class AdminStatisticsController {
 
     private final StatisticsService thongKeService;
@@ -39,20 +46,61 @@ public class AdminStatisticsController {
     }
 
     @GetMapping("/thong-ke/tong-quan")
+    @Operation(summary = "Thống kê tổng quan hệ thống", description = "Xem tổng số sinh viên, giảng viên, môn học, lớp mở và lượt đăng ký")
     public StatDtos.TongQuanDto tongQuan() {
         return thongKeService.tongQuan();
     }
 
     @GetMapping("/thong-ke/theo-mon")
+    @Operation(summary = "Thống kê đăng ký theo môn học", description = "Báo cáo số lượng sinh viên đăng ký theo từng môn học trong kỳ")
     public List<StatDtos.ThongKeMonDto> theoMon(@RequestParam(required = false) Long hocKyId,
-                                                @RequestParam(required = false) Long khoaId) {
-        return thongKeService.theoMon(hocKyId, khoaId);
+                                                @RequestParam(required = false) Long khoaId,
+                                                @RequestParam(required = false) Long nganhId) {
+        return thongKeService.theoMon(hocKyId, khoaId, nganhId);
     }
 
     @GetMapping("/thong-ke/hanh-dong")
+    @Operation(summary = "Thống kê hành động học vụ", description = "Đếm số lượng sinh viên cần cảnh báo hoặc hỗ trợ học tập")
     public StatDtos.HanhDongHocVuDto hanhDong(@RequestParam(required = false) Long hocKyId,
                                               @RequestParam(required = false) Long khoaId) {
         return thongKeService.hanhDong(hocKyId, khoaId);
+    }
+
+    /**
+     * Dashboard KPI tổng hợp toàn diện (QLSV-86 / TASK-AD-11):
+     * Cung cấp số đăng ký, tỷ lệ lấp đầy, đạt/trượt, GPA, tiến độ học tập và chi tiết theo môn
+     * từ cùng một nguồn tính toán (Single Source of Truth), chỉ dùng điểm đã công bố.
+     */
+    @GetMapping("/thong-ke/kpi-dashboard")
+    public StatDtos.DashboardKpiResponseDto layKpiDashboard(
+            @RequestParam(required = false) Long hocKyId,
+            @RequestParam(required = false) Long khoaId,
+            @RequestParam(required = false) Long nganhId,
+            @RequestParam(required = false) Long monHocId,
+            @RequestParam(required = false) Long lopHocPhanId) {
+        return thongKeService.layDashboardKpi(hocKyId, khoaId, nganhId, monHocId, lopHocPhanId);
+    }
+
+    /**
+     * Xuất file CSV báo cáo thống kê chính xác theo bộ lọc đang xem (QLSV-86 / TASK-AD-11 / QLSV-91).
+     * Khớp 100% với số liệu trên Dashboard, có timestamp, UTF-8 BOM, Zero PII.
+     */
+    @GetMapping({"/thong-ke/export", "/thong-ke/xuat-csv"})
+    public ResponseEntity<byte[]> xuatBaoCaoCsv(
+            @RequestParam(required = false) Long hocKyId,
+            @RequestParam(required = false) Long khoaId,
+            @RequestParam(required = false) Long nganhId,
+            @RequestParam(required = false) Long monHocId,
+            @RequestParam(required = false) Long lopHocPhanId,
+            @RequestParam(defaultValue = "CSV") String dinhDang) {
+        byte[] duLieu = thongKeService.xuatBaoCaoThongKeCsv(hocKyId, khoaId, nganhId, monHocId, lopHocPhanId);
+        String timestamp = LocalDateTime.now(ExportSecuritySupport.VIETNAM_ZONE_ID)
+                .format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(new MediaType("text", "csv", StandardCharsets.UTF_8));
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"bao-cao-thong-ke-" + timestamp + ".csv\"");
+        headers.setCacheControl(CacheControl.noStore());
+        return new ResponseEntity<>(duLieu, headers, HttpStatus.OK);
     }
 
     @GetMapping({"/thong-ke/diem-lop", "/thong-ke-diem"})
@@ -70,11 +118,12 @@ public class AdminStatisticsController {
     }
 
     @GetMapping("/lop-hoc-phan/{id}/csv")
-    public ResponseEntity<byte[]> xuatCsv(@PathVariable Long id) {
-        byte[] duLieu = thongKeService.xuatDanhSachLop(id);
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(new MediaType("text", "csv", StandardCharsets.UTF_8));
-        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=lop-hoc-phan-" + id + ".csv");
-        return new ResponseEntity<>(duLieu, headers, HttpStatus.OK);
+    public ResponseEntity<byte[]> xuatCsv(
+            @PathVariable Long id,
+            @RequestParam(required = false) String tuKhoa,
+            @RequestParam(required = false) String sapXep) {
+        StatisticsService.ClassExportResult ketQua = thongKeService.xuatDanhSachLopChiTiet(id, tuKhoa, sapXep);
+        HttpHeaders headers = ExportSecuritySupport.createSafeDownloadHeaders(ketQua.tenTep(), MediaType.parseMediaType("text/csv; charset=UTF-8"));
+        return new ResponseEntity<>(ketQua.noiDung(), headers, HttpStatus.OK);
     }
 }

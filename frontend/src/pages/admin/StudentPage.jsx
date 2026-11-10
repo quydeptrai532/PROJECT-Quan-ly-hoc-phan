@@ -1,8 +1,10 @@
 import { useMemo, useRef, useState } from "react";
-import { Download, Lock, LockOpen, Pencil, Plus, Search, Upload, UserRound } from "lucide-react";
+import { Download, GraduationCap, History, Lock, LockOpen, Pencil, Plus, Search, Upload, UserRound } from "lucide-react";
+import { formatDate, formatDateTime } from "../../lib/format";
 import api, { getErrorMessage } from "../../api/client";
 import { useConfirm } from "../../components/ConfirmDialog";
 import { Alert, Badge, EmptyState, Field, Modal, PageHeader, Spinner } from "../../components/ui";
+import UserImportModal from "../../components/UserImportModal";
 import { useApi } from "../../lib/useApi";
 
 const EMPTY_FORM = {
@@ -29,6 +31,7 @@ export default function StudentPage() {
   const [actionError, setActionError] = useState("");
   const [importResult, setImportResult] = useState(null);
   const [importing, setImporting] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [busyId, setBusyId] = useState(null);
   const fileRef = useRef(null);
 
@@ -37,6 +40,22 @@ export default function StudentPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [statusStudent, setStatusStudent] = useState(null);
+  const [statusForm, setStatusForm] = useState({
+    trangThaiMoi: "",
+    ngayHieuLuc: new Date().toISOString().slice(0, 10),
+    lyDo: "",
+  });
+  const [statusSaving, setStatusSaving] = useState(false);
+  const [statusFormError, setStatusFormError] = useState("");
+
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [historyStudent, setHistoryStudent] = useState(null);
+  const [historyList, setHistoryList] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState("");
 
   const rows = useMemo(() => {
     const list = sinhVienList || [];
@@ -136,6 +155,63 @@ export default function StudentPage() {
     }
   };
 
+  const openStatusModal = (row) => {
+    setStatusStudent(row);
+    setStatusForm({
+      trangThaiMoi: "",
+      ngayHieuLuc: new Date().toISOString().slice(0, 10),
+      lyDo: "",
+    });
+    setStatusFormError("");
+    setStatusModalOpen(true);
+  };
+
+  const submitStatus = async (event) => {
+    event.preventDefault();
+    if (!statusForm.trangThaiMoi) {
+      setStatusFormError("Vui lòng chọn trạng thái học tập mới");
+      return;
+    }
+    if (!statusForm.lyDo.trim()) {
+      setStatusFormError("Vui lòng nhập lý do cập nhật trạng thái");
+      return;
+    }
+    setStatusSaving(true);
+    setStatusFormError("");
+    setMessage("");
+    setActionError("");
+    try {
+      await api.patch(`/admin/sinh-vien/${statusStudent.id}/trang-thai-hoc-tap`, {
+        trangThaiMoi: statusForm.trangThaiMoi,
+        ngayHieuLuc: statusForm.ngayHieuLuc,
+        lyDo: statusForm.lyDo.trim(),
+      });
+      setMessage(`Đã cập nhật trạng thái học tập của sinh viên ${statusStudent.hoTen}`);
+      setStatusModalOpen(false);
+      reload();
+    } catch (err) {
+      setStatusFormError(getErrorMessage(err));
+    } finally {
+      setStatusSaving(false);
+    }
+  };
+
+  const openHistoryModal = async (row) => {
+    setHistoryStudent(row);
+    setHistoryList([]);
+    setHistoryError("");
+    setHistoryModalOpen(true);
+    setHistoryLoading(true);
+    try {
+      const { data } = await api.get(`/admin/sinh-vien/${row.id}/lich-su-trang-thai-hoc-tap`);
+      setHistoryList(data || []);
+    } catch (err) {
+      setHistoryError(getErrorMessage(err));
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
   const importCsv = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -157,16 +233,28 @@ export default function StudentPage() {
     }
   };
 
-  const taiFileMau = () => {
-    const csv = "\uFEFFma,hoTen,email,khoaId,nganhId,lopId\nSV010,Nguyen Van A,a@student.edu.vn,1,1,1\n";
-    const url = window.URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "mau-import-sinh-vien.csv";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
+  const taiFileMau = async () => {
+    try {
+      const response = await api.get("/admin/sinh-vien/import/template", { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: "text/csv;charset=utf-8" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "mau-import-sinh-vien.csv";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      const csv = "\uFEFFma,hoTen,email,khoaId,nganhId,lopId\nSV010,Nguyen Van A,a@student.edu.vn,1,1,1\n";
+      const url = window.URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "mau-import-sinh-vien.csv";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    }
   };
 
   return (
@@ -183,10 +271,9 @@ export default function StudentPage() {
             <button
               type="button"
               className="btn-secondary"
-              onClick={() => fileRef.current?.click()}
-              disabled={importing}
+              onClick={() => setImportModalOpen(true)}
             >
-              <Upload size={16} /> {importing ? "Đang nhập..." : "Nhập CSV"}
+              <Upload size={16} /> Nhập CSV (Xem trước & Kiểm tra)
             </button>
             <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={importCsv} />
             <button type="button" className="btn-primary" onClick={openCreate}>
@@ -237,7 +324,8 @@ export default function StudentPage() {
                   <th className="th">Khoa / Ngành</th>
                   <th className="th">Lớp</th>
                   <th className="th">Tài khoản</th>
-                  <th className="th text-center">Trạng thái</th>
+                  <th className="th text-center">Trạng thái TK</th>
+                  <th className="th text-center">Trạng thái học tập</th>
                   <th className="th text-right">Thao tác</th>
                 </tr>
               </thead>
@@ -268,6 +356,15 @@ export default function StudentPage() {
                         {row.trangThai ? "Hoạt động" : "Đã khóa"}
                       </Badge>
                     </td>
+                    <td className="td text-center">
+                      <Badge tone={
+                        row.trangThaiHocTap === "DANG_HOC" ? "green" :
+                        row.trangThaiHocTap === "BAO_LUU" ? "amber" :
+                        row.trangThaiHocTap === "THOI_HOC" ? "red" : "purple"
+                      }>
+                        {row.trangThaiHocTapMoTa || (row.trangThaiHocTap === "BAO_LUU" ? "Bảo lưu" : row.trangThaiHocTap === "THOI_HOC" ? "Thôi học" : row.trangThaiHocTap === "TOT_NGHIEP" ? "Tốt nghiệp" : "Đang học")}
+                      </Badge>
+                    </td>
                     <td className="td">
                       <div className="flex justify-end gap-1">
                         <button
@@ -277,6 +374,22 @@ export default function StudentPage() {
                           title="Sửa"
                         >
                           <Pencil size={15} />
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-md p-1.5 text-indigo-600 hover:bg-indigo-50"
+                          onClick={() => openStatusModal(row)}
+                          title="Đổi trạng thái học tập"
+                        >
+                          <GraduationCap size={15} />
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100"
+                          onClick={() => openHistoryModal(row)}
+                          title="Lịch sử trạng thái học tập"
+                        >
+                          <History size={15} />
                         </button>
                         <button
                           type="button"
@@ -409,6 +522,139 @@ export default function StudentPage() {
             </Field>
           </div>
         </form>
+      </Modal>
+
+      <UserImportModal
+        open={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        type="sinh-vien"
+        onSuccess={reload}
+      />
+
+      <Modal
+        open={statusModalOpen}
+        onClose={() => setStatusModalOpen(false)}
+        title="Cập nhật trạng thái học tập"
+        footer={
+          <>
+            <button type="button" className="btn-secondary" onClick={() => setStatusModalOpen(false)}>Hủy</button>
+            <button type="submit" form="status-form" className="btn-primary" disabled={statusSaving}>
+              {statusSaving ? "Đang lưu..." : "Cập nhật"}
+            </button>
+          </>
+        }
+      >
+        <form id="status-form" className="space-y-4" onSubmit={submitStatus}>
+          {statusFormError && <Alert tone="error">{statusFormError}</Alert>}
+          <div className="rounded-lg bg-slate-50 p-3 text-sm">
+            <p><strong>Sinh viên:</strong> {statusStudent?.hoTen} ({statusStudent?.ma})</p>
+            <p className="mt-1">
+              <strong>Trạng thái hiện tại:</strong>{" "}
+              <Badge tone={
+                statusStudent?.trangThaiHocTap === "DANG_HOC" ? "green" :
+                statusStudent?.trangThaiHocTap === "BAO_LUU" ? "amber" :
+                statusStudent?.trangThaiHocTap === "THOI_HOC" ? "red" : "purple"
+              }>
+                {statusStudent?.trangThaiHocTapMoTa || statusStudent?.trangThaiHocTap || "Đang học"}
+              </Badge>
+            </p>
+          </div>
+
+          <Field label="Trạng thái học tập mới" required>
+            <select
+              className="input"
+              value={statusForm.trangThaiMoi}
+              onChange={(e) => setStatusForm({ ...statusForm, trangThaiMoi: e.target.value })}
+              required
+            >
+              <option value="">-- Chọn trạng thái mới --</option>
+              <option value="DANG_HOC">Đang học</option>
+              <option value="BAO_LUU">Bảo lưu</option>
+              <option value="THOI_HOC">Thôi học</option>
+              <option value="TOT_NGHIEP">Tốt nghiệp</option>
+            </select>
+          </Field>
+
+          <Field label="Ngày hiệu lực" required>
+            <input
+              className="input"
+              type="date"
+              value={statusForm.ngayHieuLuc}
+              onChange={(e) => setStatusForm({ ...statusForm, ngayHieuLuc: e.target.value })}
+              required
+            />
+          </Field>
+
+          <Field label="Lý do / Quyết định / Ghi chú" required>
+            <textarea
+              className="input min-h-[90px]"
+              placeholder="Nhập lý do đổi trạng thái học tập (VD: Quyết định bảo lưu số 123/QĐ-ĐT)..."
+              value={statusForm.lyDo}
+              onChange={(e) => setStatusForm({ ...statusForm, lyDo: e.target.value })}
+              maxLength={500}
+              required
+            />
+          </Field>
+        </form>
+      </Modal>
+
+      <Modal
+        open={historyModalOpen}
+        onClose={() => setHistoryModalOpen(false)}
+        title={`Lịch sử trạng thái học tập: ${historyStudent?.hoTen || ""} (${historyStudent?.ma || ""})`}
+        size="lg"
+      >
+        {historyLoading ? (
+          <Spinner />
+        ) : historyError ? (
+          <Alert tone="error">{historyError}</Alert>
+        ) : historyList.length === 0 ? (
+          <EmptyState icon={History} title="Chưa có lịch sử chuyển đổi" description="Sinh viên chưa có lần chuyển đổi trạng thái học tập nào." />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-slate-700">
+                <tr>
+                  <th className="th">Thời điểm</th>
+                  <th className="th text-center">Trước</th>
+                  <th className="th text-center">Sau</th>
+                  <th className="th">Ngày hiệu lực</th>
+                  <th className="th">Lý do / Ghi chú</th>
+                  <th className="th">Người thực hiện</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {historyList.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50/60">
+                    <td className="td text-xs text-slate-600">{formatDateTime(item.thoiDiem)}</td>
+                    <td className="td text-center">
+                      <Badge tone={
+                        item.trangThaiTruoc === "DANG_HOC" ? "green" :
+                        item.trangThaiTruoc === "BAO_LUU" ? "amber" :
+                        item.trangThaiTruoc === "THOI_HOC" ? "red" :
+                        item.trangThaiTruoc === "TOT_NGHIEP" ? "purple" : "slate"
+                      }>
+                        {item.trangThaiTruocMoTa || (item.trangThaiTruoc || "Ban đầu")}
+                      </Badge>
+                    </td>
+                    <td className="td text-center">
+                      <Badge tone={
+                        item.trangThaiSau === "DANG_HOC" ? "green" :
+                        item.trangThaiSau === "BAO_LUU" ? "amber" :
+                        item.trangThaiSau === "THOI_HOC" ? "red" : "purple"
+                      }>
+                        {item.trangThaiSauMoTa || item.trangThaiSau}
+                      </Badge>
+                    </td>
+                    <td className="td text-xs font-medium text-slate-700">{formatDate(item.ngayHieuLuc)}</td>
+                    <td className="td text-xs text-slate-700 max-w-[200px] break-words">{item.ghiChu || "—"}</td>
+                    <td className="td text-xs text-slate-500 font-mono">{item.nguoiThucHienUsername || "Hệ thống"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Modal>
     </div>
   );

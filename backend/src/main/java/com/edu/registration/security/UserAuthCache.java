@@ -45,6 +45,10 @@ public class UserAuthCache {
         }
     }
 
+    public void evictAll() {
+        cache.clear();
+    }
+
     public record AuthUser(String username, Role role, boolean active) {
     }
 

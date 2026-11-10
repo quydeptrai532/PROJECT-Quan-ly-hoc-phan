@@ -28,6 +28,9 @@ public class Major {
     @JoinColumn(name = "khoa_id", nullable = false)
     private Faculty khoa;
 
+    @Column(name = "dang_hieu_luc", nullable = false)
+    private boolean dangHieuLuc = true;
+
     public Long getId() {
         return id;
     }
@@ -58,5 +61,13 @@ public class Major {
 
     public void setKhoa(Faculty khoa) {
         this.khoa = khoa;
+    }
+
+    public boolean isDangHieuLuc() {
+        return dangHieuLuc;
+    }
+
+    public void setDangHieuLuc(boolean dangHieuLuc) {
+        this.dangHieuLuc = dangHieuLuc;
     }
 }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
+  AlertTriangle,
   Ban,
   CheckCircle2,
   ClipboardCheck,
@@ -51,24 +52,64 @@ const EMPTY_FORM = {
   siSoToiDa: "40",
 };
 
+async function docThongBaoLoi(err) {
+  const data = err?.response?.data;
+  if (data instanceof Blob) {
+    try {
+      const parsed = JSON.parse(await data.text());
+      if (parsed?.message) return parsed.message;
+    } catch {
+      // Dùng thông báo mặc định
+    }
+  }
+  return getErrorMessage(err);
+}
+
+function layTenTepTuHeader(headers, macDinh) {
+  const disposition = headers?.["content-disposition"] || headers?.["Content-Disposition"];
+  if (!disposition) return macDinh;
+
+  const utf8Match = disposition.match(/filename\*=UTF-8''([^;\s]+)/i);
+  if (utf8Match?.[1]) {
+    try {
+      return decodeURIComponent(utf8Match[1]);
+    } catch {
+      return utf8Match[1];
+    }
+  }
+
+  const asciiMatch = disposition.match(/filename="?([^";]+)"?/i);
+  if (asciiMatch?.[1]) {
+    return asciiMatch[1].trim();
+  }
+  return macDinh;
+}
+
 export default function CourseClassPage() {
   const [searchParams] = useSearchParams();
   const confirm = useConfirm();
   const { data: hocKyList } = useApi("/admin/hoc-ky");
   const { data: monHocList } = useApi("/admin/mon-hoc");
   const { data: giangVienList } = useApi("/admin/giang-vien");
+  const { data: activeRooms } = useApi("/admin/phong-hoc/hoat-dong");
 
   const [hocKyId, setHocKyId] = useState(() => searchParams.get("hocKyId") || "");
   const [keyword, setKeyword] = useState(() => searchParams.get("keyword") || "");
+  const [giangVienFilter, setGiangVienFilter] = useState("");
+  const [gradeStatusFilter, setGradeStatusFilter] = useState("");
   const [message, setMessage] = useState("");
   const [warning, setWarning] = useState("");
   const [actionError, setActionError] = useState("");
+  const [actionSuccess, setActionSuccess] = useState("");
+  const [exportingClassId, setExportingClassId] = useState(null);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [conflictLoading, setConflictLoading] = useState(false);
+  const [conflictResult, setConflictResult] = useState(null);
 
   // Grade sheet review / reason modal state (QLSV-74)
   const [reasonModalOpen, setReasonModalOpen] = useState(false);
@@ -84,6 +125,36 @@ export default function CourseClassPage() {
   const [gradeDetailLoading, setGradeDetailLoading] = useState(false);
   const [gradeDetailError, setGradeDetailError] = useState("");
 
+  // Impact survey & cancellation modal (QLSV-79)
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelSurveyRow, setCancelSurveyRow] = useState(null);
+  const [cancelSurveyData, setCancelSurveyData] = useState(null);
+  const [cancelSurveyLoading, setCancelSurveyLoading] = useState(false);
+  const [cancelSurveyError, setCancelSurveyError] = useState("");
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+
+  // Student transfer modal (QLSV-79)
+  const [transferModalOpen, setTransferModalOpen] = useState(false);
+  const [transferSourceRow, setTransferSourceRow] = useState(null);
+  const [transferTargetClasses, setTransferTargetClasses] = useState([]);
+  const [transferTargetClassId, setTransferTargetClassId] = useState("");
+  const [transferStudents, setTransferStudents] = useState([]);
+  const [transferSelectedStudentIds, setTransferSelectedStudentIds] = useState([]);
+  const [transferCheckResults, setTransferCheckResults] = useState(null);
+  const [transferChecking, setTransferChecking] = useState(false);
+  const [transferReason, setTransferReason] = useState("");
+  const [transferSubmitting, setTransferSubmitting] = useState(false);
+  const [transferError, setTransferError] = useState("");
+
+  // Transfer history modal (QLSV-79)
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [historyRow, setHistoryRow] = useState(null);
+  const [historyList, setHistoryList] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState("");
+
+
   useEffect(() => {
     if (!hocKyId && hocKyList?.length) {
       setHocKyId(String(hocKyList[0].id));
@@ -93,8 +164,18 @@ export default function CourseClassPage() {
   const params = hocKyId ? { hocKyId } : undefined;
   const { data: lopList, loading, error, reload } = useApi("/admin/lop-hoc-phan", params);
 
+  const pendingApprovalCount = useMemo(() => {
+    return (lopList || []).filter((l) => l.trangThaiBangDiem === "CHO_DUYET").length;
+  }, [lopList]);
+
   const rows = useMemo(() => {
-    const list = lopList || [];
+    let list = lopList || [];
+    if (giangVienFilter) {
+      list = list.filter((lop) => String(lop.giangVienId) === String(giangVienFilter));
+    }
+    if (gradeStatusFilter) {
+      list = list.filter((lop) => (lop.trangThaiBangDiem || "NHAP") === gradeStatusFilter);
+    }
     const term = keyword.trim().toLowerCase();
     if (!term) return list;
     return list.filter(
@@ -104,12 +185,13 @@ export default function CourseClassPage() {
         lop.maMon.toLowerCase().includes(term) ||
         lop.tenGiangVien.toLowerCase().includes(term)
     );
-  }, [lopList, keyword]);
+  }, [lopList, keyword, giangVienFilter, gradeStatusFilter]);
 
   const openCreate = () => {
     setEditing(null);
     setForm({ ...EMPTY_FORM, hocKyId: hocKyId || "" });
     setFormError("");
+    setConflictResult(null);
     setModalOpen(true);
   };
 
@@ -127,8 +209,74 @@ export default function CourseClassPage() {
       siSoToiDa: String(row.siSoToiDa),
     });
     setFormError("");
+    setConflictResult(null);
     setModalOpen(true);
   };
+
+  // Tự động kiểm tra xung đột thời khóa biểu với cùng thuật toán backend (QLSV-78)
+  useEffect(() => {
+    if (!modalOpen) {
+      setConflictResult(null);
+      return;
+    }
+
+    const hocKyIdNum = Number(form.hocKyId);
+    const giangVienIdNum = Number(form.giangVienId);
+    const thuNum = Number(form.thu);
+    const tietBatDauNum = Number(form.tietBatDau);
+    const soTietNum = Number(form.soTiet);
+    const phongTrim = form.phong ? form.phong.trim() : "";
+
+    if (
+      !hocKyIdNum ||
+      !giangVienIdNum ||
+      !phongTrim ||
+      !thuNum ||
+      !tietBatDauNum ||
+      !soTietNum ||
+      tietBatDauNum < 1 ||
+      tietBatDauNum > 12 ||
+      soTietNum < 1 ||
+      soTietNum > 6 ||
+      tietBatDauNum + soTietNum - 1 > 12
+    ) {
+      setConflictResult(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setConflictLoading(true);
+      try {
+        const { data } = await api.post("/admin/lop-hoc-phan/kiem-tra-xung-dot", {
+          lopHocPhanId: editing ? editing.id : null,
+          hocKyId: hocKyIdNum,
+          monHocId: form.monHocId ? Number(form.monHocId) : null,
+          giangVienId: giangVienIdNum,
+          phong: phongTrim,
+          thu: thuNum,
+          tietBatDau: tietBatDauNum,
+          soTiet: soTietNum,
+        });
+        setConflictResult(data);
+      } catch (err) {
+        console.error("Lỗi khi kiểm tra xung đột lịch học:", err);
+      } finally {
+        setConflictLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [
+    modalOpen,
+    editing,
+    form.hocKyId,
+    form.giangVienId,
+    form.phong,
+    form.thu,
+    form.tietBatDau,
+    form.soTiet,
+    form.monHocId,
+  ]);
 
   const submit = async (event) => {
     event.preventDefault();
@@ -299,18 +447,25 @@ export default function CourseClassPage() {
 
   const taiCsv = async (row) => {
     setActionError("");
+    setActionSuccess("");
+    setExportingClassId(row.id);
     try {
       const response = await api.get(`/admin/lop-hoc-phan/${row.id}/csv`, { responseType: "blob" });
+      const defaultFilename = `danh-sach-sinh-vien-${row.ma}.csv`;
+      const tenTep = layTenTepTuHeader(response.headers, defaultFilename);
       const url = window.URL.createObjectURL(new Blob([response.data], { type: "text/csv;charset=utf-8" }));
       const link = document.createElement("a");
       link.href = url;
-      link.download = `lop-${row.ma}.csv`;
+      link.download = tenTep;
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
+      setActionSuccess(`Đã xuất danh sách lớp ${row.ma} thành công (${tenTep})`);
     } catch (err) {
-      setActionError(getErrorMessage(err));
+      setActionError(await docThongBaoLoi(err));
+    } finally {
+      setExportingClassId(null);
     }
   };
 
@@ -343,22 +498,114 @@ export default function CourseClassPage() {
       <div className="mb-4 space-y-3">
         {message && <Alert tone="success" onClose={() => setMessage("")}>{message}</Alert>}
         {warning && <Alert tone="warning" onClose={() => setWarning("")}>{warning}</Alert>}
+        {actionSuccess && <Alert tone="success" onClose={() => setActionSuccess("")}>{actionSuccess}</Alert>}
         {actionError && <Alert tone="error" onClose={() => setActionError("")}>{actionError}</Alert>}
         {error && <Alert tone="error">{error}</Alert>}
       </div>
 
       <div className="card overflow-hidden">
+        {/* Quick Grade Sheet Approval Filters */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-slate-50/70 px-4 py-2.5">
+          <span className="text-xs font-semibold text-slate-500 mr-1">Trạng thái điểm:</span>
+          <button
+            type="button"
+            className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+              !gradeStatusFilter ? "bg-[#173f3a] text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+            }`}
+            onClick={() => setGradeStatusFilter("")}
+          >
+            Tất cả ({(lopList || []).length})
+          </button>
+          <button
+            type="button"
+            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+              gradeStatusFilter === "CHO_DUYET"
+                ? "bg-amber-600 text-white"
+                : "bg-white border border-slate-200 text-amber-700 hover:bg-amber-50"
+            }`}
+            onClick={() => setGradeStatusFilter("CHO_DUYET")}
+          >
+            Chờ duyệt
+            {pendingApprovalCount > 0 && (
+              <span className={`rounded-full px-1.5 text-[10px] font-bold ${
+                gradeStatusFilter === "CHO_DUYET" ? "bg-white text-amber-800" : "bg-amber-100 text-amber-900"
+              }`}>
+                {pendingApprovalCount}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+              gradeStatusFilter === "DA_DUYET" ? "bg-blue-600 text-white" : "bg-white border border-slate-200 text-blue-700 hover:bg-blue-50"
+            }`}
+            onClick={() => setGradeStatusFilter("DA_DUYET")}
+          >
+            Đã duyệt
+          </button>
+          <button
+            type="button"
+            className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+              gradeStatusFilter === "DA_CONG_BO" ? "bg-green-600 text-white" : "bg-white border border-slate-200 text-green-700 hover:bg-green-50"
+            }`}
+            onClick={() => setGradeStatusFilter("DA_CONG_BO")}
+          >
+            Đã công bố
+          </button>
+          <button
+            type="button"
+            className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+              gradeStatusFilter === "DA_KHOA" ? "bg-indigo-600 text-white" : "bg-white border border-slate-200 text-indigo-700 hover:bg-indigo-50"
+            }`}
+            onClick={() => setGradeStatusFilter("DA_KHOA")}
+          >
+            Đã khóa
+          </button>
+          <button
+            type="button"
+            className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+              gradeStatusFilter === "TRA_VE" ? "bg-rose-600 text-white" : "bg-white border border-slate-200 text-rose-700 hover:bg-rose-50"
+            }`}
+            onClick={() => setGradeStatusFilter("TRA_VE")}
+          >
+            Trả sửa
+          </button>
+          <button
+            type="button"
+            className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+              gradeStatusFilter === "NHAP" ? "bg-slate-600 text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+            }`}
+            onClick={() => setGradeStatusFilter("NHAP")}
+          >
+            Bản nháp
+          </button>
+        </div>
+
         <div className="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative w-full sm:max-w-sm">
-            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              className="input pl-9"
-              placeholder="Tìm lớp, môn học, giảng viên..."
-              value={keyword}
-              onChange={(event) => setKeyword(event.target.value)}
-            />
+          <div className="flex flex-wrap items-center gap-3 w-full sm:max-w-2xl">
+            <div className="relative w-full sm:max-w-xs">
+              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                className="input pl-9"
+                placeholder="Tìm lớp, môn học, giảng viên..."
+                value={keyword}
+                onChange={(event) => setKeyword(event.target.value)}
+              />
+            </div>
+            <select
+              className="input w-auto min-w-[200px]"
+              value={giangVienFilter}
+              onChange={(e) => setGiangVienFilter(e.target.value)}
+            >
+              <option value="">Tất cả giảng viên</option>
+              {(giangVienList || []).map((gv) => (
+                <option key={gv.id} value={gv.id}>
+                  {gv.hoTen} ({gv.ma})
+                </option>
+              ))}
+            </select>
           </div>
-          <p className="text-sm text-slate-500">{rows.length} lớp học phần</p>
+          <p className="text-sm text-slate-500 shrink-0">{rows.length} lớp học phần</p>
         </div>
 
         {loading ? (
@@ -385,7 +632,21 @@ export default function CourseClassPage() {
                   const statusMeta = GRADE_SHEET_STATUS_META[row.trangThaiBangDiem] || GRADE_SHEET_STATUS_META.NHAP;
                   return (
                     <tr key={row.id} className="hover:bg-slate-50/60">
-                      <td className="td font-medium text-slate-900">{row.ma}</td>
+                      <td className="td font-medium text-slate-900">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span>{row.ma}</span>
+                          {row.daHuy && (
+                            <Badge tone="rose" title={`Đã hủy lúc ${formatDateTime(row.thoiGianHuy)} - Lý do: ${row.lyDoHuy || "Không ghi"}`}>
+                              Đã hủy
+                            </Badge>
+                          )}
+                        </div>
+                        {row.daHuy && row.lyDoHuy && (
+                          <p className="text-[11px] text-rose-600 truncate max-w-[160px]" title={row.lyDoHuy}>
+                            Lý do: {row.lyDoHuy}
+                          </p>
+                        )}
+                      </td>
                       <td className="td">
                         <p className="font-medium text-slate-800">{row.tenMon}</p>
                         <p className="text-xs text-slate-500">
@@ -499,11 +760,12 @@ export default function CourseClassPage() {
                           )}
                           <button
                             type="button"
-                            className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100"
+                            className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 disabled:opacity-50"
+                            disabled={exportingClassId === row.id}
                             onClick={() => taiCsv(row)}
-                            title="Xuất danh sách CSV"
+                            title={exportingClassId === row.id ? "Đang xuất CSV..." : "Xuất danh sách CSV"}
                           >
-                            <Download size={15} />
+                            <Download size={15} className={exportingClassId === row.id ? "animate-pulse text-indigo-600" : ""} />
                           </button>
                           <button
                             type="button"
@@ -640,6 +902,7 @@ export default function CourseClassPage() {
                       <button
                         type="button"
                         className="btn-primary text-xs"
+                        disabled={gradeDetailStatus.soSinhVienDuDieuKien < gradeDetailStatus.soSinhVienDangHoc || gradeDetailStatus.soSinhVienDangHoc === 0}
                         onClick={() => thucHienBangDiem(gradeDetailRow, "phe-duyet-diem", `Đã phê duyệt bảng điểm lớp ${gradeDetailRow.ma}`)}
                       >
                         <CheckCircle2 size={14} /> Phê duyệt
@@ -786,7 +1049,13 @@ export default function CourseClassPage() {
         footer={
           <>
             <button type="button" className="btn-secondary" onClick={() => setModalOpen(false)}>Hủy</button>
-            <button type="submit" form="course-class-form" className="btn-primary" disabled={saving}>
+            <button
+              type="submit"
+              form="course-class-form"
+              className="btn-primary"
+              disabled={saving || (conflictResult?.coXungDot && !conflictResult?.choPhepLuu)}
+              title={conflictResult?.coXungDot && !conflictResult?.choPhepLuu ? "Bị chặn do xung đột lịch học" : undefined}
+            >
               {saving ? "Đang lưu..." : "Lưu"}
             </button>
           </>
@@ -795,6 +1064,66 @@ export default function CourseClassPage() {
         <form id="course-class-form" className="grid gap-4 sm:grid-cols-2" onSubmit={submit}>
           {formError && (
             <div className="sm:col-span-2"><Alert tone="error">{formError}</Alert></div>
+          )}
+
+          {conflictLoading && (
+            <div className="sm:col-span-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-xs text-slate-600">
+              <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+              <span>Đang đối chiếu lịch giảng viên và phòng học...</span>
+            </div>
+          )}
+
+          {conflictResult?.coXungDot && (
+            <div className="sm:col-span-2 rounded-xl border border-rose-200 bg-rose-50/70 p-4 text-xs space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-rose-100 text-rose-700 font-bold">
+                    !
+                  </span>
+                  <span className="font-semibold text-rose-900 text-sm">
+                    Phát hiện {conflictResult.soLuongXungDot} xung đột lịch học
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {conflictResult.xungDotGiangVien && (
+                    <Badge tone="rose">Trùng lịch giảng viên</Badge>
+                  )}
+                  {conflictResult.xungDotPhong && (
+                    <Badge tone="amber">Trùng phòng học</Badge>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-1.5 divide-y divide-rose-100 rounded-lg bg-white/90 p-2.5 border border-rose-100 text-slate-700">
+                {conflictResult.danhSachXungDot.map((item, idx) => (
+                  <div key={idx} className={idx > 0 ? "pt-1.5" : ""}>
+                    <p className="font-medium text-slate-800">
+                      • {item.moTa}
+                    </p>
+                    <p className="text-[11px] text-slate-500 pl-2">
+                      Lớp đối chiếu: <span className="font-mono text-indigo-700">{item.maLopLienQuan}</span> ({item.tenMonLienQuan || "—"}) · Phòng: {item.phong} · {item.thu === 8 ? "Chủ nhật" : `Thứ ${item.thu}`}, tiết {item.tietBatDau}-{item.tietKetThuc}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-rose-800">
+                <p>
+                  <span className="font-semibold">Chính sách áp dụng:</span>{" "}
+                  {conflictResult.chinhSachEnforcement === "BLOCK_ON_CONFLICT"
+                    ? "Chặn lưu khi phát hiện xung đột"
+                    : conflictResult.chinhSachEnforcement}
+                  {!conflictResult.chinhSachDaChot && (
+                    <span className="italic ml-1 text-slate-600">(Chờ chủ dự án phê duyệt quy định chính thức)</span>
+                  )}
+                </p>
+                {!conflictResult.choPhepLuu && (
+                  <span className="rounded bg-rose-200/80 px-2 py-0.5 font-semibold text-rose-950">
+                    Không cho phép lưu
+                  </span>
+                )}
+              </div>
+            </div>
           )}
           <Field label="Mã lớp học phần" required>
             <input
@@ -850,14 +1179,22 @@ export default function CourseClassPage() {
               ))}
             </select>
           </Field>
-          <Field label="Phòng học" required>
+          <Field label="Phòng học" required hint="Chỉ chọn hoặc nhập phòng đang hoạt động">
             <input
-              className="input"
+              className="input font-mono uppercase"
+              list="ds-phong-hoat-dong"
               value={form.phong}
-              onChange={(event) => setForm({ ...form, phong: event.target.value })}
+              onChange={(event) => setForm({ ...form, phong: event.target.value.toUpperCase() })}
               placeholder="VD: A101"
               required
             />
+            <datalist id="ds-phong-hoat-dong">
+              {(activeRooms || []).map((ph) => (
+                <option key={ph.id} value={ph.ma}>
+                  {ph.ma} - {ph.ten} ({ph.sucChua} chỗ{ph.loaiPhong ? ", " + ph.loaiPhong : ""})
+                </option>
+              ))}
+            </datalist>
           </Field>
           <Field label="Sĩ số tối đa" required>
             <input

@@ -213,12 +213,19 @@ class GradeServiceTest {
         assertEquals("DA_DUYET", approved.trangThaiBangDiem());
         verify(thongBaoService, never()).gradesPublished(any(), any(), anyInt(), any());
 
-        // 5. Admin publishes after approval -> DA_CONG_BO (emits notification with version 1)
+        // 5. Admin publishes after approval -> DA_CONG_BO (emits notification with version 2)
         RegistrationDtos.TrangThaiBangDiemDto published = diemService.congBoBangDiem(100L);
+
         assertEquals("DA_CONG_BO", published.trangThaiBangDiem());
-        assertEquals(1, published.phienBanCongBo());
+        assertEquals(2, published.phienBanCongBo());
         assertTrue(published.daCongBo());
-        verify(thongBaoService, times(1)).gradesPublished(eq(lopHocPhan), eq(List.of(dangKy)), eq(1), any());
+
+        verify(thongBaoService, times(1)).gradesPublished(
+                eq(lopHocPhan),
+                eq(List.of(dangKy)),
+                eq(2),
+                any()
+        );
     }
 
     @Test

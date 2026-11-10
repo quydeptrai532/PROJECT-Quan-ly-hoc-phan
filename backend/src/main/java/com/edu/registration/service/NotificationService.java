@@ -12,6 +12,7 @@ import com.edu.registration.entity.Notification;
 import com.edu.registration.entity.CourseClassAnnouncement;
 import com.edu.registration.entity.ClassAbsenceNotice;
 import com.edu.registration.entity.RegistrationStatus;
+import com.edu.registration.entity.Role;
 import com.edu.registration.entity.User;
 import com.edu.registration.exception.ApiException;
 import com.edu.registration.repository.CourseRegistrationRepository;
@@ -20,6 +21,9 @@ import com.edu.registration.repository.SemesterRepository;
 import com.edu.registration.repository.RegistrationHistoryRepository;
 import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.repository.NotificationRepository;
+import com.edu.registration.entity.NotificationEventType;
+import com.edu.registration.service.email.EmailDeliveryService;
+import com.edu.registration.service.email.EmailTemplateService;
 import com.edu.registration.security.CurrentUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,6 +61,12 @@ public class NotificationService {
     public static final String CLASS_ANNOUNCEMENT_EVENT = "CLASS_ANNOUNCEMENT";
     public static final String ATTENDANCE_ALERT_EVENT = "ATTENDANCE_THRESHOLD_ALERT";
     public static final String ATTENDANCE_RESOLVED_EVENT = "ATTENDANCE_ALERT_RESOLVED";
+    public static final String CLASS_STUDENT_TRANSFERRED_EVENT = "CLASS_STUDENT_TRANSFERRED";
+    public static final String GRADE_APPEAL_EVENT = "GRADE_APPEAL_PROCESSED";
+    public static final String SUPPORT_REQUEST_ASSIGNED_EVENT = "SUPPORT_REQUEST_ASSIGNED";
+    public static final String SUPPORT_REQUEST_STATUS_EVENT = "SUPPORT_REQUEST_STATUS_CHANGED";
+    public static final String SUPPORT_REQUEST_EVIDENCE_EVENT = "SUPPORT_REQUEST_EVIDENCE_REQUESTED";
+    public static final String SUPPORT_REQUEST_COMMENT_EVENT = "SUPPORT_REQUEST_COMMENT_ADDED";
 
     private final NotificationRepository thongBaoRepository;
     private final CourseRegistrationRepository dangKyRepository;
@@ -66,13 +76,15 @@ public class NotificationService {
     private final SemesterRepository hocKyRepository;
     private final CurrentUser currentUser;
     private final TransactionTemplate requiresNewTemplate;
+    private final EmailDeliveryService emailDeliveryService;
+    private final EmailTemplateService emailTemplateService;
 
     public NotificationService(NotificationRepository thongBaoRepository,
                            CourseRegistrationRepository dangKyRepository,
                            StudentRepository sinhVienRepository,
                            SemesterRepository hocKyRepository,
                            CurrentUser currentUser) {
-        this(thongBaoRepository, dangKyRepository, null, null, sinhVienRepository, hocKyRepository, currentUser, null);
+        this(thongBaoRepository, dangKyRepository, null, null, sinhVienRepository, hocKyRepository, currentUser, null, null, null);
     }
 
     public NotificationService(NotificationRepository thongBaoRepository,
@@ -83,7 +95,19 @@ public class NotificationService {
                            CurrentUser currentUser,
                            PlatformTransactionManager transactionManager) {
         this(thongBaoRepository, dangKyRepository, lichSuDangKyRepository, null,
-                sinhVienRepository, hocKyRepository, currentUser, transactionManager);
+                sinhVienRepository, hocKyRepository, currentUser, transactionManager, null, null);
+    }
+
+    public NotificationService(NotificationRepository thongBaoRepository,
+                           CourseRegistrationRepository dangKyRepository,
+                           RegistrationHistoryRepository lichSuDangKyRepository,
+                           GradeRepository diemRepository,
+                           StudentRepository sinhVienRepository,
+                           SemesterRepository hocKyRepository,
+                           CurrentUser currentUser,
+                           PlatformTransactionManager transactionManager) {
+        this(thongBaoRepository, dangKyRepository, lichSuDangKyRepository, diemRepository,
+                sinhVienRepository, hocKyRepository, currentUser, transactionManager, null, null);
     }
 
     @Autowired
@@ -94,7 +118,9 @@ public class NotificationService {
                            StudentRepository sinhVienRepository,
                            SemesterRepository hocKyRepository,
                            CurrentUser currentUser,
-                           PlatformTransactionManager transactionManager) {
+                           PlatformTransactionManager transactionManager,
+                           EmailDeliveryService emailDeliveryService,
+                           EmailTemplateService emailTemplateService) {
         this.thongBaoRepository = thongBaoRepository;
         this.dangKyRepository = dangKyRepository;
         this.lichSuDangKyRepository = lichSuDangKyRepository;
@@ -102,6 +128,8 @@ public class NotificationService {
         this.sinhVienRepository = sinhVienRepository;
         this.hocKyRepository = hocKyRepository;
         this.currentUser = currentUser;
+        this.emailDeliveryService = emailDeliveryService;
+        this.emailTemplateService = emailTemplateService;
         if (transactionManager != null) {
             TransactionTemplate template = new TransactionTemplate(transactionManager);
             template.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -135,8 +163,9 @@ public class NotificationService {
                 .orElseThrow(() -> ApiException.notFound("Thông báo không tồn tại"));
         if (notification.getReadAt() == null) {
             notification.setReadAt(LocalDateTime.now());
+            notification = thongBaoRepository.save(notification);
         }
-        return toDto(thongBaoRepository.save(notification));
+        return toDto(notification);
     }
 
     @Transactional
@@ -184,11 +213,18 @@ public class NotificationService {
         String lecturerMessage = "Có sinh viên " + action + " lớp " + sectionCode + " — "
                 + subjectName + " lúc " + formatTime(effectiveTime) + ".";
 
+        EmailTemplateService.EmailContent studentEmail = emailTemplateService != null
+                ? emailTemplateService.buildRegistrationEmail(registered, false, sectionCode, subjectCode, subjectName, semesterName, effectiveTime, reason)
+                : null;
+        EmailTemplateService.EmailContent lecturerEmail = emailTemplateService != null
+                ? emailTemplateService.buildLecturerRegistrationEmail(registered, sectionCode, subjectName, effectiveTime)
+                : null;
+
         dispatchAfterCommit(eventType + ":" + idempotencyKey, () -> {
-            send(studentUser, eventType, idempotencyKey, title, message, "NORMAL", targetUrl, effectiveTime);
+            send(studentUser, eventType, idempotencyKey, title, message, "NORMAL", targetUrl, effectiveTime, studentEmail);
             if (lecturerUser != null) {
                 send(lecturerUser, eventType, idempotencyKey, lecturerTitle, lecturerMessage,
-                        "NORMAL", "/lop-cua-toi", effectiveTime);
+                        "NORMAL", "/lop-cua-toi", effectiveTime, lecturerEmail);
             }
         });
     }
@@ -232,13 +268,20 @@ public class NotificationService {
                 + ") đã bị hủy lúc " + formatTime(effectiveTime) + formatReason(cleanReason)
                 + ". Bước tiếp theo: kiểm tra danh sách lớp phụ trách.";
 
+        EmailTemplateService.EmailContent studentEmail = emailTemplateService != null
+                ? emailTemplateService.buildRegistrationEmail(false, true, sectionCode, subjectCode, subjectName, semesterName, effectiveTime, cleanReason)
+                : null;
+        EmailTemplateService.EmailContent lecturerEmail = emailTemplateService != null
+                ? emailTemplateService.buildLecturerSectionCancelledEmail(sectionCode, subjectName, semesterName, effectiveTime, cleanReason)
+                : null;
+
         dispatchAfterCommit(eventType + ":section:" + section.getId(), () -> {
             for (RecipientNotice item : studentNotices) {
-                send(item.user(), eventType, item.key(), title, studentMessage, "HIGH", "/dang-ky", effectiveTime);
+                send(item.user(), eventType, item.key(), title, studentMessage, "HIGH", "/dang-ky", effectiveTime, studentEmail);
             }
             if (lecturerUser != null) {
                 send(lecturerUser, eventType, lecturerKey, title, lecturerMessage,
-                        "HIGH", "/lop-cua-toi", effectiveTime);
+                        "HIGH", "/lop-cua-toi", effectiveTime, lecturerEmail);
             }
         });
     }
@@ -246,6 +289,133 @@ public class NotificationService {
     /**
      * Emits notices to currently enrolled students when a lecturer announces a class session cancellation.
      */
+    /**
+     * Emits notifications when an administrator transfers a student to another class (QLSV-79).
+     * Dispatches after commit, uses deterministic idempotency keys per recipient to eliminate duplicate notifications.
+     */
+    public void studentTransferred(CourseClass lopNguon, CourseClass lopDich, Student sinhVien,
+                                   LocalDateTime occurredAt, String reason) {
+        if (lopNguon == null || lopDich == null || sinhVien == null) {
+            return;
+        }
+        LocalDateTime effectiveTime = occurredAt != null ? occurredAt : LocalDateTime.now();
+        User studentUser = sinhVien.getUser();
+        Lecturer srcLec = lopNguon.getGiangVien();
+        User srcLecUser = srcLec != null ? srcLec.getUser() : null;
+        Lecturer tgtLec = lopDich.getGiangVien();
+        User tgtLecUser = tgtLec != null ? tgtLec.getUser() : null;
+
+        String cleanReason = cleanSectionCancelReason(reason);
+        String timeStr = formatTime(effectiveTime);
+        String eventType = CLASS_STUDENT_TRANSFERRED_EVENT;
+        String baseKey = "transfer:" + lopNguon.getId() + ":" + lopDich.getId() + ":" + sinhVien.getId()
+                + ":" + effectiveTime.truncatedTo(ChronoUnit.SECONDS);
+
+        String studentTitle = "Chuyển lớp học phần thành công";
+        String studentMsg = "Bạn đã được chuyển từ lớp " + lopNguon.getMa() + " (" + lopNguon.getMonHoc().getTen() + ")"
+                + " sang lớp " + lopDich.getMa() + " (" + lopDich.getMonHoc().getTen() + ") lúc " + timeStr
+                + formatReason(cleanReason) + ". Bước tiếp theo: kiểm tra thời khóa biểu mới.";
+
+        String srcLecTitle = "Sinh viên được chuyển khỏi lớp";
+        String srcLecMsg = "Sinh viên " + sinhVien.getHoTen() + " (" + sinhVien.getMa() + ")"
+                + " đã được chuyển khỏi lớp " + lopNguon.getMa() + " sang lớp " + lopDich.getMa()
+                + " lúc " + timeStr + formatReason(cleanReason) + ".";
+
+        String tgtLecTitle = "Tiếp nhận sinh viên mới vào lớp";
+        String tgtLecMsg = "Lớp " + lopDich.getMa() + " (" + lopDich.getMonHoc().getTen() + ")"
+                + " tiếp nhận sinh viên " + sinhVien.getHoTen() + " (" + sinhVien.getMa() + ")"
+                + " được chuyển từ lớp " + lopNguon.getMa() + " lúc " + timeStr + formatReason(cleanReason) + ".";
+
+        dispatchAfterCommit(eventType + ":" + baseKey, () -> {
+            if (studentUser != null) {
+                send(studentUser, eventType, baseKey + ":student", studentTitle, studentMsg, "HIGH", "/thoi-khoa-bieu", effectiveTime);
+            }
+            if (srcLecUser != null) {
+                send(srcLecUser, eventType, baseKey + ":src-lec", srcLecTitle, srcLecMsg, "NORMAL", "/lop-cua-toi", effectiveTime);
+            }
+            if (tgtLecUser != null) {
+                send(tgtLecUser, eventType, baseKey + ":tgt-lec", tgtLecTitle, tgtLecMsg, "NORMAL", "/lop-cua-toi", effectiveTime);
+            }
+        });
+    }
+
+    public void gradeAppealProcessed(User studentUser, String maHoSo, String tenMon,
+                                     String trangThai, String ketQua, LocalDateTime occurredAt) {
+        if (studentUser == null || studentUser.getId() == null) {
+            return;
+        }
+        LocalDateTime effectiveTime = occurredAt != null ? occurredAt : LocalDateTime.now();
+        String idempotencyKey = "grade-appeal:" + maHoSo + ":" + trangThai;
+        boolean chapThuan = "CHAP_THUAN".equalsIgnoreCase(trangThai);
+        String title = "Kết quả phúc khảo môn " + tenMon + " (" + (chapThuan ? "Chấp thuận" : "Giữ nguyên điểm") + ")";
+        String message = "Hồ sơ phúc khảo " + maHoSo + " môn " + tenMon + " đã được xử lý. Kết quả: " + ketQua;
+        String targetUrl = "/diem";
+
+        dispatchAfterCommit(GRADE_APPEAL_EVENT + ":" + idempotencyKey, () -> {
+            send(studentUser, GRADE_APPEAL_EVENT, idempotencyKey, title, message, "HIGH", targetUrl, effectiveTime);
+        });
+    }
+
+    public void supportRequestAssigned(User handler, String maPhieu, String tieuDe, String assignerUsername) {
+        if (handler == null || handler.getId() == null) {
+            return;
+        }
+        String idempotencyKey = "support-assign:" + maPhieu + ":" + handler.getId() + ":" + System.currentTimeMillis();
+        String title = "Phân công xử lý phiếu hỗ trợ " + maPhieu;
+        String message = "Bạn được phân công xử lý phiếu " + maPhieu + " (\"" + tieuDe + "\") bởi " + assignerUsername + ".";
+        String targetUrl = "/quan-tri/yeu-cau-ho-tro";
+        LocalDateTime now = LocalDateTime.now();
+        dispatchAfterCommit(SUPPORT_REQUEST_ASSIGNED_EVENT + ":" + idempotencyKey, () -> {
+            send(handler, SUPPORT_REQUEST_ASSIGNED_EVENT, idempotencyKey, title, message, "HIGH", targetUrl, now);
+        });
+    }
+
+    public void supportRequestStatusChanged(User recipient, String maPhieu, String tieuDe,
+                                           String oldStatusDesc, String newStatusDesc, String note) {
+        if (recipient == null || recipient.getId() == null) {
+            return;
+        }
+        String idempotencyKey = "support-status:" + maPhieu + ":" + newStatusDesc + ":" + System.currentTimeMillis();
+        String title = "Phiếu hỗ trợ " + maPhieu + " đã chuyển sang " + newStatusDesc;
+        String message = "Phiếu \"" + tieuDe + "\" (" + maPhieu + ") đã chuyển trạng thái từ \""
+                + oldStatusDesc + "\" sang \"" + newStatusDesc + "\"." + (note != null && !note.isBlank() ? " Ghi chú: " + note : "");
+        String targetUrl = recipient.getRole() == Role.SINH_VIEN ? "/yeu-cau-ho-tro" : "/quan-tri/yeu-cau-ho-tro";
+        LocalDateTime now = LocalDateTime.now();
+        dispatchAfterCommit(SUPPORT_REQUEST_STATUS_EVENT + ":" + idempotencyKey, () -> {
+            send(recipient, SUPPORT_REQUEST_STATUS_EVENT, idempotencyKey, title, message, "MEDIUM", targetUrl, now);
+        });
+    }
+
+    public void supportRequestEvidenceRequested(User studentUser, String maPhieu, String tieuDe, String note) {
+        if (studentUser == null || studentUser.getId() == null) {
+            return;
+        }
+        String idempotencyKey = "support-evidence:" + maPhieu + ":" + System.currentTimeMillis();
+        String title = "Yêu cầu bổ sung minh chứng cho phiếu " + maPhieu;
+        String message = "Phiếu \"" + tieuDe + "\" (" + maPhieu + ") cần bạn bổ sung thêm minh chứng. Nội dung: " + note;
+        String targetUrl = "/yeu-cau-ho-tro";
+        LocalDateTime now = LocalDateTime.now();
+        dispatchAfterCommit(SUPPORT_REQUEST_EVIDENCE_EVENT + ":" + idempotencyKey, () -> {
+            send(studentUser, SUPPORT_REQUEST_EVIDENCE_EVENT, idempotencyKey, title, message, "HIGH", targetUrl, now);
+        });
+    }
+
+    public void supportRequestCommentAdded(User recipient, String maPhieu, String tieuDe,
+                                          String senderName, String snippet, boolean isInternal) {
+        if (recipient == null || recipient.getId() == null) {
+            return;
+        }
+        String idempotencyKey = "support-comment:" + maPhieu + ":" + System.currentTimeMillis();
+        String title = isInternal ? "[Nội bộ] Trao đổi phiếu " + maPhieu : "Phản hồi mới trên phiếu " + maPhieu;
+        String message = senderName + " đã gửi " + (isInternal ? "ghi chú nội bộ" : "phản hồi")
+                + " trên phiếu " + maPhieu + ": " + snippet;
+        String targetUrl = recipient.getRole() == Role.SINH_VIEN ? "/yeu-cau-ho-tro" : "/quan-tri/yeu-cau-ho-tro";
+        LocalDateTime now = LocalDateTime.now();
+        dispatchAfterCommit(SUPPORT_REQUEST_COMMENT_EVENT + ":" + idempotencyKey, () -> {
+            send(recipient, SUPPORT_REQUEST_COMMENT_EVENT, idempotencyKey, title, message, "NORMAL", targetUrl, now);
+        });
+    }
+
     public void classSessionCancelled(ClassAbsenceNotice thongBaoNghi) {
         if (thongBaoNghi == null || thongBaoNghi.getLopHocPhan() == null) {
             return;
@@ -305,9 +475,12 @@ public class NotificationService {
         String targetUrl = "/hoc-phan-cua-toi";
 
         String finalMessage = message;
+        EmailTemplateService.EmailContent announcementEmail = emailTemplateService != null
+                ? emailTemplateService.buildClassAnnouncementEmail(sectionCode, subjectName, title, announcement.getNoiDung(), effectiveTime)
+                : null;
         dispatchAfterCommit(CLASS_ANNOUNCEMENT_EVENT + ":" + idempotencyKey, () -> {
             sendBatchByIdempotencyKey(eligibleStudents, CLASS_ANNOUNCEMENT_EVENT, idempotencyKey,
-                    title, finalMessage, "NORMAL", targetUrl, effectiveTime);
+                    title, finalMessage, "NORMAL", targetUrl, effectiveTime, announcementEmail);
         });
     }
 
@@ -349,9 +522,12 @@ public class NotificationService {
         }
 
         List<User> recipients = List.copyOf(recipientsById.values());
+        EmailTemplateService.EmailContent gradesEmail = emailTemplateService != null
+                ? emailTemplateService.buildGradePublishedEmail(sectionCode, subjectCode, subjectName, semesterName, academicYear, effectiveTime)
+                : null;
         dispatchAfterCommit(GRADES_PUBLISHED_EVENT + ":" + idempotencyKey, () ->
                 sendBatchByIdempotencyKey(recipients, GRADES_PUBLISHED_EVENT, idempotencyKey,
-                        title, message, "HIGH", targetUrl, effectiveTime));
+                        title, message, "HIGH", targetUrl, effectiveTime, gradesEmail));
     }
 
     /** Called only when the locked section's schedule or assigned lecturer actually changes. */
@@ -600,6 +776,13 @@ public class NotificationService {
     private void sendBatchByIdempotencyKey(List<User> recipients, String eventType, String idempotencyKey,
                                            String title, String message, String priority,
                                            String targetUrl, LocalDateTime createdAt) {
+        sendBatchByIdempotencyKey(recipients, eventType, idempotencyKey, title, message, priority, targetUrl, createdAt, null);
+    }
+
+    private void sendBatchByIdempotencyKey(List<User> recipients, String eventType, String idempotencyKey,
+                                           String title, String message, String priority,
+                                           String targetUrl, LocalDateTime createdAt,
+                                           EmailTemplateService.EmailContent emailContent) {
         List<User> activeRecipients = recipients.stream()
                 .filter(u -> u != null && u.isTrangThai() && u.getId() != null)
                 .toList();
@@ -613,20 +796,47 @@ public class NotificationService {
                 continue;
             }
             saveNotification(recipient, eventType, idempotencyKey, title, message, priority, targetUrl, createdAt);
+            dispatchEmailSafely(recipient, eventType, idempotencyKey, title, message, targetUrl, createdAt, emailContent);
         }
     }
 
     private boolean send(User recipient, String eventType, String idempotencyKey, String title,
                          String message, String priority, String targetUrl, LocalDateTime createdAt) {
+        return send(recipient, eventType, idempotencyKey, title, message, priority, targetUrl, createdAt, null);
+    }
+
+    private boolean send(User recipient, String eventType, String idempotencyKey, String title,
+                         String message, String priority, String targetUrl, LocalDateTime createdAt,
+                         EmailTemplateService.EmailContent emailContent) {
         if (recipient == null || !recipient.isTrangThai()
                 || thongBaoRepository.existsByRecipientIdAndIdempotencyKey(recipient.getId(), idempotencyKey)) {
             return false;
         }
         try {
-            return saveNotification(recipient, eventType, idempotencyKey, title, message, priority, targetUrl, createdAt);
+            boolean saved = saveNotification(recipient, eventType, idempotencyKey, title, message, priority, targetUrl, createdAt);
+            if (saved) {
+                dispatchEmailSafely(recipient, eventType, idempotencyKey, title, message, targetUrl, createdAt, emailContent);
+            }
+            return saved;
         } catch (DataAccessResourceFailureException e) {
             log.warn("Failed to persist notification [{}] for recipientId={}: {}", eventType, recipient.getId(), e.getMessage());
             return false;
+        }
+    }
+
+    private void dispatchEmailSafely(User recipient, String eventType, String idempotencyKey,
+                                     String title, String message, String targetUrl, LocalDateTime createdAt,
+                                     EmailTemplateService.EmailContent emailContent) {
+        if (emailDeliveryService == null) {
+            return;
+        }
+        EmailTemplateService.EmailContent content = emailContent;
+        if (content == null && emailTemplateService != null) {
+            content = emailTemplateService.buildGenericEmail(eventType, title, message, targetUrl, createdAt);
+        }
+        if (content != null) {
+            emailDeliveryService.deliverEmailSafely(recipient, eventType, idempotencyKey,
+                    content.subject(), content.bodyHtml());
         }
     }
 
