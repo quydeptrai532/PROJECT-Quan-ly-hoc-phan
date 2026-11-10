@@ -6,7 +6,7 @@ spring:
     password:
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
     properties:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect
@@ -22,11 +22,24 @@ app:
     enabled: true
     strategy: IN_MEMORY
     login:
-      capacity: 10000
-      window-seconds: 60
+      ip:
+        capacity: 10000
+        window-seconds: 60
+      account:
+        capacity: 10000
+        window-seconds: 60
     api:
       capacity: 50000
       window-seconds: 60
+    api-anonymous:
+      capacity: 50000
+      window-seconds: 60
     verify:
+      capacity: 1000
+      window-seconds: 60
+    chatbot:
+      capacity: 1000
+      window-seconds: 60
+    heavy:
       capacity: 1000
       window-seconds: 60

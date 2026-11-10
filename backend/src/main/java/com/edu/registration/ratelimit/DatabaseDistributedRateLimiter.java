@@ -14,7 +14,8 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 /**
- * Cài đặt Rate Limiter phân tán lưu trữ trong cơ sở dữ liệu (Database-backed), an toàn khi ứng dụng chạy nhiều instance song song (QLSV-94 / TASK-OP-07 Work Package B).
+ * Cài đặt Rate Limiter phân tán lưu trữ trong cơ sở dữ liệu (Database-backed), an toàn khi ứng dụng chạy nhiều instance song song (QLSV-102 / TASK-OP-07B).
+ * Sử dụng Pessimistic Locking (SELECT ... FOR UPDATE) và giao dịch độc lập (REQUIRES_NEW) để ngăn race-condition giữa các cluster instances.
  */
 @Component
 public class DatabaseDistributedRateLimiter implements RateLimiter {
@@ -42,8 +43,8 @@ public class DatabaseDistributedRateLimiter implements RateLimiter {
             try {
                 return requiresNewTemplate.execute(status -> doTryAcquire(key, capacity, windowSeconds));
             } catch (Exception ex) {
-                log.warn("Lỗi khi kiểm tra distributed rate limit key [{}]: {}. Cho phép qua tạm thời.", key, ex.getMessage());
-                return RateLimitResult.allowed(capacity, capacity - 1);
+                log.warn("Lỗi khi kiểm tra distributed rate limit key [{}]: {}. Cho phép qua tạm thời (fail-open).", key, ex.getMessage());
+                return RateLimitResult.allowed(capacity, Math.max(0, capacity - 1));
             }
         }
         return doTryAcquire(key, capacity, windowSeconds);
@@ -51,35 +52,44 @@ public class DatabaseDistributedRateLimiter implements RateLimiter {
 
     private RateLimitResult doTryAcquire(String key, long capacity, long windowSeconds) {
         LocalDateTime now = LocalDateTime.now();
-        Optional<RateLimitBucket> optional = bucketRepository.findById(key);
+        Optional<RateLimitBucket> optional = bucketRepository.findByIdForUpdate(key);
 
         if (optional.isEmpty()) {
-            LocalDateTime resetAt = now.plusSeconds(windowSeconds);
-            RateLimitBucket bucket = new RateLimitBucket(key, 1, now, resetAt);
+            try {
+                LocalDateTime resetAt = now.plusSeconds(windowSeconds);
+                RateLimitBucket bucket = new RateLimitBucket(key, 1, now, resetAt);
+                bucketRepository.saveAndFlush(bucket);
+                return RateLimitResult.allowed(capacity, Math.max(0, capacity - 1));
+            } catch (Exception ex) {
+                // Trùng khóa chính khi có 2 instance cùng thêm mới đồng thời; truy xuất lại với lock
+                optional = bucketRepository.findByIdForUpdate(key);
+            }
+        }
+
+        if (optional.isPresent()) {
+            RateLimitBucket bucket = optional.get();
+            if (now.isAfter(bucket.getResetAt())) {
+                // Cửa sổ thời gian cũ đã hết hạn, bắt đầu cửa sổ mới
+                bucket.setRequestCount(1);
+                bucket.setWindowStart(now);
+                bucket.setResetAt(now.plusSeconds(windowSeconds));
+                bucketRepository.saveAndFlush(bucket);
+                return RateLimitResult.allowed(capacity, Math.max(0, capacity - 1));
+            }
+
+            long currentCount = bucket.getRequestCount() + 1;
+            bucket.setRequestCount(currentCount);
             bucketRepository.saveAndFlush(bucket);
-            return RateLimitResult.allowed(capacity, capacity - 1);
+
+            long retryAfterSeconds = Math.max(1, Duration.between(now, bucket.getResetAt()).toSeconds());
+            if (currentCount <= capacity) {
+                long remaining = capacity - currentCount;
+                return RateLimitResult.allowed(capacity, remaining);
+            } else {
+                return RateLimitResult.rejected(capacity, retryAfterSeconds);
+            }
         }
 
-        RateLimitBucket bucket = optional.get();
-        if (now.isAfter(bucket.getResetAt())) {
-            // Cửa sổ thời gian cũ đã hết hạn, tạo cửa sổ mới
-            bucket.setRequestCount(1);
-            bucket.setWindowStart(now);
-            bucket.setResetAt(now.plusSeconds(windowSeconds));
-            bucketRepository.saveAndFlush(bucket);
-            return RateLimitResult.allowed(capacity, capacity - 1);
-        }
-
-        long currentCount = bucket.getRequestCount() + 1;
-        bucket.setRequestCount(currentCount);
-        bucketRepository.saveAndFlush(bucket);
-
-        long retryAfterSeconds = Math.max(1, Duration.between(now, bucket.getResetAt()).toSeconds());
-        if (currentCount <= capacity) {
-            long remaining = capacity - currentCount;
-            return RateLimitResult.allowed(capacity, remaining);
-        } else {
-            return RateLimitResult.rejected(capacity, retryAfterSeconds);
-        }
+        return RateLimitResult.allowed(capacity, Math.max(0, capacity - 1));
     }
 }

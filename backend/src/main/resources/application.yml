@@ -204,18 +204,32 @@ app:
       ghi-chu: ${EARLY_WARNING_TIEN_DO_GHI_CHU:Can xac nhan tien do chuan 14 tin chi/ky va nguong thieu 8 tin chi co ap dung chung toan truong hay phan theo nganh/khoa.}
 
   rate-limiting:
-    # QLSV-94 (TASK-OP-07): Cau hinh rate limiting
+    # QLSV-102 (TASK-OP-07B): Cau hinh Rate Limiting an toan, ho tro multi-instance va reverse proxy
     enabled: ${RATE_LIMITING_ENABLED:true}
     strategy: ${RATE_LIMITING_STRATEGY:IN_MEMORY}
+    trusted-proxies: ${RATE_LIMIT_TRUSTED_PROXIES:127.0.0.1,::1,0:0:0:0:0:0:0:1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
     login:
-      capacity: ${RATE_LIMIT_LOGIN_CAPACITY:10}
-      window-seconds: ${RATE_LIMIT_LOGIN_WINDOW_SECONDS:60}
+      ip:
+        capacity: ${RATE_LIMIT_LOGIN_IP_CAPACITY:60}
+        window-seconds: ${RATE_LIMIT_LOGIN_IP_WINDOW_SECONDS:60}
+      account:
+        capacity: ${RATE_LIMIT_LOGIN_ACCOUNT_CAPACITY:5}
+        window-seconds: ${RATE_LIMIT_LOGIN_ACCOUNT_WINDOW_SECONDS:60}
     api:
       capacity: ${RATE_LIMIT_API_CAPACITY:120}
       window-seconds: ${RATE_LIMIT_API_WINDOW_SECONDS:60}
+    api-anonymous:
+      capacity: ${RATE_LIMIT_API_ANONYMOUS_CAPACITY:60}
+      window-seconds: ${RATE_LIMIT_API_ANONYMOUS_WINDOW_SECONDS:60}
     verify:
       capacity: ${RATE_LIMIT_VERIFY_CAPACITY:20}
       window-seconds: ${RATE_LIMIT_VERIFY_WINDOW_SECONDS:60}
+    chatbot:
+      capacity: ${RATE_LIMIT_CHATBOT_CAPACITY:20}
+      window-seconds: ${RATE_LIMIT_CHATBOT_WINDOW_SECONDS:60}
+    heavy:
+      capacity: ${RATE_LIMIT_HEAVY_CAPACITY:15}
+      window-seconds: ${RATE_LIMIT_HEAVY_WINDOW_SECONDS:60}
 
   verifiable-transcript:
     # QLSV-99 (TASK-OP-12): Bang diem dien tu xac thuc
