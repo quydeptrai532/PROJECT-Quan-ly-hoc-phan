@@ -121,7 +121,7 @@ class VerifiableTranscriptServiceTest {
         assertNotNull(result.maXacMinh());
         assertTrue(result.maXacMinh().startsWith("VT-"));
         assertTrue(result.verificationUrl().startsWith("https://qldt.university.edu.vn/xac-thuc-bang-diem?code=VT-"));
-        assertEquals("bang-diem-xac-thuc-SV001-v1.pdf", result.tenTep());
+        assertEquals("bang-diem-SV001.pdf", result.tenTep());
 
         verify(repository).save(any(VerifiableTranscript.class));
     }
