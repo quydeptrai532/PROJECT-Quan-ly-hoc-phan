@@ -15,6 +15,8 @@ import com.edu.registration.service.RegistrationService;
 import com.edu.registration.service.SemesterService;
 import com.edu.registration.service.StatisticsService;
 import com.edu.registration.service.chatbot.ai.AiChatProvider;
+import com.edu.registration.service.chatbot.ai.CommandCodeAiChatProvider;
+import com.edu.registration.service.chatbot.ai.GeminiAiChatProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -49,15 +51,20 @@ public class ChatbotService {
     // Chỉ dùng cho các lượt hội thoại xã giao; mọi dữ liệu lớp học phần vẫn do hệ thống tra cứu quyết định.
     private static final String CONVERSATIONAL_SYSTEM_PROMPT = """
             Bạn là "Trợ lý AI Đăng ký Học phần" của một hệ thống quản lý đào tạo đại học.
-            Nhiệm vụ: trò chuyện thân thiện, ngắn gọn bằng tiếng Việt và hướng người dùng tới các chức năng của trợ lý:
-            tra cứu lớp học phần, số chỗ trống, lịch học, giảng viên, phòng học, thời khóa biểu và đăng ký học phần.
-            Quy tắc bắt buộc:
+            Nhiệm vụ chính: hỗ trợ học vụ (tra cứu lớp học phần, số chỗ trống, lịch học, giảng viên, phòng học,
+            thời khóa biểu, đăng ký học phần). Tên gọi này KHÔNG giới hạn phạm vi trả lời của bạn.
+            Bạn cũng là một trợ lý trò chuyện thân thiện: được phép trả lời ngắn gọn các câu hỏi kiến thức phổ thông
+            (lịch sử, địa lý, khoa học, văn hóa, đời sống, công nghệ, toán, tiếng Anh...) bằng kiến thức của bạn.
+            Không được nói "tôi chỉ hỗ trợ học vụ" khi người dùng hỏi câu hỏi thông thường.
+            Quy tắc:
             - Không bịa ra mã lớp, sĩ số, lịch học hay bất kỳ dữ liệu đào tạo nào; dữ liệu đó do hệ thống tra cứu trả về.
             - Không hứa hẹn thay đổi dữ liệu; mọi thao tác đăng ký phải qua quy trình xác nhận của hệ thống.
-            - Trả lời tối đa 4-5 câu, thân thiện, có thể gợi ý 2-3 câu hỏi mẫu phù hợp.
-            - Nếu câu hỏi ngoài phạm vi học vụ/đăng ký học phần, lịch sự nói rằng bạn chỉ hỗ trợ các vấn đề đó.
+            - Trả lời tối đa 4-5 câu, thân thiện, có thể gợi ý 2-3 câu hỏi mẫu nếu phù hợp.
+            - Với dữ liệu thời gian thực (thời tiết, giá cả, tin tức...), nói rõ bạn không có dữ liệu thời gian thực
+              và hướng dẫn người dùng tra cứu; tuyệt đối không bịa số liệu.
+            - Các dữ kiện học vụ dưới đây chỉ áp dụng cho câu hỏi học vụ; câu hỏi kiến thức chung thì dùng kiến thức của bạn.
 
-            Kiến thức học vụ của hệ thống (chỉ dùng các dữ kiện dưới đây):
+            Kiến thức học vụ của hệ thống:
             - Sinh viên đăng ký/hủy học phần tại trang Đăng ký; chỉ thực hiện được trong thời gian đăng ký của học kỳ.
             - Điều kiện đăng ký: đạt tất cả môn tiên quyết (điểm tổng kết >= 5.0 đã công bố), không trùng thứ/tiết với lớp đã đăng ký,
               không vượt sĩ số, không vượt giới hạn tín chỉ của học kỳ, không đăng ký hai lớp cùng một môn trong cùng học kỳ.
@@ -76,7 +83,9 @@ public class ChatbotService {
     private final PromptInjectionGuard promptInjectionGuard;
     private final VietnameseNluEngine nluEngine;
     private final ChatbotRateLimiter rateLimiter;
-    private final AiChatProvider aiChatProvider;
+    private final GeminiAiChatProvider geminiAiChatProvider;
+    private final CommandCodeAiChatProvider commandCodeAiChatProvider;
+    private final WeatherService weatherService;
     private final CourseClassService lopHocPhanService;
     private final RegistrationService dangKyService;
     private final SemesterService hocKyService;
@@ -89,7 +98,9 @@ public class ChatbotService {
             PromptInjectionGuard promptInjectionGuard,
             VietnameseNluEngine nluEngine,
             ChatbotRateLimiter rateLimiter,
-            AiChatProvider aiChatProvider,
+            GeminiAiChatProvider geminiAiChatProvider,
+            CommandCodeAiChatProvider commandCodeAiChatProvider,
+            WeatherService weatherService,
             CourseClassService lopHocPhanService,
             RegistrationService dangKyService,
             SemesterService hocKyService,
@@ -100,7 +111,9 @@ public class ChatbotService {
         this.promptInjectionGuard = promptInjectionGuard;
         this.nluEngine = nluEngine;
         this.rateLimiter = rateLimiter;
-        this.aiChatProvider = aiChatProvider;
+        this.geminiAiChatProvider = geminiAiChatProvider;
+        this.commandCodeAiChatProvider = commandCodeAiChatProvider;
+        this.weatherService = weatherService;
         this.lopHocPhanService = lopHocPhanService;
         this.dangKyService = dangKyService;
         this.hocKyService = hocKyService;
@@ -109,7 +122,11 @@ public class ChatbotService {
     }
 
     public ChatbotDtos.ChatbotStatusDto getStatus() {
-        return aiChatProvider.getStatus();
+        return activeAiProvider().getStatus();
+    }
+
+    private AiChatProvider activeAiProvider() {
+        return properties.isCommandCodeProvider() ? commandCodeAiChatProvider : geminiAiChatProvider;
     }
 
     public ChatbotDtos.ChatSessionSummaryDto getSessionSummary(String sessionId) {
@@ -226,6 +243,14 @@ public class ChatbotService {
                     "Bạn cần mình giúp gì không?";
             return buildResponse(session, conversationalReply(session, hocKy, nlu.rawMessage(), fallback),
                     ChatbotDtos.ChatActionType.NONE, null, null, greetingSuggestions(role), hocKy.getTen(), thoiDiem, false);
+        }
+
+        // --- Intent: THỜI TIẾT (Open-Meteo) ---
+        if (nlu.intent() == VietnameseNluEngine.Intent.THOI_TIET) {
+            String report = weatherService.getWeatherReport(nlu.rawMessage())
+                    .orElse("Mình chưa lấy được dữ liệu thời tiết lúc này. Bạn thử lại sau ít phút hoặc kiểm tra ứng dụng thời tiết nhé.");
+            return buildResponse(session, report, ChatbotDtos.ChatActionType.NONE,
+                    null, null, null, hocKy.getTen(), thoiDiem, false);
         }
 
         // --- Câu hỏi mang tính giải thích/hướng dẫn (không có mã lớp cụ thể) ---
@@ -684,7 +709,7 @@ public class ChatbotService {
             String thoiDiemLayDuLieu,
             boolean requiresConfirmation) {
 
-        ChatbotDtos.ChatbotStatusDto status = aiChatProvider.getStatus();
+        ChatbotDtos.ChatbotStatusDto status = activeAiProvider().getStatus();
         String aiStatus = status.configured() ? "CONFIGURED" : "UNCONFIGURED_SAFE_RULES";
         String missing = status.configured() ? null : String.join(", ", status.missingDependencies());
 
@@ -763,7 +788,7 @@ public class ChatbotService {
                 history.remove(history.size() - 1);
             }
         }
-        return aiChatProvider.generateText(buildConversationalSystemPrompt(hocKy), userMessage, history)
+        return activeAiProvider().generateText(buildConversationalSystemPrompt(hocKy), userMessage, history)
                 .map(String::trim)
                 .filter(text -> !text.isBlank())
                 .orElse(fallback);

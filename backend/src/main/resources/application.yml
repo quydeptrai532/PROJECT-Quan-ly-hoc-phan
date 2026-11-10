@@ -243,8 +243,11 @@ app:
     ai:
       # QLSV-106 (TASK-AI-01): Chatbot AI tieng Viet tu van va ho tro dang ky hoc phan
       enabled: ${CHATBOT_AI_ENABLED:true}
+      # GEMINI | COMMAND_CODE | NONE
       provider: ${CHATBOT_AI_PROVIDER:GEMINI}
       api-key: ${CHATBOT_AI_API_KEY:}
+      # Chỉ dùng khi provider=COMMAND_CODE (Command Code Provider API)
+      command-code-api-key: ${CHATBOT_AI_COMMAND_CODE_API_KEY:}
       model: ${CHATBOT_AI_MODEL:gemini-3.5-flash-lite}
       endpoint: ${CHATBOT_AI_ENDPOINT:}
       temperature: ${CHATBOT_AI_TEMPERATURE:0.2}
@@ -252,6 +255,15 @@ app:
       rate-limit-per-minute: ${CHATBOT_AI_RATE_LIMIT_PER_MINUTE:30}
       session-ttl-minutes: ${CHATBOT_AI_SESSION_TTL_MINUTES:60}
       max-history-messages: ${CHATBOT_AI_MAX_HISTORY_MESSAGES:20}
+
+    # QLSV-106: Tra cứu thời tiết qua Open-Meteo (miễn phí, không cần key)
+    weather:
+      enabled: ${CHATBOT_WEATHER_ENABLED:true}
+      default-city: ${CHATBOT_WEATHER_DEFAULT_CITY:Hà Nội}
+      geocoding-url: ${CHATBOT_WEATHER_GEOCODING_URL:https://geocoding-api.open-meteo.com/v1/search}
+      forecast-url: ${CHATBOT_WEATHER_FORECAST_URL:https://api.open-meteo.com/v1/forecast}
+      connect-timeout-ms: ${CHATBOT_WEATHER_CONNECT_TIMEOUT_MS:5000}
+      read-timeout-ms: ${CHATBOT_WEATHER_READ_TIMEOUT_MS:10000}
 
 springdoc:
   api-docs:

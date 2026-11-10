@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -108,6 +109,37 @@ class VietnameseNluEngineTest {
         assertEquals(VietnameseNluEngine.Intent.THANKS, nluEngine.parse("thanks").intent());
         assertEquals(VietnameseNluEngine.Intent.GOODBYE, nluEngine.parse("Tạm biệt").intent());
         assertEquals(VietnameseNluEngine.Intent.GOODBYE, nluEngine.parse("bye").intent());
+    }
+
+    @Test
+    @DisplayName("Nhận diện câu hỏi thời tiết")
+    void testWeatherIntent() {
+        assertEquals(VietnameseNluEngine.Intent.THOI_TIET,
+                nluEngine.parse("Thời tiết hôm nay thế nào?").intent());
+        assertEquals(VietnameseNluEngine.Intent.THOI_TIET,
+                nluEngine.parse("Nhiệt độ hôm nay bao nhiêu?").intent());
+        assertEquals(VietnameseNluEngine.Intent.THOI_TIET,
+                nluEngine.parse("Dự báo thời tiết Đà Nẵng").intent());
+    }
+
+    @Test
+    @DisplayName("Câu hỏi lịch sử/thời tiết/du lịch không bị nhầm thành lịch học hay giảng viên")
+    void testGeneralKnowledgeQuestionsAreNotMisrouted() {
+        assertEquals(VietnameseNluEngine.Intent.UNKNOWN,
+                nluEngine.parse("Lịch sử Việt Nam có gì nổi bật?").intent());
+        assertNotEquals(VietnameseNluEngine.Intent.TRA_CUU_LICH,
+                nluEngine.parse("Thời tiết hôm nay thế nào?").intent());
+        assertNotEquals(VietnameseNluEngine.Intent.TRA_CUU_LICH,
+                nluEngine.parse("Du lịch Đà Lạt có gì?").intent());
+    }
+
+    @Test
+    @DisplayName("Vẫn nhận diện đúng câu hỏi giảng viên và phòng học")
+    void testLecturerAndRoomIntentStillWork() {
+        assertEquals(VietnameseNluEngine.Intent.TRA_CUU_GIANG_VIEN,
+                nluEngine.parse("Giảng viên dạy lớp LHP01 là ai?").intent());
+        assertEquals(VietnameseNluEngine.Intent.TRA_CUU_PHONG,
+                nluEngine.parse("Lớp LHP01 học ở phòng nào?").intent());
     }
 
     @Test

@@ -11,9 +11,10 @@ import org.springframework.stereotype.Component;
 public class ChatbotAiProperties {
 
     private boolean enabled = true;
-    private String provider = "GEMINI"; // GEMINI, OPENAI, NONE, MOCK
+    private String provider = "GEMINI"; // GEMINI, COMMAND_CODE, NONE
     private String apiKey = "";
-    private String model = "gemini-1.5-flash";
+    private String commandCodeApiKey = "";
+    private String model = "gemini-3.5-flash-lite";
     private String endpoint = "";
     private double temperature = 0.2;
     private int maxTokens = 1000;
@@ -111,7 +112,35 @@ public class ChatbotAiProperties {
         this.policyNote = policyNote;
     }
 
+    public String getCommandCodeApiKey() {
+        return commandCodeApiKey;
+    }
+
+    public void setCommandCodeApiKey(String commandCodeApiKey) {
+        this.commandCodeApiKey = commandCodeApiKey;
+    }
+
+    public boolean isCommandCodeProvider() {
+        return provider != null
+                && ("COMMAND_CODE".equalsIgnoreCase(provider) || "COMMANDCODE".equalsIgnoreCase(provider));
+    }
+
+    public boolean isGeminiProvider() {
+        return !isCommandCodeProvider() && !"NONE".equalsIgnoreCase(provider);
+    }
+
+    public boolean isGeminiConfigured() {
+        return apiKey != null && !apiKey.trim().isBlank();
+    }
+
+    public boolean isCommandCodeConfigured() {
+        return commandCodeApiKey != null && !commandCodeApiKey.trim().isBlank();
+    }
+
     public boolean isProviderConfigured() {
-        return apiKey != null && !apiKey.trim().isBlank() && !"NONE".equalsIgnoreCase(provider);
+        if ("NONE".equalsIgnoreCase(provider)) {
+            return false;
+        }
+        return isCommandCodeProvider() ? isCommandCodeConfigured() : isGeminiConfigured();
     }
 }
