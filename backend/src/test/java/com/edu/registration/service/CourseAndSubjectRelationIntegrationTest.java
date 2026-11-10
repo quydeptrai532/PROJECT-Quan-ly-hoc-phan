@@ -5,6 +5,7 @@ import com.edu.registration.entity.Faculty;
 import com.edu.registration.entity.Lecturer;
 import com.edu.registration.entity.Major;
 import com.edu.registration.entity.Semester;
+import com.edu.registration.entity.StudentAcademicStatus;
 import com.edu.registration.entity.Subject;
 import com.edu.registration.repository.AcademicCohortRepository;
 import com.edu.registration.repository.AuditLogRepository;
@@ -15,6 +16,7 @@ import com.edu.registration.repository.LecturerRepository;
 import com.edu.registration.repository.MajorRepository;
 import com.edu.registration.repository.PrerequisiteSubjectRepository;
 import com.edu.registration.repository.SemesterRepository;
+import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.repository.SubjectRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -83,6 +85,9 @@ class CourseAndSubjectRelationIntegrationTest {
     private LecturerRepository lecturerRepository;
 
     @Autowired
+    private StudentRepository studentRepository;
+
+    @Autowired
     private AuditLogRepository auditLogRepository;
 
     private String login(String username, String password) throws Exception {
@@ -100,6 +105,10 @@ class CourseAndSubjectRelationIntegrationTest {
 
     @Test
     void quanTriKhoaHocVaQuanHeMon_CrudLocChongTuThamChieuChuTrinhBaoVeXoaAuditVaKiemTraDangKy() throws Exception {
+        studentRepository.findByMa("SV001").ifPresent(sv -> {
+            sv.setTrangThaiHocTap(StudentAcademicStatus.DANG_HOC);
+            studentRepository.save(sv);
+        });
         String tokenAdmin = login("admin", "admin123");
         String tokenSv01 = login("sv01", "123456");
         String tokenGv01 = login("gv01", "123456");

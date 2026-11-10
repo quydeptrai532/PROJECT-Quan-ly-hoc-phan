@@ -12,6 +12,7 @@ import com.edu.registration.entity.RegistrationHistory;
 import com.edu.registration.entity.RegistrationStatus;
 import com.edu.registration.entity.Semester;
 import com.edu.registration.entity.Student;
+import com.edu.registration.entity.StudentAcademicStatus;
 import com.edu.registration.entity.Subject;
 import com.edu.registration.entity.SubjectRelationType;
 import com.edu.registration.repository.ClassTransferHistoryRepository;
@@ -132,6 +133,8 @@ class ClassCancellationAndTransferIntegrationTest {
         List<Student> students = sinhVienRepository.findAllByOrderByMaAsc();
         sv1 = students.get(0);
         sv2 = students.size() > 1 ? students.get(1) : sv1;
+        sv1.setTrangThaiHocTap(StudentAcademicStatus.DANG_HOC);
+        sinhVienRepository.save(sv1);
         tokenStudent1 = login(sv1.getUser().getUsername(), "123456");
 
         List<Long> enrolledSubjectIds = dangKyRepository.findBySinhVienIdAndLopHocPhanHocKyIdOrderByIdAsc(sv1.getId(), hocKy.getId())

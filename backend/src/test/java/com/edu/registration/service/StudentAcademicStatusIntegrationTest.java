@@ -14,6 +14,7 @@ import com.edu.registration.repository.StudentAcademicStatusHistoryRepository;
 import com.edu.registration.repository.StudentRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -88,6 +89,14 @@ class StudentAcademicStatusIntegrationTest {
         // Reset student to DANG_HOC before each test
         testStudent.setTrangThaiHocTap(StudentAcademicStatus.DANG_HOC);
         studentRepository.save(testStudent);
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (testStudent != null) {
+            testStudent.setTrangThaiHocTap(StudentAcademicStatus.DANG_HOC);
+            studentRepository.save(testStudent);
+        }
     }
 
     private String login(String username, String password) throws Exception {
