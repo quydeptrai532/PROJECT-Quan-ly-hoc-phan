@@ -3,6 +3,8 @@ package com.edu.registration.controller;
 import com.edu.registration.dto.ClassroomDtos;
 import com.edu.registration.entity.ClassroomStatus;
 import com.edu.registration.service.ClassroomService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -21,6 +23,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin/phong-hoc")
 @PreAuthorize("hasRole('QUAN_TRI')")
+@Tag(name = "Quản trị - Phòng học", description = "Quản lý cơ sở vật chất phòng học, sức chứa, tòa nhà và trạng thái bảo trì")
 public class AdminClassroomController {
 
     private final ClassroomService classroomService;
@@ -30,6 +33,7 @@ public class AdminClassroomController {
     }
 
     @GetMapping
+    @Operation(summary = "Danh sách phòng học", description = "Lọc danh sách phòng học theo loại phòng, tòa nhà, sức chứa và trạng thái hoạt động")
     public List<ClassroomDtos.PhongHocDto> danhSach(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String q,
@@ -43,16 +47,19 @@ public class AdminClassroomController {
     }
 
     @GetMapping("/hoat-dong")
+    @Operation(summary = "Danh sách phòng học hoạt động", description = "Tra cứu nhanh các phòng học sẵn sàng phục vụ xếp thời khóa biểu")
     public List<ClassroomDtos.PhongHocDto> danhSachHoatDong() {
         return classroomService.danhSachHoatDong();
     }
 
     @GetMapping("/taxonomy")
+    @Operation(summary = "Lấy phân loại phòng học", description = "Lấy danh mục các loại phòng và danh sách các tòa nhà")
     public ClassroomDtos.TaxonomyPhongHocDto layTaxonomy() {
         return classroomService.layTaxonomy();
     }
 
     @GetMapping("/{id}")
+    @Operation(summary = "Xem chi tiết phòng học", description = "Lấy thông tin chi tiết một phòng học theo ID")
     public ClassroomDtos.PhongHocDto chiTiet(@PathVariable Long id) {
         return classroomService.chiTiet(id);
     }

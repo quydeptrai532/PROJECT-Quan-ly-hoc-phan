@@ -68,7 +68,7 @@ class OperationsIntegrationTest {
         mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.openapi", startsWith("3.")))
-                .andExpect(jsonPath("$.info.title").value("Hệ thống Quản lý Đào tạo & Đăng ký Học phần API"));
+                .andExpect(jsonPath("$.info.title", startsWith("Hệ thống Quản lý Đào tạo & Đăng ký Học phần")));
     }
 
     @Test

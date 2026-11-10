@@ -5,6 +5,8 @@ import com.edu.registration.dto.RegistrationDtos;
 import com.edu.registration.service.CourseClassService;
 import com.edu.registration.entity.GradeSheetStatus;
 import com.edu.registration.service.GradeService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -23,6 +25,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin")
 @PreAuthorize("hasRole('QUAN_TRI')")
+@Tag(name = "Quản trị - Lớp học phần", description = "Quản lý mở lớp học phần, kiểm tra trùng lịch phòng học/giảng viên, hủy lớp và chuyển sinh viên")
 public class AdminCourseClassController {
 
     private final CourseClassService lopHocPhanService;
@@ -39,6 +42,7 @@ public class AdminCourseClassController {
     }
 
     @GetMapping("/lop-hoc-phan")
+    @Operation(summary = "Danh sách lớp học phần", description = "Lọc lớp học phần theo học kỳ, giảng viên, từ khóa hoặc trạng thái bảng điểm")
     public List<CourseClassDtos.LopHocPhanDto> danhSach(
             @RequestParam(required = false) Long hocKyId,
             @RequestParam(required = false) String keyword,
@@ -48,6 +52,7 @@ public class AdminCourseClassController {
     }
 
     @GetMapping("/lop-hoc-phan/cho-duyet")
+    @Operation(summary = "Danh sách lớp có bảng điểm chờ duyệt", description = "Lấy các lớp học phần đang chờ Phòng Đào tạo duyệt bảng điểm")
     public List<CourseClassDtos.LopHocPhanDto> danhSachChoDuyet(
             @RequestParam(required = false) Long hocKyId,
             @RequestParam(required = false) String keyword,
@@ -56,6 +61,7 @@ public class AdminCourseClassController {
     }
 
     @PostMapping("/lop-hoc-phan/kiem-tra-xung-dot")
+    @Operation(summary = "Kiểm tra xung đột lịch mở lớp", description = "Kiểm tra trùng phòng học hoặc trùng lịch giảng viên trước khi lưu lớp")
     public CourseClassDtos.KetQuaKiemTraXungDotDto kiemTraXungDot(
             @Valid @RequestBody CourseClassDtos.KiemTraXungDotRequest request) {
         return lopHocPhanService.kiemTraXungDot(request);

@@ -2,6 +2,8 @@ package com.edu.registration.controller;
 
 import com.edu.registration.dto.UserDtos;
 import com.edu.registration.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,6 +26,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin")
 @PreAuthorize("hasRole('QUAN_TRI')")
+@Tag(name = "Quản trị - Người dùng & Import CSV", description = "Quản lý tài khoản sinh viên, giảng viên và nhập liệu danh sách người dùng hàng loạt từ CSV")
 public class AdminUserController {
 
     private final UserService userService;
@@ -33,28 +36,33 @@ public class AdminUserController {
     }
 
     @GetMapping("/sinh-vien")
+    @Operation(summary = "Danh sách sinh viên", description = "Tìm kiếm và liệt kê danh sách tài khoản sinh viên")
     public List<UserDtos.SinhVienDto> danhSachSinhVien(@RequestParam(required = false) String keyword) {
         return userService.danhSachSinhVien(keyword);
     }
 
     @PostMapping("/sinh-vien")
+    @Operation(summary = "Tạo mới sinh viên", description = "Tạo mới tài khoản và hồ sơ học vụ cho sinh viên")
     public UserDtos.SinhVienDto taoSinhVien(@Valid @RequestBody UserDtos.SinhVienRequest request) {
         return userService.taoSinhVien(request);
     }
 
     @PutMapping("/sinh-vien/{id}")
+    @Operation(summary = "Cập nhật thông tin sinh viên", description = "Chỉnh sửa họ tên, email, lớp hành chính hoặc ngành của sinh viên")
     public UserDtos.SinhVienDto suaSinhVien(@PathVariable Long id,
                                             @Valid @RequestBody UserDtos.SinhVienRequest request) {
         return userService.suaSinhVien(id, request);
     }
 
     @PatchMapping("/sinh-vien/{id}/trang-thai")
+    @Operation(summary = "Kích hoạt / Khóa tài khoản sinh viên", description = "Thay đổi trạng thái tài khoản sinh viên (HOAT_DONG, KHOA)")
     public UserDtos.SinhVienDto doiTrangThaiSinhVien(@PathVariable Long id,
                                                      @RequestBody UserDtos.TrangThaiRequest request) {
         return userService.doiTrangThaiSinhVien(id, request.trangThai());
     }
 
     @PatchMapping("/sinh-vien/{id}/trang-thai-hoc-tap")
+    @Operation(summary = "Cập nhật trạng thái học vụ sinh viên", description = "Cập nhật trạng thái học tập (Bình thường, Buộc thôi học, Bảo lưu...)")
     public UserDtos.SinhVienDto capNhatTrangThaiHocTap(@PathVariable Long id,
                                                       @Valid @RequestBody UserDtos.CapNhatTrangThaiHocTapRequest request) {
         return userService.capNhatTrangThaiHocTap(id, request);

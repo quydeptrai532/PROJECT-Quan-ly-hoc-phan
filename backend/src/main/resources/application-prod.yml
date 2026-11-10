@@ -1,0 +1,7 @@
+# Cấu hình môi trường sản xuất (PROD) - QLSV-101 (TASK-OP-07A)
+# Vô hiệu hóa Swagger UI và OpenAPI Docs để ngăn chặn việc lộ cấu trúc nội bộ hệ thống
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
