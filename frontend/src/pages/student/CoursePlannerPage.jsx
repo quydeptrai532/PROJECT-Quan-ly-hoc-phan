@@ -217,7 +217,7 @@ export default function CoursePlannerPage() {
       ) : !hocKyList?.length ? (
         <EmptyState icon={CalendarDays} title="Chưa có học kỳ" description="Học kỳ sẽ xuất hiện khi được mở trong hệ thống." />
       ) : (
-        <div className="grid items-start gap-5 2xl:grid-cols-[minmax(0,1.1fr)_minmax(420px,0.9fr)]">
+        <div className="grid items-start gap-5 2xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.5fr)]">
           <section className="card overflow-hidden">
             <div className="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>

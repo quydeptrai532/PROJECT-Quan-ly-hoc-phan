@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarCheck, ClipboardList, Layers, MapPin, Megaphone, Users } from "lucide-react";
+import { BarChart3, CalendarCheck, ClipboardList, Layers, MapPin, Megaphone, Users } from "lucide-react";
 import ClassAnnouncementModal from "../../components/ClassAnnouncementModal";
-import GradeAnalyticsPanel from "../../components/GradeAnalyticsPanel";
 import { Alert, Badge, EmptyState, PageHeader, Spinner } from "../../components/ui";
 import { lichHoc } from "../../lib/format";
 import { useApi } from "../../lib/useApi";
@@ -32,14 +31,22 @@ export default function LecturerClassesPage() {
         title="Lớp học phần phụ trách"
         description="Các lớp được phân công và danh sách sinh viên để nhập điểm."
         actions={
-          <select className="input w-auto min-w-[200px]" value={hocKyId} onChange={(e) => setHocKyId(e.target.value)}>
-            <option value="">Tất cả học kỳ</option>
-            {hocKyList.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.ten}
-              </option>
-            ))}
-          </select>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              to={`/lop-cua-toi/thong-ke-diem${hocKyId ? `?hocKyId=${hocKyId}` : ""}`}
+              className="btn-secondary"
+            >
+              <BarChart3 size={16} /> Thống kê điểm
+            </Link>
+            <select className="input w-auto min-w-[200px]" value={hocKyId} onChange={(e) => setHocKyId(e.target.value)}>
+              <option value="">Tất cả học kỳ</option>
+              {hocKyList.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.ten}
+                </option>
+              ))}
+            </select>
+          </div>
         }
       />
 
@@ -110,11 +117,6 @@ export default function LecturerClassesPage() {
           ))}
         </div>
       )}
-
-      {/* Thống kê điểm và phân bố trong phạm vi lớp giảng viên phụ trách (QLSV-75 / TASK-LC-10) */}
-      <div className="mt-6">
-        <GradeAnalyticsPanel mode="lecturer" initialHocKyId={hocKyId} />
-      </div>
 
       {/* Modal gửi thông báo cho lớp (QLSV-68 / TASK-LC-03) */}
       <ClassAnnouncementModal
