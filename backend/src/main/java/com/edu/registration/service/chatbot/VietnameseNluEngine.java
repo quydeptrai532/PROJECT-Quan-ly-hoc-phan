@@ -26,6 +26,7 @@ public class VietnameseNluEngine {
         TKB_CA_NHAN,
         THONG_KE,
         TRO_GIUP,
+        THOI_TIET,
         GREETING,
         THANKS,
         GOODBYE,
@@ -185,6 +186,14 @@ public class VietnameseNluEngine {
             return Intent.HUY_XAC_NHAN;
         }
 
+        // Thời tiết (đặt trước rule lịch học để tránh nhầm "thời tiết" thành "tiết")
+        if (normalized.contains("thoi tiet") || normalized.contains("nhiet do")
+                || normalized.contains("du bao") || normalized.contains("do am")
+                || normalized.contains("troi mua") || normalized.contains("troi nang")
+                || normalized.contains("troi nong") || normalized.contains("troi lanh")) {
+            return Intent.THOI_TIET;
+        }
+
         // Hội thoại xã giao (chào hỏi / cảm ơn / tạm biệt / giới thiệu)
         String compact = normalized.replaceAll("[^a-z0-9\\s]", " ").replaceAll("\\s+", " ").trim();
         if (GOODBYE_PATTERN.matcher(compact).matches()) {
@@ -232,18 +241,24 @@ public class VietnameseNluEngine {
             return Intent.TRA_CUU_CON_CHO;
         }
 
-        // Tra cứu lịch học
-        if (normalized.contains("lich") || normalized.contains("thoi khoa bieu") || normalized.contains("thu may") || normalized.contains("tiet")) {
+        // Tra cứu lịch học (tránh nhầm "lịch sử", "du lịch", "thời tiết" thành lịch học)
+        if (normalized.contains("lich hoc") || normalized.contains("lich day") || normalized.contains("lich thi")
+                || normalized.contains("thoi khoa bieu") || normalized.contains("thu may")
+                || normalized.contains("tiet hoc")
+                || Pattern.compile("\\btiet\\s*\\d+").matcher(normalized).find()) {
             return Intent.TRA_CUU_LICH;
         }
 
-        // Tra cứu giảng viên
-        if (normalized.contains("giang vien") || normalized.contains("thay") || normalized.contains("co") || normalized.contains("ai day")) {
+        // Tra cứu giảng viên (không bắt chữ "co"/"thay" đơn lẻ để tránh nuốt câu hỏi thông thường)
+        if (normalized.contains("giang vien") || normalized.contains("giao vien")
+                || normalized.contains("ai day") || normalized.contains("thay nao")
+                || normalized.contains("co nao") || normalized.contains("thay co nao")) {
             return Intent.TRA_CUU_GIANG_VIEN;
         }
 
-        // Tra cứu phòng
-        if (normalized.contains("phong") || normalized.contains("hoc o dau")) {
+        // Tra cứu phòng học (không bắt chữ "phong" đơn lẻ như "phong cách")
+        if (normalized.contains("phong hoc") || normalized.contains("hoc o dau")
+                || normalized.contains("phong nao") || normalized.contains("o phong")) {
             return Intent.TRA_CUU_PHONG;
         }
 
