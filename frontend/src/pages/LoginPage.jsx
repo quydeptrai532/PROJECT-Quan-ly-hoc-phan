@@ -5,12 +5,6 @@ import { getErrorMessage } from "../api/client";
 import { Alert } from "../components/ui";
 import { homePath, useAuth } from "../context/AuthContext";
 
-const DEMO_ACCOUNTS = [
-  { label: "Sinh viên", username: "sv01", password: "123456" },
-  { label: "Giảng viên", username: "gv01", password: "123456" },
-  { label: "Quản trị", username: "admin", password: "admin123" },
-];
-
 export default function LoginPage() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
@@ -176,31 +170,6 @@ export default function LoginPage() {
               {submitting ? "Đang đăng nhập..." : "Đăng nhập"}
             </button>
           </form>
-
-          <div className="mt-8 rounded-xl border border-slate-200 bg-white p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Tài khoản dùng thử
-            </p>
-            <div className="mt-3 grid gap-2 sm:grid-cols-3">
-              {DEMO_ACCOUNTS.map((account) => (
-                <button
-                  key={account.username}
-                  type="button"
-                  onClick={() => {
-                    setUsername(account.username);
-                    setPassword(account.password);
-                    setError("");
-                  }}
-                  className="rounded-lg border border-slate-200 px-3 py-2 text-left text-xs hover:border-indigo-300 hover:bg-indigo-50"
-                >
-                  <span className="block font-medium text-slate-700">{account.label}</span>
-                  <span className="mt-0.5 block font-mono text-[11px] text-slate-500">
-                    {account.username} / {account.password}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
     </div>
