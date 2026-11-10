@@ -95,10 +95,42 @@ export default function Layout({ children }) {
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+    const [auditAlert, setAuditAlert] = useState(null);
 
   useEffect(() => {
     setOpen(false);
   }, [location.pathname]);
+
+    // Chi hien canh bao Audit tai trang tong quan Admin
+    useEffect(() => {
+        if (user?.role !== "QUAN_TRI" || location.pathname !== "/quan-tri") {
+            setAuditAlert(null);
+            return undefined;
+        }
+
+        let cancelled = false;
+
+        api.get("/admin/audit-alerts", {
+            params: {
+                status: "OPEN",
+                page: 0,
+                size: 5,
+            },
+        })
+            .then(({ data }) => {
+                if (cancelled) return;
+
+                const alerts = data?.content || [];
+                setAuditAlert(alerts.length > 0 ? alerts[0] : null);
+            })
+            .catch(() => {
+                if (!cancelled) setAuditAlert(null);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [user?.role, location.pathname]);
 
   useEffect(() => {
     if (!["SINH_VIEN", "GIANG_VIEN"].includes(user?.role)) {
@@ -141,6 +173,51 @@ export default function Layout({ children }) {
           onClick={() => setOpen(false)}
         />
       )}
+        {auditAlert && user?.role === "QUAN_TRI" && location.pathname === "/quan-tri" && (
+            <div className="fixed right-4 top-24 z-[60] w-[calc(100%-2rem)] max-w-md">
+                <div className="rounded-2xl border border-red-300 bg-white shadow-2xl">
+                    <div className="flex items-start gap-3 p-4">
+                        <div className="rounded-xl bg-red-100 p-2 text-red-700">
+                            <ShieldAlert size={22} />
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold uppercase tracking-wider text-red-700">
+                                CẢNH BÁO AUDIT
+                            </p>
+
+                            <p className="mt-1 text-sm font-bold text-slate-900">
+                                {auditAlert.title || "Phát hiện hoạt động bất thường"}
+                            </p>
+
+                            <p className="mt-1 text-sm text-slate-600">
+                                Đối tượng: {auditAlert.subject || "Không xác định"}
+                            </p>
+
+                            <p className="mt-1 text-xs font-semibold text-red-600">
+                                Mức độ: {auditAlert.severity || "HIGH"}
+                            </p>
+
+                            <NavLink
+                                to="/quan-tri/canh-bao-audit"
+                                className="mt-3 inline-block text-xs font-bold text-red-700 underline hover:text-red-900"
+                            >
+                                Xem chi tiết cảnh báo
+                            </NavLink>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => setAuditAlert(null)}
+                            className="rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                            aria-label="Đóng cảnh báo"
+                        >
+                            <X size={18} />
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
 
       <aside
         className={`app-sidebar fixed inset-y-0 left-0 z-40 flex w-64 flex-col overflow-hidden transition-transform duration-300 lg:translate-x-0 ${
