@@ -211,7 +211,38 @@ CREATE TABLE IF NOT EXISTS distributed_lock (
     INDEX idx_dist_lock_expires (expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS dot_dang_ky (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    hoc_ky_id BIGINT NOT NULL,
+    ma_dot VARCHAR(40) NOT NULL,
+    ten_dot VARCHAR(150) NOT NULL,
+    loai_dot VARCHAR(30) NOT NULL DEFAULT 'CHINH_THUC',
+    khoa_hoc_id BIGINT NULL,
+    khoa_nhap_hoc VARCHAR(50) NULL,
+    nganh_id BIGINT NULL,
+    lop_hanh_chinh_id BIGINT NULL,
+    nhom_doi_tuong VARCHAR(100) NULL,
+    thu_tu_uu_tien INT NOT NULL DEFAULT 1,
+    thoi_gian_bat_dau DATETIME(6) NOT NULL,
+    thoi_gian_ket_thuc DATETIME(6) NOT NULL,
+    dang_hieu_luc TINYINT(1) NOT NULL DEFAULT 1,
+    dong_som TINYINT(1) NOT NULL DEFAULT 0,
+    thoi_diem_dong_som DATETIME(6) NULL,
+    ly_do_dong_som VARCHAR(500) NULL,
+    thoi_gian_ket_thuc_goc DATETIME(6) NULL,
+    ly_do_dieu_chinh VARCHAR(500) NULL,
+    ghi_chu VARCHAR(500) NULL,
+    nguoi_tao_id BIGINT NULL,
+    nguoi_tao_username VARCHAR(50) NULL,
+    tao_luc DATETIME(6) NULL,
+    nguoi_cap_nhat_id BIGINT NULL,
+    nguoi_cap_nhat_username VARCHAR(50) NULL,
+    cap_nhat_luc DATETIME(6) NULL,
+    CONSTRAINT fk_dot_hk FOREIGN KEY (hoc_ky_id) REFERENCES hoc_ky(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Làm sạch dữ liệu rác cũ nếu có
+DELETE FROM dot_dang_ky;
 DELETE FROM diem;
 DELETE FROM dang_ky_hoc_phan;
 DELETE FROM lop_hoc_phan;
@@ -260,11 +291,15 @@ INSERT INTO lop_hanh_chinh (id, ma, ten, nganh_id) VALUES
 
 -- 4. BẢNG HOC_KY
 INSERT INTO hoc_ky (id, ten, nam_hoc, ngay_bat_dau, ngay_ket_thuc, dang_ky_tu, dang_ky_den, so_tin_chi_toi_thieu, so_tin_chi_toi_da) VALUES
-(1, 'Học kỳ 1', '2025-2026', '2025-09-05', '2026-01-20', '2025-08-15', '2025-09-25', 12, 24),
-(2, 'Học kỳ 2', '2025-2026', '2026-02-15', '2026-06-30', '2026-01-20', '2026-03-05', 12, 24),
+(1, 'Học kỳ 1', '2025-2026', DATE_SUB(CURDATE(), INTERVAL 220 DAY), DATE_SUB(CURDATE(), INTERVAL 120 DAY), DATE_SUB(CURDATE(), INTERVAL 240 DAY), DATE_SUB(CURDATE(), INTERVAL 220 DAY), 12, 24),
+(2, 'Học kỳ 2', '2025-2026', DATE_SUB(CURDATE(), INTERVAL 110 DAY), DATE_SUB(CURDATE(), INTERVAL 10 DAY), DATE_SUB(CURDATE(), INTERVAL 130 DAY), DATE_SUB(CURDATE(), INTERVAL 110 DAY), 12, 24),
 (3, 'Học kỳ 1', '2026-2027', DATE_SUB(CURDATE(), INTERVAL 14 DAY), DATE_ADD(CURDATE(), INTERVAL 90 DAY), DATE_SUB(CURDATE(), INTERVAL 5 DAY), DATE_ADD(CURDATE(), INTERVAL 20 DAY), 12, 24),
-(4, 'Học kỳ 2', '2024-2025', '2025-02-15', '2025-06-30', '2025-01-20', '2025-03-05', 12, 24),
-(5, 'Học kỳ 1', '2024-2025', '2024-09-05', '2025-01-20', '2024-08-15', '2024-09-25', 12, 24);
+(4, 'Học kỳ 2', '2024-2025', DATE_SUB(CURDATE(), INTERVAL 400 DAY), DATE_SUB(CURDATE(), INTERVAL 300 DAY), DATE_SUB(CURDATE(), INTERVAL 420 DAY), DATE_SUB(CURDATE(), INTERVAL 400 DAY), 12, 24),
+(5, 'Học kỳ 1', '2024-2025', DATE_SUB(CURDATE(), INTERVAL 600 DAY), DATE_SUB(CURDATE(), INTERVAL 500 DAY), DATE_SUB(CURDATE(), INTERVAL 620 DAY), DATE_SUB(CURDATE(), INTERVAL 600 DAY), 12, 24);
+
+-- 4b. BẢNG DOT_DANG_KY (đợt đăng ký mở cho toàn trường ở học kỳ hiện tại)
+INSERT INTO dot_dang_ky (id, hoc_ky_id, ma_dot, ten_dot, loai_dot, nhom_doi_tuong, thu_tu_uu_tien, thoi_gian_bat_dau, thoi_gian_ket_thuc, dang_hieu_luc, dong_som, tao_luc) VALUES
+(1, 3, 'DOT-CHUNG', 'Đợt đăng ký chung toàn trường', 'CHINH_THUC', 'TOAN_TRUONG', 1, CONCAT(DATE_SUB(CURDATE(), INTERVAL 5 DAY), ' 00:00:00'), CONCAT(DATE_ADD(CURDATE(), INTERVAL 20 DAY), ' 23:59:59'), 1, 0, NOW());
 
 -- 5. BẢNG MON_HOC (50 môn học chia đều 8 kỳ)
 INSERT INTO mon_hoc (id, ma, ten, so_tin_chi, khoa_id) VALUES

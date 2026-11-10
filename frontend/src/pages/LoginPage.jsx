@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -19,6 +20,17 @@ export default function LoginPage() {
       navigate(homePath(user.role), { replace: true });
     }
   }, [user, navigate]);
+
+  useEffect(() => {
+    const stored = sessionStorage.getItem("authNotice");
+    const replaced = new URLSearchParams(window.location.search).get("reason") === "session_replaced";
+    if (stored) {
+      setNotice(stored);
+      sessionStorage.removeItem("authNotice");
+    } else if (replaced) {
+      setNotice("Tài khoản đã được đăng nhập ở nơi khác. Vui lòng đăng nhập lại.");
+    }
+  }, []);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -118,6 +130,7 @@ export default function LoginPage() {
           </p>
 
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+            {notice && <Alert tone="warning">{notice}</Alert>}
             {error && <Alert tone="error">{error}</Alert>}
 
             <div>

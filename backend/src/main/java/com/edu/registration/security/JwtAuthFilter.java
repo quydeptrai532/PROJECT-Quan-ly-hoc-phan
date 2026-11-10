@@ -48,8 +48,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     if (authUserOpt.isPresent()) {
                         UserAuthCache.AuthUser user = authUserOpt.get();
                         if (!user.active()) {
-                            writeError(response, HttpServletResponse.SC_FORBIDDEN,
+                            writeError(response, HttpServletResponse.SC_FORBIDDEN, null,
                                     "Tài khoản đã bị khóa, vui lòng liên hệ phòng đào tạo");
+                            return;
+                        }
+                        String sessionId = jwtService.extractSessionId(token);
+                        if (user.sessionId() != null && !user.sessionId().equals(sessionId)) {
+                            writeError(response, HttpServletResponse.SC_UNAUTHORIZED, "SESSION_REPLACED",
+                                    "Tài khoản của bạn vừa được đăng nhập ở nơi khác. Vui lòng đăng nhập lại.");
                             return;
                         }
                         var authentication = new UsernamePasswordAuthenticationToken(
@@ -67,10 +73,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private void writeError(HttpServletResponse response, int status, String message) throws IOException {
+    private void writeError(HttpServletResponse response, int status, String code, String message) throws IOException {
         response.setStatus(status);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
-        objectMapper.writeValue(response.getWriter(), Map.of("message", message));
+        Map<String, String> body = (code == null)
+                ? Map.of("message", message)
+                : Map.of("code", code, "message", message);
+        objectMapper.writeValue(response.getWriter(), body);
     }
 }

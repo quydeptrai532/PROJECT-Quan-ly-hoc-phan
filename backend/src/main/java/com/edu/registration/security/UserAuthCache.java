@@ -34,7 +34,8 @@ public class UserAuthCache {
             return Optional.empty();
         }
 
-        AuthUser authUser = new AuthUser(user.getUsername(), user.getRole(), user.isTrangThai());
+        AuthUser authUser = new AuthUser(user.getUsername(), user.getRole(), user.isTrangThai(),
+                user.getCurrentSessionId());
         cache.put(username, new Entry(authUser, now + TTL_MS));
         return Optional.of(authUser);
     }
@@ -49,7 +50,7 @@ public class UserAuthCache {
         cache.clear();
     }
 
-    public record AuthUser(String username, Role role, boolean active) {
+    public record AuthUser(String username, Role role, boolean active, String sessionId) {
     }
 
     private record Entry(AuthUser user, long expiresAt) {
