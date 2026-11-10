@@ -5,6 +5,8 @@ import com.edu.registration.dto.StatDtos;
 import com.edu.registration.service.GradeAnalyticsService;
 import com.edu.registration.service.StatisticsService;
 import com.edu.registration.util.ExportSecuritySupport;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
@@ -26,6 +28,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin")
 @PreAuthorize("hasRole('QUAN_TRI')")
+@Tag(name = "Quản trị - Thống kê & Báo cáo", description = "Thống kê tổng quan đào tạo, số liệu đăng ký theo môn, tải đào tạo và phân tích phổ điểm")
 public class AdminStatisticsController {
 
     private final StatisticsService thongKeService;
@@ -43,11 +46,13 @@ public class AdminStatisticsController {
     }
 
     @GetMapping("/thong-ke/tong-quan")
+    @Operation(summary = "Thống kê tổng quan hệ thống", description = "Xem tổng số sinh viên, giảng viên, môn học, lớp mở và lượt đăng ký")
     public StatDtos.TongQuanDto tongQuan() {
         return thongKeService.tongQuan();
     }
 
     @GetMapping("/thong-ke/theo-mon")
+    @Operation(summary = "Thống kê đăng ký theo môn học", description = "Báo cáo số lượng sinh viên đăng ký theo từng môn học trong kỳ")
     public List<StatDtos.ThongKeMonDto> theoMon(@RequestParam(required = false) Long hocKyId,
                                                 @RequestParam(required = false) Long khoaId,
                                                 @RequestParam(required = false) Long nganhId) {
@@ -55,6 +60,7 @@ public class AdminStatisticsController {
     }
 
     @GetMapping("/thong-ke/hanh-dong")
+    @Operation(summary = "Thống kê hành động học vụ", description = "Đếm số lượng sinh viên cần cảnh báo hoặc hỗ trợ học tập")
     public StatDtos.HanhDongHocVuDto hanhDong(@RequestParam(required = false) Long hocKyId,
                                               @RequestParam(required = false) Long khoaId) {
         return thongKeService.hanhDong(hocKyId, khoaId);

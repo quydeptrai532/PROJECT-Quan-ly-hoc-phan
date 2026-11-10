@@ -2,6 +2,8 @@ package com.edu.registration.controller;
 
 import com.edu.registration.dto.CatalogDtos;
 import com.edu.registration.service.CatalogService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -19,6 +21,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin")
 @PreAuthorize("hasRole('QUAN_TRI')")
+@Tag(name = "Quản trị - Danh mục đào tạo", description = "Quản lý danh mục khoa, ngành, lớp hành chính, khóa học, môn học, quan hệ môn và học kỳ")
 public class AdminCatalogController {
 
     private final CatalogService catalogService;
@@ -30,6 +33,7 @@ public class AdminCatalogController {
     // ==================== KHOA ====================
 
     @GetMapping("/khoa")
+    @Operation(summary = "Danh sách khoa", description = "Lấy danh sách tất cả các khoa trong trường")
     public List<CatalogDtos.KhoaDto> danhSachKhoa(
             @RequestParam(required = false) Boolean dangHieuLuc,
             @RequestParam(required = false) Boolean includeInactive) {
@@ -37,22 +41,26 @@ public class AdminCatalogController {
     }
 
     @PostMapping("/khoa")
+    @Operation(summary = "Tạo khoa mới", description = "Tạo mới một khoa quản lý bộ môn")
     public CatalogDtos.KhoaDto taoKhoa(@Valid @RequestBody CatalogDtos.KhoaRequest request) {
         return catalogService.taoKhoa(request);
     }
 
     @PutMapping("/khoa/{id}")
+    @Operation(summary = "Cập nhật khoa", description = "Chỉnh sửa mã hoặc tên khoa")
     public CatalogDtos.KhoaDto suaKhoa(@PathVariable Long id, @Valid @RequestBody CatalogDtos.KhoaRequest request) {
         return catalogService.suaKhoa(id, request);
     }
 
     @DeleteMapping("/khoa/{id}")
+    @Operation(summary = "Xóa hoặc lưu trữ khoa", description = "Xóa mềm hoặc xóa vĩnh viễn một khoa")
     public void xoaKhoa(@PathVariable Long id,
                          @RequestParam(required = false, defaultValue = "false") boolean permanent) {
         catalogService.xoaKhoa(id, permanent);
     }
 
     @PutMapping("/khoa/{id}/khoi-phuc")
+    @Operation(summary = "Khôi phục khoa đã lưu trữ", description = "Khôi phục hiệu lực hoạt động cho khoa")
     public CatalogDtos.KhoaDto khoiPhucKhoa(@PathVariable Long id) {
         return catalogService.khoiPhucKhoa(id);
     }
@@ -60,6 +68,7 @@ public class AdminCatalogController {
     // ==================== NGÀNH ====================
 
     @GetMapping("/nganh")
+    @Operation(summary = "Danh sách ngành đào tạo", description = "Lọc ngành theo khoa và trạng thái hiệu lực")
     public List<CatalogDtos.NganhDto> danhSachNganh(
             @RequestParam(required = false) Long khoaId,
             @RequestParam(required = false) Boolean dangHieuLuc,
