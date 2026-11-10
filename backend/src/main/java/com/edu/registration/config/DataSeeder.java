@@ -10,6 +10,7 @@ import com.edu.registration.entity.GradeSheetStatus;
 import com.edu.registration.entity.Lecturer;
 import com.edu.registration.entity.Major;
 import com.edu.registration.entity.PrerequisiteSubject;
+import com.edu.registration.entity.RegistrationPeriod;
 import com.edu.registration.entity.RegistrationStatus;
 import com.edu.registration.entity.Role;
 import com.edu.registration.entity.Semester;
@@ -36,6 +37,7 @@ import com.edu.registration.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -73,6 +75,9 @@ public class DataSeeder implements CommandLineRunner {
     private final RegistrationPeriodRepository dotDangKyRepository;
     private final ClassroomRepository phongHocRepository;
     private final PasswordEncoder passwordEncoder;
+
+    @Value("${app.seed.refresh-current-window:true}")
+    private boolean refreshCurrentWindow;
 
     private static final String[] LAST_NAMES = {
             "Nguyễn", "Trần", "Lê", "Phạm", "Hoàng", "Huỳnh", "Phan", "Vũ", "Võ", "Đặng",
@@ -151,6 +156,8 @@ public class DataSeeder implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
+        refreshCurrentRegistrationWindow();
+
         if (userRepository.count() > 0 && sinhVienRepository.count() >= 500) {
             seedKhoaHocNeuChuaCo(null, null);
             seedPhongHocNeuChuaCo();
@@ -337,6 +344,7 @@ public class DataSeeder implements CommandLineRunner {
                 homNay.minusMonths(27), homNay.minusMonths(26).plusDays(20), 12, 24);
 
         seedKhoaHocNeuChuaCo(hocKyCuNhat, hocKyHienTai);
+        ensureOpenRegistrationPeriod(hocKyHienTai);
 
         // 6. Tạo Quản trị viên
         taoUserWithHash("admin", encodedAdminPassword, Role.QUAN_TRI);
@@ -551,6 +559,64 @@ public class DataSeeder implements CommandLineRunner {
 
         seedPhongHocNeuChuaCo();
         log.info("Đã tạo thành công bộ dữ liệu hoàn chỉnh: 500 sinh viên, 50 giảng viên, 50 môn học chia đều các kỳ!");
+    }
+
+    private void refreshCurrentRegistrationWindow() {
+        if (!refreshCurrentWindow || hocKyRepository.count() == 0) {
+            return;
+        }
+        LocalDate homNay = LocalDate.now();
+        Semester hocKy = hocKyRepository
+                .findFirstByDangKyTuLessThanEqualAndDangKyDenGreaterThanEqualOrderByDangKyDenDesc(homNay, homNay)
+                .orElseGet(() -> hocKyRepository.findFirstByOrderByDangKyDenDesc().orElse(null));
+        if (hocKy == null) {
+            return;
+        }
+        if (!hocKy.dangMoDangKy()) {
+            hocKy.setNgayBatDau(homNay.minusDays(14));
+            hocKy.setNgayKetThuc(homNay.plusDays(90));
+            hocKy.setDangKyTu(homNay.minusDays(5));
+            hocKy.setDangKyDen(homNay.plusDays(20));
+            hocKyRepository.save(hocKy);
+            log.info("Đã làm mới cửa sổ đăng ký của học kỳ {} ({} đến {})",
+                    hocKy.getTen(), hocKy.getDangKyTu(), hocKy.getDangKyDen());
+        }
+        ensureOpenRegistrationPeriod(hocKy);
+    }
+
+    private void ensureOpenRegistrationPeriod(Semester hocKy) {
+        if (dotDangKyRepository == null || hocKy == null) {
+            return;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        List<RegistrationPeriod> periods = dotDangKyRepository
+                .findByHocKyIdAndDangHieuLucTrueOrderByThuTuUuTienAscThoiGianBatDauAsc(hocKy.getId());
+        if (periods.stream().anyMatch(p -> p.dangMo(now))) {
+            return;
+        }
+
+        String maDot = "DOT-CHUNG";
+        int suffix = 1;
+        while (dotDangKyRepository.existsByHocKyIdAndMaDotIgnoreCase(hocKy.getId(), maDot)) {
+            maDot = "DOT-CHUNG-" + (++suffix);
+        }
+
+        RegistrationPeriod dot = new RegistrationPeriod();
+        dot.setHocKy(hocKy);
+        dot.setMaDot(maDot);
+        dot.setTenDot("Đợt đăng ký chung toàn trường");
+        dot.setLoaiDot("CHINH_THUC");
+        dot.setNhomDoiTuong("TOAN_TRUONG");
+        dot.setThuTuUuTien(1);
+        dot.setThoiGianBatDau(now.minusDays(5).toLocalDate().atStartOfDay());
+        dot.setThoiGianKetThuc(now.plusDays(20).toLocalDate().atTime(23, 59, 59));
+        dot.setDangHieuLuc(true);
+        dot.setDongSom(false);
+        dot.setTaoLuc(now);
+        dot.setNguoiTaoUsername("system");
+        dotDangKyRepository.save(dot);
+        log.info("Đã tạo đợt đăng ký mở cho học kỳ {} ({} đến {})",
+                hocKy.getTen(), dot.getThoiGianBatDau(), dot.getThoiGianKetThuc());
     }
 
     private void seedKhoaHocNeuChuaCo(Semester hkBatDau, Semester hkHienTai) {

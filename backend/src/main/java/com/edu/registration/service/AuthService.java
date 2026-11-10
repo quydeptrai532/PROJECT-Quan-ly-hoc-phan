@@ -10,6 +10,7 @@ import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.repository.UserRepository;
 import com.edu.registration.security.CurrentUser;
 import com.edu.registration.security.JwtService;
+import com.edu.registration.security.UserAuthCache;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -32,11 +33,12 @@ public class AuthService {
     private final JwtService jwtService;
     private final CurrentUser currentUser;
     private final AuditLogService auditLogService;
+    private final UserAuthCache userAuthCache;
 
     public AuthService(UserRepository userRepository, StudentRepository sinhVienRepository,
                        LecturerRepository giangVienRepository, PasswordEncoder passwordEncoder,
                        JwtService jwtService, CurrentUser currentUser,
-                       AuditLogService auditLogService) {
+                       AuditLogService auditLogService, UserAuthCache userAuthCache) {
         this.userRepository = userRepository;
         this.sinhVienRepository = sinhVienRepository;
         this.giangVienRepository = giangVienRepository;
@@ -44,9 +46,10 @@ public class AuthService {
         this.jwtService = jwtService;
         this.currentUser = currentUser;
         this.auditLogService = auditLogService;
+        this.userAuthCache = userAuthCache;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public AuthDtos.LoginResponse login(AuthDtos.LoginRequest request) {
         User user = userRepository.findByUsername(request.username().trim()).orElse(null);
         if (user == null) {
@@ -82,8 +85,23 @@ public class AuthService {
             ma = "ADMIN";
         }
 
-        return new AuthDtos.LoginResponse(jwtService.generateToken(user), user.getRole().name(),
+        String sessionId = java.util.UUID.randomUUID().toString();
+        user.setCurrentSessionId(sessionId);
+        userRepository.save(user);
+        userAuthCache.evict(user.getUsername());
+
+        return new AuthDtos.LoginResponse(jwtService.generateToken(user, sessionId), user.getRole().name(),
                 hoTen, ma, user.getUsername());
+    }
+
+    @Transactional
+    public void logout(String sessionId) {
+        User user = currentUser.get();
+        if (sessionId != null && sessionId.equals(user.getCurrentSessionId())) {
+            user.setCurrentSessionId(java.util.UUID.randomUUID().toString());
+            userRepository.save(user);
+        }
+        userAuthCache.evict(user.getUsername());
     }
 
     @Transactional(readOnly = true)
@@ -142,5 +160,6 @@ public class AuthService {
             throw ApiException.badRequest("Mật khẩu hiện tại không đúng");
         }
         user.setPassword(passwordEncoder.encode(request.matKhauMoi()));
+        userAuthCache.evict(user.getUsername());
     }
 }

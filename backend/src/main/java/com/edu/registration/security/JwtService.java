@@ -24,18 +24,28 @@ public class JwtService {
     }
 
     public String generateToken(User user) {
+        return generateToken(user, user.getCurrentSessionId());
+    }
+
+    public String generateToken(User user, String sessionId) {
         Date now = new Date();
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .subject(user.getUsername())
                 .claim("role", user.getRole().name())
                 .issuedAt(now)
-                .expiration(new Date(now.getTime() + expirationMs))
-                .signWith(key)
-                .compact();
+                .expiration(new Date(now.getTime() + expirationMs));
+        if (sessionId != null && !sessionId.isBlank()) {
+            builder.claim("sid", sessionId);
+        }
+        return builder.signWith(key).compact();
     }
 
     public String extractUsername(String token) {
         return parse(token).getSubject();
+    }
+
+    public String extractSessionId(String token) {
+        return parse(token).get("sid", String.class);
     }
 
     public boolean isValid(String token) {

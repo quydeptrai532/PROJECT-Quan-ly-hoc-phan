@@ -2,6 +2,7 @@ package com.edu.registration.controller;
 
 import com.edu.registration.dto.AuthDtos;
 import com.edu.registration.dto.MessageResponse;
+import com.edu.registration.security.JwtService;
 import com.edu.registration.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -20,9 +22,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final JwtService jwtService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, JwtService jwtService) {
         this.authService = authService;
+        this.jwtService = jwtService;
     }
 
     @PostMapping("/login")
@@ -30,6 +34,21 @@ public class AuthController {
     @Operation(summary = "Đăng nhập hệ thống", description = "Xác thực tài khoản người dùng bằng tên đăng nhập và mật khẩu, trả về access token JWT và vai trò")
     public AuthDtos.LoginResponse login(@Valid @RequestBody AuthDtos.LoginRequest request) {
         return authService.login(request);
+    }
+
+    @PostMapping("/logout")
+    @Operation(summary = "Đăng xuất khỏi hệ thống", description = "Kết thúc phiên đăng nhập hiện tại trên server bằng cách xoá session id đang hoạt động")
+    public MessageResponse logout(@RequestHeader(value = "Authorization", required = false) String authorization) {
+        String sessionId = null;
+        if (authorization != null && authorization.startsWith("Bearer ")) {
+            try {
+                sessionId = jwtService.extractSessionId(authorization.substring(7));
+            } catch (RuntimeException ignored) {
+                sessionId = null;
+            }
+        }
+        authService.logout(sessionId);
+        return new MessageResponse("Đăng xuất thành công");
     }
 
     @GetMapping("/me")
