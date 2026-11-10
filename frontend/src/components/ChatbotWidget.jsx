@@ -43,7 +43,7 @@ const QUICK_SUGGESTIONS = {
     "Tìm các lớp học phần còn chỗ",
     "Xem thời khóa biểu của tôi",
     "Lớp INT201.01 còn bao nhiêu chỗ?",
-    "Có lớp nào thay thế không?",
+    "Thời tiết Hà Nội hôm nay",
     "Hướng dẫn trợ giúp",
   ],
   GIANG_VIEN: [

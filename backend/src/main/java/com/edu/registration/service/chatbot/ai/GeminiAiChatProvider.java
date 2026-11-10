@@ -47,7 +47,7 @@ public class GeminiAiChatProvider implements AiChatProvider {
 
     @Override
     public ChatbotDtos.ChatbotStatusDto getStatus() {
-        boolean configured = properties.isProviderConfigured();
+        boolean configured = properties.isGeminiProvider() && properties.isGeminiConfigured();
         List<String> missing = new ArrayList<>();
         if (!configured) {
             missing.add("app.chatbot.ai.api-key (Biến môi trường CHATBOT_AI_API_KEY)");
@@ -72,7 +72,7 @@ public class GeminiAiChatProvider implements AiChatProvider {
 
     @Override
     public Optional<String> generateText(String systemPrompt, String userMessage, List<ChatbotSessionManager.SessionMessage> history) {
-        if (!properties.isProviderConfigured()) {
+        if (!properties.isGeminiProvider() || !properties.isGeminiConfigured()) {
             return Optional.empty();
         }
 
