@@ -64,6 +64,65 @@ class ChatbotIntegrationTest {
     }
 
     @Test
+    @DisplayName("Lời chào được đáp lại thân thiện, không liệt kê toàn bộ lớp học phần")
+    void greetingShouldRespondConversationally() throws Exception {
+        String token = login("sv01", "123456");
+
+        MvcResult res = mockMvc.perform(post("/api/chatbot/message")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new ChatbotDtos.ChatRequest(
+                                "Xin chào", null, "test-session-greeting-1"))))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode root = json(res);
+        assertEquals("NONE", root.get("actionType").asText());
+        String reply = root.get("reply").asText();
+        assertTrue(reply.contains("Chào"), "Phải chào lại người dùng, actual: " + reply);
+        assertTrue(reply.contains("giúp"), "Phải hỏi người dùng cần giúp gì, actual: " + reply);
+        assertTrue(root.get("candidateClasses").isNull(), "Không được trả về danh sách lớp khi chỉ chào hỏi");
+    }
+
+    @Test
+    @DisplayName("Câu hỏi ngoài phạm vi hiểu biết nhận gợi ý thay vì liệt kê toàn bộ lớp")
+    void unknownMessageShouldGetGuidanceInsteadOfClassDump() throws Exception {
+        String token = login("sv01", "123456");
+
+        MvcResult res = mockMvc.perform(post("/api/chatbot/message")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new ChatbotDtos.ChatRequest(
+                                "blah blah khong ro rang", null, "test-session-unknown-1"))))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode root = json(res);
+        assertEquals("NONE", root.get("actionType").asText());
+        assertTrue(root.get("reply").asText().contains("chưa hiểu rõ ý bạn"));
+        assertTrue(root.get("candidateClasses").isNull());
+    }
+
+    @Test
+    @DisplayName("Câu hỏi hướng dẫn (khi nào/làm sao) không bị hiểu nhầm thành lệnh đăng ký")
+    void informationalQuestionShouldNotBeTreatedAsRegistrationCommand() throws Exception {
+        String token = login("sv01", "123456");
+
+        MvcResult res = mockMvc.perform(post("/api/chatbot/message")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new ChatbotDtos.ChatRequest(
+                                "Khi nào được đăng ký học phần?", null, "test-session-info-1"))))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode root = json(res);
+        assertEquals("NONE", root.get("actionType").asText());
+        assertTrue(root.get("candidateClasses").isNull());
+        assertFalse(root.get("reply").asText().contains("Không tìm thấy lớp học phần phù hợp với yêu cầu đăng ký"));
+    }
+
+    @Test
     @DisplayName("Chưa đăng nhập khi gửi tin nhắn bị từ chối với HTTP 401")
     void unauthenticatedAccessReturns401() throws Exception {
         mockMvc.perform(post("/api/chatbot/message")

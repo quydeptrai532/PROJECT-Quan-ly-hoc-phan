@@ -82,4 +82,39 @@ class VietnameseNluEngineTest {
         var res = nluEngine.parse("Xem thống kê tổng quan đào tạo");
         assertEquals(VietnameseNluEngine.Intent.THONG_KE, res.intent());
     }
+
+    @Test
+    @DisplayName("Nhận diện lời chào hỏi tự nhiên")
+    void testGreetingIntent() {
+        assertEquals(VietnameseNluEngine.Intent.GREETING, nluEngine.parse("Xin chào").intent());
+        assertEquals(VietnameseNluEngine.Intent.GREETING, nluEngine.parse("Chào bạn!").intent());
+        assertEquals(VietnameseNluEngine.Intent.GREETING, nluEngine.parse("hello").intent());
+        assertEquals(VietnameseNluEngine.Intent.GREETING, nluEngine.parse("Hi").intent());
+        assertEquals(VietnameseNluEngine.Intent.GREETING, nluEngine.parse("Alo").intent());
+        assertEquals(VietnameseNluEngine.Intent.GREETING, nluEngine.parse("Xin chào trợ lý").intent());
+    }
+
+    @Test
+    @DisplayName("Lời chào kèm yêu cầu tra cứu vẫn ưu tiên đúng intent nghiệp vụ")
+    void testGreetingMixedWithBusinessRequest() {
+        var res = nluEngine.parse("Chào bạn, tôi muốn đăng ký lớp LHP01");
+        assertEquals(VietnameseNluEngine.Intent.DANG_KY, res.intent());
+    }
+
+    @Test
+    @DisplayName("Nhận diện lời cảm ơn và tạm biệt")
+    void testThanksAndGoodbyeIntent() {
+        assertEquals(VietnameseNluEngine.Intent.THANKS, nluEngine.parse("Cảm ơn bạn").intent());
+        assertEquals(VietnameseNluEngine.Intent.THANKS, nluEngine.parse("thanks").intent());
+        assertEquals(VietnameseNluEngine.Intent.GOODBYE, nluEngine.parse("Tạm biệt").intent());
+        assertEquals(VietnameseNluEngine.Intent.GOODBYE, nluEngine.parse("bye").intent());
+    }
+
+    @Test
+    @DisplayName("Nhận diện câu hỏi giới thiệu về trợ lý")
+    void testSmallTalkIntent() {
+        assertEquals(VietnameseNluEngine.Intent.SMALL_TALK, nluEngine.parse("Bạn là ai?").intent());
+        assertEquals(VietnameseNluEngine.Intent.SMALL_TALK, nluEngine.parse("Bạn tên gì").intent());
+        assertEquals(VietnameseNluEngine.Intent.SMALL_TALK, nluEngine.parse("Bạn khỏe không").intent());
+    }
 }

@@ -19,6 +19,11 @@ test.describe("Giảng viên", () => {
 
     await page.goto("/lop-cua-toi/thoi-khoa-bieu");
     await expect(page.getByRole("heading", { name: "Thời khóa biểu giảng dạy" })).toBeVisible();
+
+    await page.goto("/lop-cua-toi/thong-ke-diem");
+    await expect(page.getByRole("heading", { name: "Thống kê điểm & phân bố điểm" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Mục lục trang thống kê điểm" })).toBeVisible();
+    await expect(page.getByText("Bảng chi tiết phân bố khoảng điểm (Không chồng lấn)")).toBeVisible();
   });
     test("xuất danh sách sinh viên của lớp ra CSV và chặn lớp không phụ trách", async ({ page }) => {
         await login(page, "gv01", "123456");

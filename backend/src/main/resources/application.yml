@@ -244,7 +244,7 @@ app:
       enabled: ${CHATBOT_AI_ENABLED:true}
       provider: ${CHATBOT_AI_PROVIDER:GEMINI}
       api-key: ${CHATBOT_AI_API_KEY:}
-      model: ${CHATBOT_AI_MODEL:gemini-1.5-flash}
+      model: ${CHATBOT_AI_MODEL:gemini-3.5-flash-lite}
       endpoint: ${CHATBOT_AI_ENDPOINT:}
       temperature: ${CHATBOT_AI_TEMPERATURE:0.2}
       max-tokens: ${CHATBOT_AI_MAX_TOKENS:1000}

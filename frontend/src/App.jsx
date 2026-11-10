@@ -13,6 +13,7 @@ import TimetablePage from "./pages/student/TimetablePage";
 import GradesPage from "./pages/student/GradesPage";
 import StudyHistoryPage from "./pages/student/StudyHistoryPage";
 import LecturerClassesPage from "./pages/lecturer/LecturerClassesPage";
+import LecturerGradeAnalyticsPage from "./pages/lecturer/GradeAnalyticsPage";
 import LecturerTimetablePage from "./pages/lecturer/TimetablePage";
 import GradeEntryPage from "./pages/lecturer/GradeEntryPage";
 import LecturerAttendancePage from "./pages/lecturer/LecturerAttendancePage";
@@ -154,6 +155,14 @@ export default function App() {
         element={
           <ProtectedRoute roles={["GIANG_VIEN"]}>
             <LecturerTimetablePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/lop-cua-toi/thong-ke-diem"
+        element={
+          <ProtectedRoute roles={["GIANG_VIEN"]}>
+            <LecturerGradeAnalyticsPage />
           </ProtectedRoute>
         }
       />

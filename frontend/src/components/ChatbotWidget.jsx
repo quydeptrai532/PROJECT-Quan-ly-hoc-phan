@@ -23,6 +23,21 @@ import api, { getErrorMessage } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { Badge } from "./ui";
 
+function escapeHtml(text) {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// Render nhẹ các định dạng markdown backend trả về mà không cần thư viện ngoài.
+function renderRichText(text) {
+  if (!text) return "";
+  return escapeHtml(text)
+    .replace(/^#{1,3}\s*(.+)$/gm, '<div class="mb-1 text-sm font-bold text-[#173f3a]">$1</div>')
+    .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*([^*\n]+)\*/g, "<em>$1</em>")
+    .replace(/^\s*[-*]\s+/gm, "• ")
+    .replace(/`([^`\n]+)`/g, '<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-[12px] text-slate-800">$1</code>');
+}
+
 const QUICK_SUGGESTIONS = {
   SINH_VIEN: [
     "Tìm các lớp học phần còn chỗ",
@@ -302,7 +317,10 @@ export default function ChatbotWidget({ isOpenControlled, onCloseControlled, def
                       </div>
                     )}
 
-                    <div className="whitespace-pre-line">{msg.reply}</div>
+                    <div
+                      className="whitespace-pre-line"
+                      dangerouslySetInnerHTML={{ __html: renderRichText(msg.reply) }}
+                    />
 
                     {/* Hộp xác nhận đăng ký bắt buộc (CONFIRM_REGISTRATION) */}
                     {msg.pendingClass && msg.requiresConfirmation && (
