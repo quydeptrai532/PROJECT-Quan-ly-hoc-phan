@@ -42,6 +42,7 @@ import LearningAnalyticsPage from "./pages/admin/LearningAnalyticsPage";
 import StudentAcademicAlertsPage from "./pages/student/StudentAcademicAlertsPage";
 import VerifyTranscriptPage from "./pages/public/VerifyTranscriptPage";
 import AdminVerifiableTranscriptsPage from "./pages/admin/AdminVerifiableTranscriptsPage";
+import ChatbotPage from "./pages/ChatbotPage";
 
 function RootRedirect() {
   const { user } = useAuth();
@@ -61,6 +62,15 @@ export default function App() {
         element={
           <ProtectedRoute roles={["SINH_VIEN", "GIANG_VIEN"]}>
             <RoleDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/tro-ly-ai"
+        element={
+          <ProtectedRoute>
+            <ChatbotPage />
           </ProtectedRoute>
         }
       />

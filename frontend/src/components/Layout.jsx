@@ -5,6 +5,7 @@ import {
   BookOpen,
   BookOpenCheck,
   Bell,
+  Bot,
   Building2,
   DoorOpen,
   FileCheck,
@@ -33,10 +34,12 @@ import {
 } from "lucide-react";
 import { ROLE_LABEL, useAuth } from "../context/AuthContext";
 import api from "../api/client";
+import ChatbotWidget from "./ChatbotWidget";
 
 const NAV = {
   SINH_VIEN: [
     { to: "/tong-quan", label: "Tổng quan", icon: LayoutDashboard },
+    { to: "/tro-ly-ai", label: "Trợ lý ảo AI", icon: Bot },
     { to: "/dang-ky", label: "Đăng ký học phần", icon: BookOpen },
     { to: "/dang-ky-hoc-lai", label: "Học lại / cải thiện", icon: BookOpenCheck },
     { to: "/ke-hoach-hoc-tap", label: "Kế hoạch học tập", icon: CalendarRange },
@@ -54,12 +57,14 @@ const NAV = {
   ],
   GIANG_VIEN: [
     { to: "/tong-quan", label: "Tổng quan", icon: LayoutDashboard },
+    { to: "/tro-ly-ai", label: "Trợ lý ảo AI", icon: Bot },
     { to: "/lop-cua-toi", label: "Lớp học phần", icon: Layers },
     { to: "/lop-cua-toi/thoi-khoa-bieu", label: "Thời khóa biểu", icon: CalendarDays },
     { to: "/thong-bao", label: "Thông báo", icon: Bell },
   ],
   QUAN_TRI: [
     { to: "/quan-tri", label: "Tổng quan", icon: LayoutDashboard },
+    { to: "/tro-ly-ai", label: "Trợ lý ảo AI", icon: Bot },
     { to: "/quan-tri/learning-analytics", label: "Phân tích học tập", icon: ChartNoAxesCombined },
     { to: "/quan-tri/hoc-ky", label: "Học kỳ", icon: CalendarRange },
     { to: "/quan-tri/dot-dang-ky", label: "Đợt đăng ký & Đối tượng", icon: CalendarClock },
@@ -362,6 +367,9 @@ export default function Layout({ children }) {
           </div>
         </main>
       </div>
+
+      {/* Floating AI Chatbot Assistant Widget */}
+      {user && <ChatbotWidget />}
     </div>
   );
 }

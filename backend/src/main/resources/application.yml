@@ -224,6 +224,20 @@ app:
     max-public-lookup-per-minute: ${VERIFIABLE_TRANSCRIPT_MAX_LOOKUP_PER_MIN:20}
     qr-code-size: ${VERIFIABLE_TRANSCRIPT_QR_SIZE:150}
 
+  chatbot:
+    ai:
+      # QLSV-106 (TASK-AI-01): Chatbot AI tieng Viet tu van va ho tro dang ky hoc phan
+      enabled: ${CHATBOT_AI_ENABLED:true}
+      provider: ${CHATBOT_AI_PROVIDER:GEMINI}
+      api-key: ${CHATBOT_AI_API_KEY:}
+      model: ${CHATBOT_AI_MODEL:gemini-1.5-flash}
+      endpoint: ${CHATBOT_AI_ENDPOINT:}
+      temperature: ${CHATBOT_AI_TEMPERATURE:0.2}
+      max-tokens: ${CHATBOT_AI_MAX_TOKENS:1000}
+      rate-limit-per-minute: ${CHATBOT_AI_RATE_LIMIT_PER_MINUTE:30}
+      session-ttl-minutes: ${CHATBOT_AI_SESSION_TTL_MINUTES:60}
+      max-history-messages: ${CHATBOT_AI_MAX_HISTORY_MESSAGES:20}
+
 springdoc:
   api-docs:
     path: /v3/api-docs
