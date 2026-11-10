@@ -96,6 +96,7 @@ app:
     allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000}
   seed:
     enabled: ${SEED_ENABLED:true}
+    refresh-current-window: ${SEED_REFRESH_CURRENT_WINDOW:true}
   export:
     danh-sach-lop:
       cho-phep-email: ${EXPORT_CHO_PHEP_EMAIL:true}

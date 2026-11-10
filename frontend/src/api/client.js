@@ -15,8 +15,23 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    const status = error.response?.status;
+    const code = error.response?.data?.code;
+
+    if (status === 401 && code === "SESSION_REPLACED") {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      sessionStorage.setItem(
+        "authNotice",
+        error.response.data.message ||
+          "Tài khoản đã được đăng nhập ở nơi khác. Vui lòng đăng nhập lại."
+      );
+      window.location.href = "/login?reason=session_replaced";
+      return Promise.reject(error);
+    }
+
     if (
-      error.response?.status === 401 &&
+      status === 401 &&
       !window.location.pathname.startsWith("/login") &&
       !window.location.pathname.startsWith("/xac-thuc-bang-diem")
     ) {

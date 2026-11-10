@@ -26,7 +26,10 @@ export function AuthProvider({ children }) {
     return profile;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch {}
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     setUser(null);
