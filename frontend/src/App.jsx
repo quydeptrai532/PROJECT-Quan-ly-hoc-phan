@@ -200,6 +200,14 @@ export default function App() {
         }
       />
       <Route
+        path="/quan-tri/dot-dang-ky"
+        element={
+          <ProtectedRoute roles={["QUAN_TRI"]}>
+            <SemesterPage initialTab="dot-dang-ky" />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/quan-tri/khoa"
         element={
           <ProtectedRoute roles={["QUAN_TRI"]}>
