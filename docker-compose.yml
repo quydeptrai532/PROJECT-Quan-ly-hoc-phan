@@ -3,6 +3,11 @@ services:
     image: mysql:8.4
     container_name: qldt-mysql
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
       MYSQL_DATABASE: quan_ly_dao_tao
@@ -19,6 +24,11 @@ services:
   backend:
     build: ./backend
     container_name: qldt-backend
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       DB_URL: jdbc:mysql://mysql:3306/quan_ly_dao_tao?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Ho_Chi_Minh&characterEncoding=UTF-8
       DB_USERNAME: root
@@ -53,6 +63,11 @@ services:
   frontend:
     build: ./frontend
     container_name: qldt-frontend
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     depends_on:
       - backend
     ports:
