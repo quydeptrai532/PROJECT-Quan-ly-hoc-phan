@@ -39,10 +39,12 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -651,6 +653,37 @@ public class StudentTranscriptPdfService {
                           String maXacMinh, String verificationUrl, Integer phienBan) {
         public PdfFile(String tenTep, byte[] noiDung, int soMonDaCongBo, RegistrationDtos.BangDiemPdfDto duLieu) {
             this(tenTep, noiDung, soMonDaCongBo, duLieu, null, null, null);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof PdfFile other)) {
+                return false;
+            }
+            return soMonDaCongBo == other.soMonDaCongBo
+                    && Arrays.equals(noiDung, other.noiDung)
+                    && Objects.equals(tenTep, other.tenTep)
+                    && Objects.equals(duLieu, other.duLieu)
+                    && Objects.equals(maXacMinh, other.maXacMinh)
+                    && Objects.equals(verificationUrl, other.verificationUrl)
+                    && Objects.equals(phienBan, other.phienBan);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = Objects.hash(tenTep, soMonDaCongBo, duLieu, maXacMinh, verificationUrl, phienBan);
+            return 31 * result + Arrays.hashCode(noiDung);
+        }
+
+        @Override
+        public String toString() {
+            return "PdfFile[tenTep=" + tenTep + ", noiDung=" + Arrays.toString(noiDung)
+                    + ", soMonDaCongBo=" + soMonDaCongBo + ", duLieu=" + duLieu
+                    + ", maXacMinh=" + maXacMinh + ", verificationUrl=" + verificationUrl
+                    + ", phienBan=" + phienBan + "]";
         }
     }
 }

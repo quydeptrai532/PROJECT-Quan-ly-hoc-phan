@@ -61,7 +61,7 @@ public class VietnameseNluEngine {
                     + "(?:\\s+(?:ban|tro\\s+ly|bot|assistant|admin|moi\\s+nguoi|ca\\s+ban|a|oi|nhe|nha|nhi))*$");
     private static final Pattern THANKS_PATTERN = Pattern.compile(
             "^(?:cam on|thank you|thanks|thank|tks|thanks a lot)"
-                    + "(?:\\s+(?:ban|a|oi|nhe|nha|nhi|rat\\s+nhieu|nhieu|so\\s+much|very\\s+much))*$");
+                    + "(?:\\s+(?:ban|a|oi|nhe|nha|nhi|rat\\s+nhieu|nhieu|so\\s+much|very\\s+much))*+$");
     private static final Pattern GOODBYE_PATTERN = Pattern.compile(
             "^(?:tam biet|bye|goodbye|hen gap lai|chao nhe|chao ban nhe|chao ca nha)"
                     + "(?:\\s+(?:ban|nhe|nha|nhi))*$");
@@ -271,7 +271,7 @@ public class VietnameseNluEngine {
     }
 
     private String extractSubjectKeyword(String raw, String normalized) {
-        Pattern pattern = Pattern.compile("(?:môn|mon|lớp|lop|học\\s*phần|hoc\\s*phan|tìm\\s*môn|tim\\s*mon|tìm\\s*lớp|tim\\s*lop)\\s+([a-zA-Z0-9\\u00C0-\\u024F\\u1EA0-\\u1EF9\\s]+)", Pattern.CASE_INSENSITIVE);
+        Pattern pattern = Pattern.compile("(?:môn|mon|lớp|lop|học\\s*phần|hoc\\s*phan|tìm\\s*môn|tim\\s*mon|tìm\\s*lớp|tim\\s*lop)\\s+([a-zA-Z0-9\\u00C0-\\u024F\\u1EA0-\\u1EF9\\s]+)", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
         Matcher matcher = pattern.matcher(raw);
         if (matcher.find()) {
             String kw = matcher.group(1).trim();
@@ -284,7 +284,7 @@ public class VietnameseNluEngine {
             } else if (kw.toLowerCase(Locale.ROOT).startsWith("lop ")) {
                 kw = kw.substring(4).trim();
             }
-            kw = kw.replaceAll("(?i)\\s+(?:còn chỗ|con cho|chưa đầy|chua day|đã đầy|da day|hết chỗ|het cho|học thứ\\s*\\d|hoc thu\\s*\\d|thứ\\s*\\d|thu\\s*\\d|tiết\\s*\\d|tiet\\s*\\d|sáng|chống|chiều|chieu|không|khong|nhé|nhe|giùm|gium|giúp|giup).*", "").trim();
+            kw = kw.replaceAll("(?iu)\\s+(?:còn chỗ|con cho|chưa đầy|chua day|đã đầy|da day|hết chỗ|het cho|học thứ\\s*\\d|hoc thu\\s*\\d|thứ\\s*\\d|thu\\s*\\d|tiết\\s*\\d|tiet\\s*\\d|sáng|chống|chiều|chieu|không|khong|nhé|nhe|giùm|gium|giúp|giup).*", "").trim();
             if (kw.equalsIgnoreCase("học phần") || kw.equalsIgnoreCase("hoc phan")
                     || kw.equalsIgnoreCase("môn học") || kw.equalsIgnoreCase("mon hoc")
                     || kw.equalsIgnoreCase("lớp học") || kw.equalsIgnoreCase("lop hoc")

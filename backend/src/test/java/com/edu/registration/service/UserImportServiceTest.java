@@ -27,6 +27,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class UserImportServiceTest {
@@ -156,5 +158,21 @@ class UserImportServiceTest {
         assertTrue(content.startsWith("\uFEFF"));
         assertTrue(content.contains("SV001"));
         assertTrue(content.contains("Email sai định dạng"));
+    }
+
+    @Test
+    @DisplayName("Từ chối import trực tiếp khi bộ phân tích trả về null")
+    void testDirectImportRejectsNullParsedData() {
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "sinh-vien.csv",
+                "text/csv",
+                "ma,hoTen,email,khoaId\nSV001,Nguyen A,a@edu.vn,1\n".getBytes(StandardCharsets.UTF_8)
+        );
+
+        when(transactionTemplate.execute(any())).thenReturn(null);
+
+        assertThrows(ApiException.class, () ->
+                userImportService.directImport(UserImportService.TargetType.SINH_VIEN, file));
     }
 }

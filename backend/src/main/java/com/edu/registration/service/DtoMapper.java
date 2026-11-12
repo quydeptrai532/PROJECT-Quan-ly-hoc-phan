@@ -244,7 +244,10 @@ public class DtoMapper {
 
     public RegistrationDtos.DangKyDto dangKy(CourseRegistration dangKy, Grade diem) {
         CourseClass lop = dangKy.getLopHocPhan();
-        boolean daCongBo = lop != null && lop.isBangDiemDaCongBo() && diem != null && diem.getDiemTongKet() != null;
+        if (lop == null) {
+            throw new IllegalStateException("Đăng ký không gắn với lớp học phần");
+        }
+        boolean daCongBo = lop.isBangDiemDaCongBo() && diem != null && diem.getDiemTongKet() != null;
         return new RegistrationDtos.DangKyDto(dangKy.getId(), lop.getId(), lop.getMa(),
                 lop.getMonHoc().getId(), lop.getMonHoc().getMa(), lop.getMonHoc().getTen(),
                 lop.getMonHoc().getSoTinChi(), lop.getGiangVien().getHoTen(), lop.getPhong(),

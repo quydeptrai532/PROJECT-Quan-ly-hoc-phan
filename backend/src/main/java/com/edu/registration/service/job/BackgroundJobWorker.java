@@ -257,7 +257,7 @@ public class BackgroundJobWorker {
         if (retryCount <= 1) {
             return Math.min(baseBackoffSeconds, maxBackoffSeconds);
         }
-        double factor = Math.pow(multiplier, retryCount - 1);
+        double factor = Math.pow(multiplier, retryCount - 1.0);
         long delay = (long) (baseBackoffSeconds * factor);
         return Math.min(delay, maxBackoffSeconds);
     }

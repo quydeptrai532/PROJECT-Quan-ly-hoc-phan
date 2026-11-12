@@ -97,6 +97,8 @@ app:
   seed:
     enabled: ${SEED_ENABLED:true}
     refresh-current-window: ${SEED_REFRESH_CURRENT_WINDOW:true}
+    default-password: ${SEED_DEFAULT_PASSWORD:123456}
+    admin-password: ${SEED_ADMIN_PASSWORD:admin123}
   export:
     danh-sach-lop:
       cho-phep-email: ${EXPORT_CHO_PHEP_EMAIL:true}
