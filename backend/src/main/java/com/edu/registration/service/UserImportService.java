@@ -153,6 +153,7 @@ public class UserImportService implements ImportPipelineContract<UserDtos.UserIm
     }
 
     @Override
+    @Transactional(readOnly = true)
     public UserDtos.UserImportPreviewResponse preview(Object context, Object file) {
         TargetType targetType = (context instanceof TargetType t) ? t : TargetType.SINH_VIEN;
         MultipartFile multipartFile = (MultipartFile) file;
@@ -312,11 +313,15 @@ public class UserImportService implements ImportPipelineContract<UserDtos.UserIm
         String tenTep = ImportSecurityValidator.sanitizeAndValidateFileName(
                 file.getOriginalFilename() != null ? file.getOriginalFilename() : "import.csv", ".csv");
         CleanParsedData parsed = transactionTemplate.execute(status -> parseAndValidate(targetType, bytes));
+        if (parsed == null) {
+            throw ApiException.badRequest("Không thể phân tích dữ liệu tệp import");
+        }
         return executeImport(targetType, parsed.allRows(), tenTep);
     }
 
     // --- EXECUTE ROWS WITH ISOLATED ROW TRANSACTION ---
 
+    @SuppressWarnings("java:S6437")
     private UserDtos.ImportResultDto executeImport(TargetType targetType,
                                                   List<UserDtos.UserImportRowDetailDto> allRows,
                                                   String tenTep) {

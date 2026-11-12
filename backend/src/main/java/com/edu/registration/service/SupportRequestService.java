@@ -47,11 +47,13 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -130,6 +132,30 @@ public class SupportRequestService {
     }
 
     public record TepTaiXuong(String tenTepGoc, String contentType, byte[] noiDung) {
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof TepTaiXuong other)) {
+                return false;
+            }
+            return Objects.equals(tenTepGoc, other.tenTepGoc)
+                    && Objects.equals(contentType, other.contentType)
+                    && Arrays.equals(noiDung, other.noiDung);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = Objects.hash(tenTepGoc, contentType);
+            return 31 * result + Arrays.hashCode(noiDung);
+        }
+
+        @Override
+        public String toString() {
+            return "TepTaiXuong[tenTepGoc=" + tenTepGoc + ", contentType=" + contentType
+                    + ", noiDung=" + Arrays.toString(noiDung) + "]";
+        }
     }
 
     @Transactional(readOnly = true)
@@ -1196,8 +1222,11 @@ public class SupportRequestService {
             if (file == null) {
                 continue;
             }
-            if (file.isEmpty() && (file.getOriginalFilename() == null || file.getOriginalFilename().isBlank())) {
-                continue;
+            if (file.isEmpty()) {
+                String originalFilename = file.getOriginalFilename();
+                if (originalFilename == null || originalFilename.isBlank()) {
+                    continue;
+                }
             }
             valid.add(file);
         }

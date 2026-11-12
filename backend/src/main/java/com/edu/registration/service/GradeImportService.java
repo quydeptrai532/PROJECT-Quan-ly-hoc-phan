@@ -42,12 +42,14 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -1004,5 +1006,29 @@ public class GradeImportService {
     }
 
     public record XlsxFile(String tenTep, byte[] noiDung, int soSinhVien) {
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof XlsxFile other)) {
+                return false;
+            }
+            return soSinhVien == other.soSinhVien
+                    && Objects.equals(tenTep, other.tenTep)
+                    && Arrays.equals(noiDung, other.noiDung);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = Objects.hash(tenTep, soSinhVien);
+            return 31 * result + Arrays.hashCode(noiDung);
+        }
+
+        @Override
+        public String toString() {
+            return "XlsxFile[tenTep=" + tenTep + ", noiDung=" + Arrays.toString(noiDung)
+                    + ", soSinhVien=" + soSinhVien + "]";
+        }
     }
 }

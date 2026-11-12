@@ -80,8 +80,8 @@ public class EmailDeliveryService {
         }
     }
 
-    @Transactional
-    public void processEmailDelivery(User recipient, String eventType, String idempotencyKey,
+    @SuppressWarnings("java:S3776")
+    private void processEmailDelivery(User recipient, String eventType, String idempotencyKey,
                                      String subject, String bodyHtml) {
         if (recipient == null || !recipient.isTrangThai() || recipient.getId() == null) {
             return;

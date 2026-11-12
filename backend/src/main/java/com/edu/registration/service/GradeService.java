@@ -155,6 +155,9 @@ public class GradeService {
     }
 
     public RegistrationDtos.DiemDto nhapDiem(Long dangKyId, RegistrationDtos.NhapDiemRequest request) {
+        if (request == null) {
+            throw ApiException.badRequest("Dữ liệu nhập điểm không được để trống");
+        }
         CourseRegistration dangKy = dangKyHocPhanRepository.findById(dangKyId)
                 .orElseThrow(() -> ApiException.notFound("Đăng ký không tồn tại"));
         if (dangKy.getTrangThai() != RegistrationStatus.DA_DANG_KY) {

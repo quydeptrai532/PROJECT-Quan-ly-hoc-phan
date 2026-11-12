@@ -21,10 +21,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.text.Collator;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 @Service
@@ -152,5 +154,29 @@ public class ClassStudentExportService {
     }
 
     public record CsvFile(String tenTep, byte[] noiDung, int soDong) {
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof CsvFile other)) {
+                return false;
+            }
+            return soDong == other.soDong
+                    && Objects.equals(tenTep, other.tenTep)
+                    && Arrays.equals(noiDung, other.noiDung);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = Objects.hash(tenTep, soDong);
+            return 31 * result + Arrays.hashCode(noiDung);
+        }
+
+        @Override
+        public String toString() {
+            return "CsvFile[tenTep=" + tenTep + ", noiDung=" + Arrays.toString(noiDung)
+                    + ", soDong=" + soDong + "]";
+        }
     }
 }

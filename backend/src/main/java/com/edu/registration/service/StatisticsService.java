@@ -39,6 +39,7 @@ import java.text.Collator;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -800,5 +801,29 @@ public class StatisticsService {
     }
 
     public record ClassExportResult(String tenTep, byte[] noiDung, int soBanGhi) {
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof ClassExportResult other)) {
+                return false;
+            }
+            return soBanGhi == other.soBanGhi
+                    && Objects.equals(tenTep, other.tenTep)
+                    && Arrays.equals(noiDung, other.noiDung);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = Objects.hash(tenTep, soBanGhi);
+            return 31 * result + Arrays.hashCode(noiDung);
+        }
+
+        @Override
+        public String toString() {
+            return "ClassExportResult[tenTep=" + tenTep + ", noiDung=" + Arrays.toString(noiDung)
+                    + ", soBanGhi=" + soBanGhi + "]";
+        }
     }
 }
