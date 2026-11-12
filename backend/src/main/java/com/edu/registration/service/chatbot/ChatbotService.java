@@ -214,6 +214,12 @@ public class ChatbotService {
             String thoiDiem,
             Role role) {
 
+        if (hocKy == null) {
+            return buildErrorResponse(session.getSessionId(),
+                    "Không xác định được học kỳ hiện tại trong hệ thống. Vui lòng thử lại sau.",
+                    ChatbotDtos.ChatActionType.ERROR);
+        }
+
         // --- Intent: CHÀO HỎI ---
         if (nlu.intent() == VietnameseNluEngine.Intent.GREETING) {
             String fallback = buildGreeting(session, role);

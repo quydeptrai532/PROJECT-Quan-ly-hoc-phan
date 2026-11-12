@@ -79,6 +79,12 @@ public class DataSeeder implements CommandLineRunner {
     @Value("${app.seed.refresh-current-window:true}")
     private boolean refreshCurrentWindow;
 
+    @Value("${app.seed.default-password}")
+    private String defaultSeedPassword;
+
+    @Value("${app.seed.admin-password}")
+    private String adminSeedPassword;
+
     private static final String[] LAST_NAMES = {
             "Nguyễn", "Trần", "Lê", "Phạm", "Hoàng", "Huỳnh", "Phan", "Vũ", "Võ", "Đặng",
             "Bùi", "Đỗ", "Hồ", "Ngô", "Dương", "Lý", "Đinh", "Đoàn", "Lâm", "Trịnh",
@@ -190,8 +196,8 @@ public class DataSeeder implements CommandLineRunner {
             userRepository.deleteAllInBatch();
         }
 
-        String encodedDefaultPassword = passwordEncoder.encode("123456");
-        String encodedAdminPassword = passwordEncoder.encode("admin123");
+        String encodedDefaultPassword = passwordEncoder.encode(defaultSeedPassword);
+        String encodedAdminPassword = passwordEncoder.encode(adminSeedPassword);
 
         // 1. Tạo 4 Faculty
         Faculty cntt = taoKhoa("CNTT", "Công nghệ thông tin");

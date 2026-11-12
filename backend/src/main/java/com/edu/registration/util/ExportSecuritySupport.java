@@ -72,7 +72,15 @@ public final class ExportSecuritySupport {
         clean = clean.replaceAll("[^A-Za-z0-9._-]", "_");
         clean = clean.replaceAll("_*\\._*", ".");
         clean = clean.replaceAll("_+", "_");
-        clean = clean.replaceAll("^[._-]+|[._-]+$", "");
+        int start = 0;
+        int end = clean.length();
+        while (start < end && "._-".indexOf(clean.charAt(start)) >= 0) {
+            start++;
+        }
+        while (end > start && "._-".indexOf(clean.charAt(end - 1)) >= 0) {
+            end--;
+        }
+        clean = clean.substring(start, end);
 
         return clean.isEmpty() ? fallback : clean;
     }
