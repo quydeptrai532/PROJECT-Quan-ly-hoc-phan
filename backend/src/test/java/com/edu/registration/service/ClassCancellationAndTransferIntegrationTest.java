@@ -39,6 +39,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -97,6 +98,7 @@ class ClassCancellationAndTransferIntegrationTest {
     private String tokenAdmin;
     private String tokenStudent1;
     private Semester hocKy;
+    private LocalDate originalHocKyNgayBatDau;
     private Subject monHoc1;
     private Subject monHoc2;
     private Lecturer gv1;
@@ -125,6 +127,9 @@ class ClassCancellationAndTransferIntegrationTest {
     void setUp() throws Exception {
         tokenAdmin = login("admin", "admin123");
         hocKy = hocKyRepository.findAll().get(0);
+        originalHocKyNgayBatDau = hocKy.getNgayBatDau();
+        hocKy.setNgayBatDau(LocalDate.now().plusDays(14));
+        hocKy = hocKyRepository.save(hocKy);
 
         List<Lecturer> gvs = giangVienRepository.findAll();
         gv1 = gvs.get(0);
@@ -184,6 +189,11 @@ class ClassCancellationAndTransferIntegrationTest {
         }
         createdClassIds.clear();
         createdRegistrationIds.clear();
+
+        if (hocKy != null && originalHocKyNgayBatDau != null) {
+            hocKy.setNgayBatDau(originalHocKyNgayBatDau);
+            hocKyRepository.save(hocKy);
+        }
     }
 
     private CourseClass taoLopMau(String ma, Subject mon, Lecturer gv, String phong, int thu, int tietBatDau, int soTiet, int siSoToiDa) {
@@ -487,5 +497,73 @@ class ClassCancellationAndTransferIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$[0].lyDo").value("Lịch sử test tra cứu"));
+    }
+
+    @Test
+    void chanHuyLopKhiConDung1TuanTruocNgayBatDau() throws Exception {
+        hocKy.setNgayBatDau(LocalDate.now().plusDays(7));
+        hocKy = hocKyRepository.save(hocKy);
+
+        CourseClass lop = taoLopMau("QLSV79_WEEK_EXACT", monHoc1, gv1, "P.910", 2, 1, 3, 30);
+        dangKySinhVien(sv1, lop);
+
+        mockMvc.perform(get("/api/admin/lop-hoc-phan/" + lop.getId() + "/khao-sat-huy")
+                        .header("Authorization", "Bearer " + tokenAdmin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.choPhepPhaoHuy").value(false))
+                .andExpect(jsonPath("$.lyDoKhongChoPhep").value(org.hamcrest.Matchers.containsString("1 tuần")));
+
+        mockMvc.perform(post("/api/admin/lop-hoc-phan/" + lop.getId() + "/huy")
+                        .header("Authorization", "Bearer " + tokenAdmin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("lyDo", "Hủy sát ngày"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("1 tuần")));
+
+        CourseClass lopSau = lopHocPhanRepository.findById(lop.getId()).orElseThrow();
+        assertFalse(lopSau.isDaHuy());
+    }
+
+    @Test
+    void chanHuyLopKhiTrongVong1TuanHoacDaBatDau() throws Exception {
+        hocKy.setNgayBatDau(LocalDate.now().plusDays(3));
+        hocKy = hocKyRepository.save(hocKy);
+
+        CourseClass lop = taoLopMau("QLSV79_WEEK_INSIDE", monHoc1, gv1, "P.911", 3, 1, 3, 30);
+        dangKySinhVien(sv1, lop);
+
+        mockMvc.perform(post("/api/admin/lop-hoc-phan/" + lop.getId() + "/huy")
+                        .header("Authorization", "Bearer " + tokenAdmin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("lyDo", "Hủy trong vòng 1 tuần"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("1 tuần")));
+
+        CourseClass lopSau = lopHocPhanRepository.findById(lop.getId()).orElseThrow();
+        assertFalse(lopSau.isDaHuy());
+    }
+
+    @Test
+    void choPhepHuyLopKhiConHon1TuanTruocNgayBatDau() throws Exception {
+        hocKy.setNgayBatDau(LocalDate.now().plusDays(8));
+        hocKy = hocKyRepository.save(hocKy);
+
+        CourseClass lop = taoLopMau("QLSV79_WEEK_ALLOW", monHoc1, gv1, "P.912", 4, 1, 3, 30);
+        dangKySinhVien(sv1, lop);
+
+        mockMvc.perform(get("/api/admin/lop-hoc-phan/" + lop.getId() + "/khao-sat-huy")
+                        .header("Authorization", "Bearer " + tokenAdmin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.choPhepPhaoHuy").value(true));
+
+        mockMvc.perform(post("/api/admin/lop-hoc-phan/" + lop.getId() + "/huy")
+                        .header("Authorization", "Bearer " + tokenAdmin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("lyDo", "Hủy trước hạn 1 tuần"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.soDangKyBiHuy").value(1));
+
+        CourseClass lopSau = lopHocPhanRepository.findById(lop.getId()).orElseThrow();
+        assertTrue(lopSau.isDaHuy());
     }
 }
