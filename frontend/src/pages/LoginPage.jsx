@@ -47,89 +47,115 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="grid min-h-screen bg-[#f3f5f0] lg:grid-cols-2">
-      <div className="relative hidden overflow-hidden bg-[#173f3a] p-12 text-white lg:flex lg:flex-col lg:justify-between">
+    <div className="grid min-h-screen bg-[#f7f6f2] lg:grid-cols-12">
+      {/* Left Architectural Showcase */}
+      <div className="relative hidden overflow-hidden bg-[#0b1120] p-12 text-white lg:col-span-6 lg:flex lg:flex-col lg:justify-between xl:col-span-7">
         <div
-          className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full opacity-30 blur-3xl"
-          style={{ background: "radial-gradient(circle, #d9ed8a 0%, transparent 70%)" }}
+          className="pointer-events-none absolute inset-0 opacity-[0.14]"
+          style={{
+            backgroundImage:
+              "linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px)",
+            backgroundSize: "48px 48px",
+          }}
         />
         <div
-          className="pointer-events-none absolute -bottom-32 -left-20 h-96 w-96 rounded-full opacity-20 blur-3xl"
-          style={{ background: "radial-gradient(circle, #8fb69b 0%, transparent 70%)" }}
+          className="pointer-events-none absolute -right-24 -top-24 h-[420px] w-[420px] rounded-full opacity-35 blur-3xl"
+          style={{ background: "radial-gradient(circle, #f59e0b 0%, transparent 70%)" }}
+        />
+        <div
+          className="pointer-events-none absolute -bottom-32 -left-24 h-[420px] w-[420px] rounded-full opacity-25 blur-3xl"
+          style={{ background: "radial-gradient(circle, #06b6d4 0%, transparent 70%)" }}
         />
 
-        <div className="relative flex items-center gap-3">
-          <span className="grid h-11 w-11 place-items-center rounded-full bg-[#d9ed8a] text-[#173f3a]">
-            <GraduationCap size={24} />
+        <div className="relative flex items-center gap-3.5">
+          <span className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 text-[#0b1120] shadow-lg shadow-amber-500/25">
+            <GraduationCap size={23} strokeWidth={2.2} />
           </span>
           <div>
-            <p className="text-lg font-semibold">MỘC · CAMPUS</p>
-            <p className="text-xs text-[#b4c9bd]">Hệ thống quản lý đào tạo</p>
+            <p className="font-display text-lg font-extrabold tracking-wider text-white">
+              AETHERIA <span className="text-amber-400">·</span> EDU
+            </p>
+            <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-slate-400">
+              Academic Atelier Portal
+            </p>
           </div>
         </div>
 
-        <div className="relative max-w-md">
-          <p className="text-sm font-medium uppercase tracking-widest text-[#d9ed8a]">Học kỳ mới</p>
-          <h1 className="mt-3 text-3xl font-semibold leading-tight">
-            Đăng ký học phần nhanh chóng, quản lý kết quả học tập minh bạch.
+        <div className="relative max-w-xl">
+          <span className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-3.5 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+            Học kỳ mới · Trực tuyến
+          </span>
+          <h1 className="font-display mt-5 text-4xl font-extrabold leading-[1.15] tracking-tight text-white">
+            Đăng ký học phần chuẩn xác,{" "}
+            <span className="bg-gradient-to-r from-amber-300 via-amber-400 to-cyan-300 bg-clip-text text-transparent">
+              quản trị học vụ thông minh.
+            </span>
           </h1>
           <p className="mt-4 text-sm leading-relaxed text-slate-300">
-            Hệ thống hỗ trợ phòng đào tạo quản lý chương trình, mở lớp học phần; sinh viên đăng ký trực
-            tuyến; giảng viên nhập điểm và theo dõi lớp được phân công.
+            Nền tảng đào tạo số thế hệ mới: kiểm tra điều kiện tiên quyết tức thì, đồng bộ thời khóa biểu
+            thời gian thực và trợ lý AI cá nhân hóa theo từng tài khoản.
           </p>
-          <ul className="mt-8 space-y-4 text-sm text-slate-200">
-            <li className="flex items-start gap-3">
-              <BookOpen size={18} className="mt-0.5 text-[#d9ed8a]" />
-              Kiểm tra tự động môn tiên quyết, trùng lịch và sĩ số lớp.
+
+          <ul className="mt-8 space-y-3.5 text-sm text-slate-200">
+            <li className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 backdrop-blur-sm">
+              <BookOpen size={18} className="mt-0.5 shrink-0 text-amber-400" />
+              <span>Kiểm tra tự động môn tiên quyết, trùng lịch, giới hạn tín chỉ và sĩ số lớp.</span>
             </li>
-            <li className="flex items-start gap-3">
-              <ShieldCheck size={18} className="mt-0.5 text-[#d9ed8a]" />
-              Phân quyền theo vai trò, xác thực bằng JWT an toàn.
+            <li className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 backdrop-blur-sm">
+              <ShieldCheck size={18} className="mt-0.5 shrink-0 text-cyan-400" />
+              <span>Phân quyền chặt chẽ theo vai trò, xác thực JWT phiên đơn an toàn tuyệt đối.</span>
             </li>
-            <li className="flex items-start gap-3">
-              <GraduationCap size={18} className="mt-0.5 text-[#d9ed8a]" />
-              Xem điểm, GPA học kỳ và điểm tích lũy tức thời.
+            <li className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 backdrop-blur-sm">
+              <GraduationCap size={18} className="mt-0.5 shrink-0 text-amber-400" />
+              <span>Theo dõi GPA học kỳ, tiến độ học tập và bảng điểm xác thực điện tử.</span>
             </li>
           </ul>
 
-          <div className="mt-9 grid grid-cols-3 gap-3">
+          <div className="mt-8 grid grid-cols-3 gap-3">
             {[
               { value: "3", label: "Vai trò" },
-              { value: "JWT", label: "Xác thực" },
-              { value: "24/7", label: "Truy cập" },
+              { value: "JWT", label: "Bảo mật" },
+              { value: "AI 24/7", label: "Trợ lý số" },
             ].map((item) => (
               <div
                 key={item.label}
-                className="rounded-xl bg-white/5 px-3 py-3 text-center ring-1 ring-white/10 backdrop-blur"
+                className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3.5 text-center backdrop-blur"
               >
-                <p className="text-lg font-semibold text-white">{item.value}</p>
-                <p className="mt-0.5 text-[11px] uppercase tracking-wider text-slate-400">{item.label}</p>
+                <p className="font-display text-lg font-bold text-white">{item.value}</p>
+                <p className="font-mono mt-0.5 text-[10px] uppercase tracking-wider text-slate-400">{item.label}</p>
               </div>
             ))}
           </div>
         </div>
 
-        <p className="relative text-xs text-slate-500">
-          Đồ án quản lý đào tạo · Spring Boot + ReactJS
+        <p className="font-mono relative text-[11px] uppercase tracking-widest text-slate-500">
+          Aetheria Academic System · Spring Boot + ReactJS
         </p>
       </div>
 
-      <div className="flex items-center justify-center px-5 py-12">
-        <div className="w-full max-w-md">
-          <div className="mb-8 lg:hidden">
-            <span className="grid h-11 w-11 place-items-center rounded-full bg-[#d9ed8a] text-[#173f3a]">
-              <GraduationCap size={24} />
+      {/* Right Porcelain Login Card */}
+      <div className="flex items-center justify-center px-5 py-12 lg:col-span-6 xl:col-span-5">
+        <div className="w-full max-w-md rounded-[26px] border border-slate-900/10 bg-white p-8 shadow-atelier sm:p-10">
+          <div className="mb-7 lg:hidden">
+            <span className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 text-[#0b1120] shadow-md">
+              <GraduationCap size={23} />
             </span>
-            <h1 className="mt-4 text-xl font-semibold text-slate-900">Mộc · Campus</h1>
+            <h1 className="font-display mt-4 text-xl font-extrabold tracking-wide text-slate-900">
+              AETHERIA · EDU
+            </h1>
             <p className="text-sm text-slate-500">Hệ thống quản lý đào tạo và đăng ký học phần</p>
           </div>
 
-          <h2 className="text-2xl font-semibold text-slate-900">Đăng nhập</h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">
+            Cổng xác thực
+          </p>
+          <h2 className="font-display mt-1 text-2xl font-bold text-slate-950">Đăng nhập hệ thống</h2>
+          <p className="mt-1.5 text-sm text-slate-500">
             Sử dụng mã người dùng và mật khẩu được phòng đào tạo cấp.
           </p>
 
-          <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+          <form className="mt-7 space-y-4" onSubmit={handleSubmit}>
             {notice && <Alert tone="warning">{notice}</Alert>}
             {error && <Alert tone="error">{error}</Alert>}
 

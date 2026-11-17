@@ -58,14 +58,39 @@ public class PromptInjectionGuard {
 
         String normalized = removeDiacritics(input).toLowerCase(Locale.ROOT);
 
+        // Ngoại lệ an toàn: Yêu cầu hướng dẫn đổi mật khẩu hoặc quản lý tài khoản của chính mình
+        boolean isPasswordManagementQuery = normalized.contains("doi mat khau")
+                || normalized.contains("thay doi mat khau")
+                || normalized.contains("reset mat khau")
+                || normalized.contains("quen mat khau")
+                || normalized.contains("doi pass")
+                || normalized.contains("doi password")
+                || normalized.contains("thay pass")
+                || normalized.contains("change password");
+
         for (Pattern pattern : INJECTION_PATTERNS) {
             if (pattern.matcher(normalized).find() || pattern.matcher(input).find()) {
+                // Nếu người dùng hỏi hướng dẫn đổi mật khẩu hợp lệ và không chứa lệnh trích xuất mật khẩu của người khác/admin
+                if (isPasswordManagementQuery && !isMaliciousExfiltration(normalized)) {
+                    continue;
+                }
                 log.warn("Phát hiện nguy cơ Prompt Injection / Bảo mật trong câu hỏi chatbot: [{}]", input);
                 return GuardResult.block("Yêu cầu chứa chỉ thị vi phạm chính sách bảo mật (Prompt Injection / Trích xuất dữ liệu không hợp lệ). Thao tác bị chặn để đảm bảo an toàn hệ thống.");
             }
         }
 
         return GuardResult.allow();
+    }
+
+    private boolean isMaliciousExfiltration(String normalized) {
+        return normalized.contains("admin password")
+                || normalized.contains("mat khau admin")
+                || normalized.contains("mat khau cua sinh vien khac")
+                || normalized.contains("mat khau cua nguoi khac")
+                || normalized.contains("tiet lo mat khau")
+                || normalized.contains("in ra mat khau")
+                || normalized.contains("show password")
+                || normalized.contains("reveal password");
     }
 
     private String removeDiacritics(String str) {

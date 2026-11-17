@@ -35,8 +35,15 @@ export default function RegisterPage() {
   const params = hocKyId ? { hocKyId } : undefined;
   const { data: lopList, loading, error: loadError, reload: reloadLop } = useApi("/lop-hoc-phan", params);
   const { data: myRegs, reload: reloadRegs } = useApi("/dang-ky/me", params);
+  const { data: eligibilityList, reload: reloadEligibility } = useApi("/dang-ky/kiem-tra-dieu-kien", params);
   const { data: studentProfile } = useApi("/sinh-vien/me/ho-so-dao-tao");
   const isAcademicBlocked = studentProfile && studentProfile.trangThaiHocTap && studentProfile.trangThaiHocTap !== "Đang học" && studentProfile.trangThaiHocTap !== "Chưa cập nhật";
+
+  const eligibilityMap = useMemo(() => {
+    const map = new Map();
+    (eligibilityList || []).forEach((item) => map.set(item.lopHocPhanId, item));
+    return map;
+  }, [eligibilityList]);
 
   const hocKy = hocKyList?.find((item) => String(item.id) === String(hocKyId));
   const registeredClassIds = useMemo(
@@ -68,7 +75,7 @@ export default function RegisterPage() {
     try {
       const { data } = await api.post("/dang-ky", { lopHocPhanId: lop.id });
       setMessage(`Đăng ký thành công lớp ${data.maLop} - ${data.tenMon}`);
-      await Promise.all([reloadLop(), reloadRegs(), reloadDot?.()]);
+      await Promise.all([reloadLop(), reloadRegs(), reloadEligibility()]);
       window.dispatchEvent(new Event("notifications:updated"));
     } catch (err) {
       setError(getErrorMessage(err));
@@ -187,7 +194,10 @@ export default function RegisterPage() {
                   const isRegistered = registeredClassIds.has(lop.id);
                   const sameSubject = registeredSubjectIds.has(lop.monHocId);
                   const full = lop.conLai <= 0;
-                  const disabled = isRegistered || sameSubject || full || !hocKy?.dangMoDangKy || isAcademicBlocked;
+                  const eligibility = eligibilityMap.get(lop.id);
+                  const blockReasons = eligibility && !eligibility.duDieuKien ? (eligibility.lyDoChan || []) : [];
+                  const notEligible = blockReasons.length > 0;
+                  const disabled = isRegistered || sameSubject || full || !hocKy?.dangMoDangKy || isAcademicBlocked || notEligible;
                   const percent = lop.siSoToiDa ? Math.min(100, (lop.siSoHienTai / lop.siSoToiDa) * 100) : 0;
 
                   let label = "Đăng ký";
@@ -207,6 +217,9 @@ export default function RegisterPage() {
                   } else if (!hocKy?.dangMoDangKy) {
                     label = "Đã đóng";
                     tone = "slate";
+                  } else if (notEligible) {
+                    label = "Không đủ điều kiện";
+                    tone = "red";
                   }
 
                   return (
@@ -218,6 +231,13 @@ export default function RegisterPage() {
                           {lop.maMon} · {lop.soTinChi} tín chỉ · {tietLyThuyet(lop.soTinChi)} tiết ·{" "}
                           {soBuoiHoc(lop.soTinChi)} buổi
                         </p>
+                        {!isRegistered && blockReasons.length > 0 && (
+                          <div className="mt-1.5 space-y-0.5 rounded-md bg-rose-50 px-2 py-1 text-xs text-rose-700">
+                            {blockReasons.map((reason, idx) => (
+                              <p key={idx}>• {reason}</p>
+                            ))}
+                          </div>
+                        )}
                       </td>
                       <td className="td">{lop.tenGiangVien}</td>
                       <td className="td">

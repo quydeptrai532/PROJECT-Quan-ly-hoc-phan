@@ -149,4 +149,62 @@ class VietnameseNluEngineTest {
         assertEquals(VietnameseNluEngine.Intent.SMALL_TALK, nluEngine.parse("Bạn tên gì").intent());
         assertEquals(VietnameseNluEngine.Intent.SMALL_TALK, nluEngine.parse("Bạn khỏe không").intent());
     }
+
+    @Test
+    @DisplayName("Nhận diện intent xem thông tin cá nhân của tài khoản đang đăng nhập")
+    void testPersonalProfileIntent() {
+        assertEquals(VietnameseNluEngine.Intent.THONG_TIN_CA_NHAN,
+                nluEngine.parse("tôi muốn xem thông tin cá nhân của tôi ( tài khoản mình vừa đăng nhập vào )").intent());
+        assertEquals(VietnameseNluEngine.Intent.THONG_TIN_CA_NHAN,
+                nluEngine.parse("Xem thông tin tài khoản của tôi").intent());
+        assertEquals(VietnameseNluEngine.Intent.THONG_TIN_CA_NHAN,
+                nluEngine.parse("Hồ sơ cá nhân của tôi").intent());
+        assertEquals(VietnameseNluEngine.Intent.THONG_TIN_CA_NHAN,
+                nluEngine.parse("Mã sinh viên của tôi là gì").intent());
+    }
+
+    @Test
+    @DisplayName("Nhận diện intent đổi mật khẩu và hướng dẫn đổi mật khẩu")
+    void testPasswordChangeIntent() {
+        assertEquals(VietnameseNluEngine.Intent.DOI_MAT_KHAU,
+                nluEngine.parse("tôi muốn đổi mật khẩu bạn hỗ trợ tôi được ko").intent());
+        assertEquals(VietnameseNluEngine.Intent.DOI_MAT_KHAU,
+                nluEngine.parse("Hướng dẫn đổi mật khẩu").intent());
+        assertEquals(VietnameseNluEngine.Intent.DOI_MAT_KHAU,
+                nluEngine.parse("Làm sao để đổi pass").intent());
+    }
+
+    @Test
+    @DisplayName("Nhận diện thời khóa biểu và lịch học / lịch dạy hôm nay")
+    void testScheduleTodayIntent() {
+        var res1 = nluEngine.parse("thời khóa biểu hôm nay của tôi thế nào");
+        assertEquals(VietnameseNluEngine.Intent.TKB_CA_NHAN, res1.intent());
+        assertTrue(res1.isToday());
+        assertNotNull(res1.thu());
+
+        var res2 = nluEngine.parse("lịch học hôm nay của tôi");
+        assertEquals(VietnameseNluEngine.Intent.TKB_CA_NHAN, res2.intent());
+        assertTrue(res2.isToday());
+
+        var res3 = nluEngine.parse("lịch dạy hôm nay của tôi");
+        assertEquals(VietnameseNluEngine.Intent.TKB_CA_NHAN, res3.intent());
+        assertTrue(res3.isToday());
+
+        var res4 = nluEngine.parse("hôm nay tôi dạy môn gì");
+        assertEquals(VietnameseNluEngine.Intent.TKB_CA_NHAN, res4.intent());
+        assertTrue(res4.isToday());
+    }
+
+    @Test
+    @DisplayName("Nhận diện danh sách lớp phụ trách của giảng viên hoặc lớp đã đăng ký của sinh viên")
+    void testMyClassesIntent() {
+        assertEquals(VietnameseNluEngine.Intent.LOP_CUA_TOI,
+                nluEngine.parse("Xem danh sách lớp tôi phụ trách").intent());
+        assertEquals(VietnameseNluEngine.Intent.LOP_CUA_TOI,
+                nluEngine.parse("Các lớp tôi dạy").intent());
+        assertEquals(VietnameseNluEngine.Intent.LOP_CUA_TOI,
+                nluEngine.parse("Tôi dạy những lớp nào").intent());
+        assertEquals(VietnameseNluEngine.Intent.LOP_CUA_TOI,
+                nluEngine.parse("Danh sách lớp đã đăng ký của tôi").intent());
+    }
 }
