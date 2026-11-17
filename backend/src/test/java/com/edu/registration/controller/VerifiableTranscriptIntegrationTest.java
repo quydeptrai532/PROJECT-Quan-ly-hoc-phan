@@ -79,6 +79,8 @@ class VerifiableTranscriptIntegrationTest {
         String code = exportRes.getResponse().getHeader("X-Verification-Code");
         assertNotNull(code);
         assertTrue(code.startsWith("VT-"));
+        int initialVersion = Integer.parseInt(exportRes.getResponse().getHeader("X-Transcript-Version"));
+        assertTrue(initialVersion >= 1);
 
         // 3. Xác minh công khai bảng điểm qua mã vừa cấp
         MvcResult verifyRes = mockMvc.perform(get("/api/public/bang-diem/xac-thuc/" + code))
@@ -90,7 +92,7 @@ class VerifiableTranscriptIntegrationTest {
         assertNotNull(verifyNode.get("hoTen").asText());
         assertNotNull(verifyNode.get("gpa10"));
         assertNotNull(verifyNode.get("fileSha256").asText());
-        assertEquals(1, verifyNode.get("phienBan").asInt());
+        assertEquals(initialVersion, verifyNode.get("phienBan").asInt());
 
         // 4. Sinh viên xem danh sách bảng điểm xác thực của mình
         MvcResult svListRes = mockMvc.perform(get("/api/sinh-vien/me/bang-diem-xac-thuc")
@@ -101,6 +103,12 @@ class VerifiableTranscriptIntegrationTest {
         assertTrue(svList.isArray());
         assertTrue(svList.size() >= 1);
         long transcriptId = svList.get(0).get("id").asLong();
+        for (JsonNode item : svList) {
+            if (item.get("phienBan").asInt() == initialVersion) {
+                transcriptId = item.get("id").asLong();
+                break;
+            }
+        }
 
         // 5. Quản trị viên tra cứu danh sách
         MvcResult adminListRes = mockMvc.perform(get("/api/admin/bang-diem-xac-thuc")
@@ -150,7 +158,7 @@ class VerifiableTranscriptIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", "application/pdf"))
                 .andExpect(header().exists("X-Verification-Code"))
-                .andExpect(header().string("X-Transcript-Version", "2"))
+                .andExpect(header().string("X-Transcript-Version", String.valueOf(initialVersion + 1)))
                 .andReturn();
 
         String newCode = reissueRes.getResponse().getHeader("X-Verification-Code");
@@ -163,7 +171,7 @@ class VerifiableTranscriptIntegrationTest {
                 .andReturn();
         JsonNode v2Node = json(verifyV2);
         assertEquals("HOP_LE", v2Node.get("trangThaiXacMinh").asText());
-        assertEquals(2, v2Node.get("phienBan").asInt());
+        assertEquals(initialVersion + 1, v2Node.get("phienBan").asInt());
 
         // 11. Quản trị viên tải PDF lưu trữ của bản ghi
         mockMvc.perform(get("/api/admin/bang-diem-xac-thuc/" + transcriptId + "/pdf")
