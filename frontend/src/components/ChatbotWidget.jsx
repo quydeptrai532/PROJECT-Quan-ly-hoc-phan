@@ -234,7 +234,7 @@ export default function ChatbotWidget({ isOpenControlled, onCloseControlled, def
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-display truncate text-sm font-bold text-white">Trợ lý AI Aetheria</h3>
+                  <h3 className="font-display truncate text-sm font-bold text-white">Trợ lý AI UniCourse</h3>
                   <span className="rounded-full bg-amber-400/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-amber-300 ring-1 ring-amber-400/30">
                     LIVE
                   </span>
