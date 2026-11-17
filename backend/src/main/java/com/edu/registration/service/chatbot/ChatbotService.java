@@ -5,10 +5,14 @@ import com.edu.registration.dto.ChatbotDtos;
 import com.edu.registration.dto.CourseClassDtos;
 import com.edu.registration.dto.RegistrationDtos;
 import com.edu.registration.dto.StatDtos;
+import com.edu.registration.entity.Lecturer;
 import com.edu.registration.entity.Role;
 import com.edu.registration.entity.Semester;
+import com.edu.registration.entity.Student;
 import com.edu.registration.entity.User;
 import com.edu.registration.exception.ApiException;
+import com.edu.registration.repository.LecturerRepository;
+import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.security.CurrentUser;
 import com.edu.registration.service.CourseClassService;
 import com.edu.registration.service.RegistrationService;
@@ -21,9 +25,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -91,6 +97,42 @@ public class ChatbotService {
     private final SemesterService hocKyService;
     private final StatisticsService thongKeService;
     private final CurrentUser currentUser;
+    private final StudentRepository studentRepository;
+    private final LecturerRepository lecturerRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public ChatbotService(
+            ChatbotAiProperties properties,
+            ChatbotSessionManager sessionManager,
+            PromptInjectionGuard promptInjectionGuard,
+            VietnameseNluEngine nluEngine,
+            ChatbotRateLimiter rateLimiter,
+            GeminiAiChatProvider geminiAiChatProvider,
+            CommandCodeAiChatProvider commandCodeAiChatProvider,
+            WeatherService weatherService,
+            CourseClassService lopHocPhanService,
+            RegistrationService dangKyService,
+            SemesterService hocKyService,
+            StatisticsService thongKeService,
+            CurrentUser currentUser,
+            StudentRepository studentRepository,
+            LecturerRepository lecturerRepository) {
+        this.properties = properties;
+        this.sessionManager = sessionManager;
+        this.promptInjectionGuard = promptInjectionGuard;
+        this.nluEngine = nluEngine;
+        this.rateLimiter = rateLimiter;
+        this.geminiAiChatProvider = geminiAiChatProvider;
+        this.commandCodeAiChatProvider = commandCodeAiChatProvider;
+        this.weatherService = weatherService;
+        this.lopHocPhanService = lopHocPhanService;
+        this.dangKyService = dangKyService;
+        this.hocKyService = hocKyService;
+        this.thongKeService = thongKeService;
+        this.currentUser = currentUser;
+        this.studentRepository = studentRepository;
+        this.lecturerRepository = lecturerRepository;
+    }
 
     public ChatbotService(
             ChatbotAiProperties properties,
@@ -106,19 +148,9 @@ public class ChatbotService {
             SemesterService hocKyService,
             StatisticsService thongKeService,
             CurrentUser currentUser) {
-        this.properties = properties;
-        this.sessionManager = sessionManager;
-        this.promptInjectionGuard = promptInjectionGuard;
-        this.nluEngine = nluEngine;
-        this.rateLimiter = rateLimiter;
-        this.geminiAiChatProvider = geminiAiChatProvider;
-        this.commandCodeAiChatProvider = commandCodeAiChatProvider;
-        this.weatherService = weatherService;
-        this.lopHocPhanService = lopHocPhanService;
-        this.dangKyService = dangKyService;
-        this.hocKyService = hocKyService;
-        this.thongKeService = thongKeService;
-        this.currentUser = currentUser;
+        this(properties, sessionManager, promptInjectionGuard, nluEngine, rateLimiter,
+                geminiAiChatProvider, commandCodeAiChatProvider, weatherService, lopHocPhanService,
+                dangKyService, hocKyService, thongKeService, currentUser, null, null);
     }
 
     public ChatbotDtos.ChatbotStatusDto getStatus() {
@@ -259,6 +291,26 @@ public class ChatbotService {
                     null, null, null, hocKy.getTen(), thoiDiem, false);
         }
 
+        // --- Intent: THÔNG TIN CÁ NHÂN ---
+        if (nlu.intent() == VietnameseNluEngine.Intent.THONG_TIN_CA_NHAN) {
+            return handleProfileInfo(session, hocKy, thoiDiem, role, currentUser.get());
+        }
+
+        // --- Intent: HƯỚNG DẪN ĐỔI MẬT KHẨU ---
+        if (nlu.intent() == VietnameseNluEngine.Intent.DOI_MAT_KHAU) {
+            return handlePasswordChangeGuide(session, hocKy, thoiDiem);
+        }
+
+        // --- Intent: LỚP CỦA TÔI (Lớp phụ trách của GV hoặc lớp đã đăng ký của SV) ---
+        if (nlu.intent() == VietnameseNluEngine.Intent.LOP_CUA_TOI) {
+            return handleMyClasses(session, hocKy, thoiDiem, role);
+        }
+
+        // --- Intent: THỜI KHÓA BIỂU CÁ NHÂN ---
+        if (nlu.intent() == VietnameseNluEngine.Intent.TKB_CA_NHAN) {
+            return handlePersonalTimetable(session, hocKy, nlu, thoiDiem, role);
+        }
+
         // --- Câu hỏi mang tính giải thích/hướng dẫn (không có mã lớp cụ thể) ---
         // Ưu tiên trả lời tự nhiên thay vì hiểu nhầm thành lệnh đăng ký/tra cứu.
         if (shouldAnswerConversationally(nlu)) {
@@ -390,37 +442,6 @@ public class ChatbotService {
             return buildResponse(session, sb.toString(), ChatbotDtos.ChatActionType.NONE, null, alternatives, null, hocKy.getTen(), thoiDiem, false);
         }
 
-        // --- Intent: THỜI KHÓA BIỂU CÁ NHÂN ---
-        if (nlu.intent() == VietnameseNluEngine.Intent.TKB_CA_NHAN) {
-            if (role == Role.SINH_VIEN) {
-                List<RegistrationDtos.ThoiKhoaBieuDto> tkb = dangKyService.thoiKhoaBieu(hocKy.getId());
-                if (tkb.isEmpty()) {
-                    return buildResponse(session,
-                            "Bạn chưa có lịch học nào được xếp trong " + hocKy.getTen() + " (Thời điểm kiểm tra: " + thoiDiem + ").",
-                            ChatbotDtos.ChatActionType.NONE, null, null, null, hocKy.getTen(), thoiDiem, false);
-                }
-                StringBuilder sb = new StringBuilder("Thời khóa biểu của bạn trong **").append(hocKy.getTen()).append("** (lấy lúc ").append(thoiDiem).append("):\n\n");
-                for (RegistrationDtos.ThoiKhoaBieuDto item : tkb) {
-                    sb.append(String.format(Locale.ROOT, "- **%s** (%s): Thứ %d, tiết %d (số tiết: %d) | Phòng: %s | GV: %s\n",
-                            item.maLop(), item.tenMon(), item.thu(), item.tietBatDau(), item.soTiet(), item.phong(), item.giangVien()));
-                }
-                return buildResponse(session, sb.toString(), ChatbotDtos.ChatActionType.NONE, null, null, null, hocKy.getTen(), thoiDiem, false);
-            } else if (role == Role.GIANG_VIEN) {
-                List<RegistrationDtos.ThoiKhoaBieuDto> tkb = lopHocPhanService.thoiKhoaBieuCuaToi(hocKy.getId());
-                if (tkb.isEmpty()) {
-                    return buildResponse(session, "Thầy/Cô chưa có lịch giảng dạy nào trong " + hocKy.getTen() + " (Thời điểm kiểm tra: " + thoiDiem + ").",
-                            ChatbotDtos.ChatActionType.NONE, null, null, null, hocKy.getTen(), thoiDiem, false);
-                }
-                StringBuilder sb = new StringBuilder("Lịch giảng dạy của Thầy/Cô trong **").append(hocKy.getTen()).append("** (lấy lúc ").append(thoiDiem).append("):\n\n");
-                for (RegistrationDtos.ThoiKhoaBieuDto item : tkb) {
-                    sb.append(String.format(Locale.ROOT, "- **%s** (%s): Thứ %d, tiết %d (số tiết: %d) | Phòng: %s\n",
-                            item.maLop(), item.tenMon(), item.thu(), item.tietBatDau(), item.soTiet(), item.phong()));
-                }
-                return buildResponse(session, sb.toString(), ChatbotDtos.ChatActionType.NONE, null, null, null, hocKy.getTen(), thoiDiem, false);
-            } else {
-                return buildResponse(session, "Tài khoản Quản trị viên không có thời khóa biểu cá nhân.", ChatbotDtos.ChatActionType.NONE, null, null, null, hocKy.getTen(), thoiDiem, false);
-            }
-        }
 
         // --- Intent: THỐNG KÊ QUẢN TRỊ ---
         if (nlu.intent() == VietnameseNluEngine.Intent.THONG_KE) {
@@ -800,19 +821,353 @@ public class ChatbotService {
                 .orElse(fallback);
     }
 
-    private String buildConversationalSystemPrompt(Semester hocKy) {
-        if (hocKy == null) {
-            return CONVERSATIONAL_SYSTEM_PROMPT;
+    public static int toVietnameseThu(LocalDate date) {
+        return date.getDayOfWeek().getValue() + 1;
+    }
+
+    public static String formatVietnameseThu(int thu) {
+        if (thu >= 2 && thu <= 7) {
+            return "Thứ " + thu;
+        } else if (thu == 8) {
+            return "Chủ Nhật";
         }
-        return CONVERSATIONAL_SYSTEM_PROMPT + "\nThông tin học kỳ đang áp dụng (chỉ dùng đúng các dữ kiện này, không bịa thêm):\n"
-                + "- Học kỳ: " + hocKy.getTen() + " (năm học " + hocKy.getNamHoc() + ")\n"
-                + "- Thời gian đăng ký: " + DATE_FORMATTER.format(hocKy.getDangKyTu())
-                + " đến " + DATE_FORMATTER.format(hocKy.getDangKyDen())
-                + (hocKy.dangMoDangKy() ? " (đang mở đăng ký)" : " (hiện không trong thời gian đăng ký)") + "\n"
-                + "- Thời gian học: " + DATE_FORMATTER.format(hocKy.getNgayBatDau())
-                + " đến " + DATE_FORMATTER.format(hocKy.getNgayKetThuc()) + "\n"
-                + "- Giới hạn tín chỉ: tối thiểu " + hocKy.getSoTinChiToiThieu()
-                + ", tối đa " + hocKy.getSoTinChiToiDa() + "\n";
+        return "Thứ " + thu;
+    }
+
+    private ChatbotDtos.ChatResponse handleProfileInfo(
+            ChatbotSessionManager.UserSession session,
+            Semester hocKy,
+            String thoiDiem,
+            Role role,
+            User user) {
+
+        StringBuilder sb = new StringBuilder();
+
+        if (role == Role.SINH_VIEN) {
+            Optional<Student> svOpt = studentRepository != null ? studentRepository.findWithAcademicProfileByUserId(user.getId()) : Optional.empty();
+            if (svOpt.isEmpty()) {
+                return buildResponse(session,
+                        "Không tìm thấy hồ sơ sinh viên tương ứng với tài khoản `" + user.getUsername() + "` trong hệ thống.",
+                        ChatbotDtos.ChatActionType.NONE, null, null, null, hocKy.getTen(), thoiDiem, false);
+            }
+            Student sv = svOpt.get();
+            sb.append("👤 **Thông tin cá nhân của bạn** (Tài khoản đang đăng nhập):\n\n")
+                    .append("- **Họ và tên:** ").append(sv.getHoTen()).append("\n")
+                    .append("- **Mã sinh viên:** `").append(sv.getMa()).append("`\n")
+                    .append("- **Tên đăng nhập:** `").append(user.getUsername()).append("`\n")
+                    .append("- **Vai trò:** Sinh viên\n")
+                    .append("- **Email:** ").append(sv.getEmail() != null && !sv.getEmail().isBlank() ? sv.getEmail() : "Chưa cập nhật").append("\n")
+                    .append("- **Số điện thoại:** ").append(sv.getSoDienThoai() != null && !sv.getSoDienThoai().isBlank() ? sv.getSoDienThoai() : "Chưa cập nhật").append("\n")
+                    .append("- **Khoa:** ").append(sv.getKhoa() != null ? sv.getKhoa().getTen() : "Chưa phân khoa").append("\n")
+                    .append("- **Ngành đào tạo:** ").append(sv.getNganh() != null ? sv.getNganh().getTen() : "Chưa phân ngành").append("\n")
+                    .append("- **Lớp hành chính:** ").append(sv.getLopHanhChinh() != null ? (sv.getLopHanhChinh().getTen() + " (" + sv.getLopHanhChinh().getMa() + ")") : "Chưa phân lớp").append("\n")
+                    .append("- **Chương trình đào tạo:** ").append(sv.getChuongTrinh() != null ? (sv.getChuongTrinh().getPhienBan() + " (Khóa " + sv.getChuongTrinh().getKhoaNhapHoc() + ")") : "Chưa phân chương trình").append("\n")
+                    .append("- **Trạng thái học tập:** ").append(sv.getTrangThaiHocTap() != null ? sv.getTrangThaiHocTap().getMoTa() : "Đang học").append("\n\n")
+                    .append("💡 *Bạn có thể cập nhật email, số điện thoại hoặc đổi mật khẩu tại trang [Hồ sơ cá nhân](/ho-so).*");
+
+        } else if (role == Role.GIANG_VIEN) {
+            Optional<Lecturer> gvOpt = lecturerRepository != null ? lecturerRepository.findWithKhoaByUserId(user.getId()) : Optional.empty();
+            if (gvOpt.isEmpty()) {
+                return buildResponse(session,
+                        "Không tìm thấy hồ sơ giảng viên tương ứng với tài khoản `" + user.getUsername() + "` trong hệ thống.",
+                        ChatbotDtos.ChatActionType.NONE, null, null, null, hocKy.getTen(), thoiDiem, false);
+            }
+            Lecturer gv = gvOpt.get();
+            sb.append("👤 **Thông tin cá nhân của Thầy/Cô** (Tài khoản đang đăng nhập):\n\n")
+                    .append("- **Họ và tên:** ").append(gv.getHoTen()).append("\n")
+                    .append("- **Mã giảng viên:** `").append(gv.getMa()).append("`\n")
+                    .append("- **Tên đăng nhập:** `").append(user.getUsername()).append("`\n")
+                    .append("- **Vai trò:** Giảng viên\n")
+                    .append("- **Email:** ").append(gv.getEmail() != null && !gv.getEmail().isBlank() ? gv.getEmail() : "Chưa cập nhật").append("\n")
+                    .append("- **Số điện thoại:** ").append(gv.getSoDienThoai() != null && !gv.getSoDienThoai().isBlank() ? gv.getSoDienThoai() : "Chưa cập nhật").append("\n")
+                    .append("- **Khoa / Đơn vị công tác:** ").append(gv.getKhoa() != null ? gv.getKhoa().getTen() : "Chưa phân khoa").append("\n\n")
+                    .append("💡 *Thầy/Cô có thể cập nhật thông tin liên hệ hoặc đổi mật khẩu tại trang [Hồ sơ cá nhân](/ho-so).*");
+
+        } else {
+            sb.append("👤 **Thông tin tài khoản Quản trị viên** (Tài khoản đang đăng nhập):\n\n")
+                    .append("- **Họ và tên:** Quản trị viên hệ thống\n")
+                    .append("- **Mã tài khoản:** `ADMIN`\n")
+                    .append("- **Tên đăng nhập:** `").append(user.getUsername()).append("`\n")
+                    .append("- **Vai trò:** Quản trị viên (QUAN_TRI)\n")
+                    .append("- **Quyền hạn:** Toàn quyền quản trị danh mục đào tạo, người dùng, lớp học phần và giám sát hệ thống.\n\n")
+                    .append("💡 *Quản trị viên có thể đổi mật khẩu tại trang [Hồ sơ cá nhân](/ho-so).*");
+        }
+
+        return buildResponse(session, sb.toString(), ChatbotDtos.ChatActionType.NONE, null, null,
+                List.of("Thời khóa biểu hôm nay", "Xem danh sách lớp", "Hướng dẫn đổi mật khẩu"), hocKy.getTen(), thoiDiem, false);
+    }
+
+    private ChatbotDtos.ChatResponse handlePasswordChangeGuide(
+            ChatbotSessionManager.UserSession session,
+            Semester hocKy,
+            String thoiDiem) {
+
+        String reply = """
+                🔐 **Hướng dẫn đổi mật khẩu tài khoản:**
+
+                Để đảm bảo an toàn bảo mật tuyệt đối cho tài khoản của bạn, thao tác đổi mật khẩu cần được thực hiện trực tiếp tại trang bảo mật:
+
+                1. **Truy cập:** Mở trang **[Hồ sơ cá nhân](/ho-so)** (bấm vào biểu tượng tài khoản ở góc trên hoặc truy cập menu Hồ sơ).
+                2. **Tìm mục:** Cuộn xuống phần **Đổi mật khẩu**.
+                3. **Nhập thông tin xác thực:**
+                   - **Mật khẩu hiện tại:** Nhập mật khẩu bạn đang sử dụng.
+                   - **Mật khẩu mới:** Nhập mật khẩu mới bạn muốn đặt.
+                   - **Xác nhận mật khẩu mới:** Nhập lại chính xác mật khẩu mới.
+                4. **Lưu thay đổi:** Bấm nút **"Đổi mật khẩu"** để hoàn tất.
+
+                🛡️ *Lưu ý an toàn: Chatbot tuyệt đối không yêu cầu bạn nhập mật khẩu hiện tại hay mật khẩu mới trong khung trò chuyện.*
+                """;
+
+        return buildResponse(session, reply, ChatbotDtos.ChatActionType.NONE, null, null,
+                List.of("Xem thông tin cá nhân", "Thời khóa biểu hôm nay", "Hướng dẫn trợ giúp"), hocKy.getTen(), thoiDiem, false);
+    }
+
+    private ChatbotDtos.ChatResponse handlePersonalTimetable(
+            ChatbotSessionManager.UserSession session,
+            Semester hocKy,
+            VietnameseNluEngine.NluParseResult nlu,
+            String thoiDiem,
+            Role role) {
+
+        LocalDate now = LocalDate.now();
+        Integer targetThu = nlu.thu();
+        String dayLabel = null;
+
+        if (nlu.isToday()) {
+            targetThu = toVietnameseThu(now);
+            dayLabel = "hôm nay (" + formatVietnameseThu(targetThu) + ", ngày " + now.format(DATE_FORMATTER) + ")";
+        } else if (nlu.isTomorrow()) {
+            LocalDate tomorrow = now.plusDays(1);
+            targetThu = toVietnameseThu(tomorrow);
+            dayLabel = "ngày mai (" + formatVietnameseThu(targetThu) + ", ngày " + tomorrow.format(DATE_FORMATTER) + ")";
+        } else if (targetThu != null) {
+            dayLabel = formatVietnameseThu(targetThu);
+        }
+
+        if (role == Role.SINH_VIEN) {
+            List<RegistrationDtos.ThoiKhoaBieuDto> tkb = dangKyService.thoiKhoaBieu(hocKy.getId());
+            if (tkb.isEmpty()) {
+                String emptyMsg = targetThu != null
+                        ? "📅 **Thời khóa biểu " + dayLabel + "** trong **" + hocKy.getTen() + "**:\n\n"
+                        + (nlu.isToday() ? "Hôm nay bạn chưa có lịch học nào" : "Bạn chưa có lịch học nào vào " + dayLabel)
+                        + " (do bạn chưa đăng ký lớp học phần nào trong " + hocKy.getTen() + ", kiểm tra lúc " + thoiDiem + ")."
+                        : "Bạn chưa có lịch học nào được xếp trong " + hocKy.getTen() + " (Thời điểm kiểm tra: " + thoiDiem + ").";
+                return buildResponse(session, emptyMsg,
+                        ChatbotDtos.ChatActionType.NONE, null, null, null, hocKy.getTen(), thoiDiem, false);
+            }
+
+            if (targetThu != null) {
+                final int filterThu = targetThu;
+                List<RegistrationDtos.ThoiKhoaBieuDto> daily = tkb.stream()
+                        .filter(i -> i.thu() == filterThu)
+                        .sorted(Comparator.comparingInt(RegistrationDtos.ThoiKhoaBieuDto::tietBatDau))
+                        .toList();
+
+                if (daily.isEmpty()) {
+                    String emptyMsg = nlu.isToday()
+                            ? "📅 **Thời khóa biểu " + dayLabel + "** trong **" + hocKy.getTen() + "**:\n\n"
+                            + "Hôm nay bạn không có lịch học nào! 🎉 Chúc bạn có một ngày nghỉ ngơi hoặc tự học hiệu quả.\n\n"
+                            + "👉 Bạn có thể hỏi: *\"Xem thời khóa biểu của tôi\"* để xem toàn bộ các ngày khác trong tuần."
+                            : "📅 **Thời khóa biểu " + dayLabel + "** trong **" + hocKy.getTen() + "**:\n\n"
+                            + "Bạn không có lịch học nào vào " + dayLabel + ".";
+                    return buildResponse(session, emptyMsg, ChatbotDtos.ChatActionType.NONE, null, null,
+                            List.of("Xem thời khóa biểu của tôi", "Xem thông tin cá nhân"), hocKy.getTen(), thoiDiem, false);
+                }
+
+                StringBuilder sb = new StringBuilder("📅 **Thời khóa biểu ").append(dayLabel).append("** trong **").append(hocKy.getTen()).append("** (lấy lúc ").append(thoiDiem).append("):\n\n");
+                sb.append("Bạn có **").append(daily.size()).append("** môn học trong ngày:\n\n");
+                for (RegistrationDtos.ThoiKhoaBieuDto item : daily) {
+                    sb.append(String.format(Locale.ROOT, "- **%s** (%s): Tiết %d-%d (%d tiết) | Phòng: %s | GV: %s\n",
+                            item.maLop(), item.tenMon(), item.tietBatDau(), item.tietBatDau() + item.soTiet() - 1, item.soTiet(), item.phong(), item.giangVien()));
+                }
+                return buildResponse(session, sb.toString(), ChatbotDtos.ChatActionType.NONE, null, null,
+                        List.of("Xem thời khóa biểu của tôi", "Xem thông tin cá nhân"), hocKy.getTen(), thoiDiem, false);
+            }
+
+            // Xem toàn bộ TKB học kỳ
+            List<RegistrationDtos.ThoiKhoaBieuDto> sorted = tkb.stream()
+                    .sorted(Comparator.comparingInt(RegistrationDtos.ThoiKhoaBieuDto::thu)
+                            .thenComparingInt(RegistrationDtos.ThoiKhoaBieuDto::tietBatDau))
+                    .toList();
+
+            StringBuilder sb = new StringBuilder("📅 **Thời khóa biểu của bạn** trong **").append(hocKy.getTen()).append("** (lấy lúc ").append(thoiDiem).append("):\n\n");
+            int currentThu = -1;
+            for (RegistrationDtos.ThoiKhoaBieuDto item : sorted) {
+                if (item.thu() != currentThu) {
+                    currentThu = item.thu();
+                    sb.append("\n**").append(formatVietnameseThu(currentThu)).append(":**\n");
+                }
+                sb.append(String.format(Locale.ROOT, "- **%s** (%s): Tiết %d-%d (%d tiết) | Phòng: %s | GV: %s\n",
+                        item.maLop(), item.tenMon(), item.tietBatDau(), item.tietBatDau() + item.soTiet() - 1, item.soTiet(), item.phong(), item.giangVien()));
+            }
+            return buildResponse(session, sb.toString(), ChatbotDtos.ChatActionType.NONE, null, null,
+                    List.of("Thời khóa biểu hôm nay", "Xem thông tin cá nhân"), hocKy.getTen(), thoiDiem, false);
+
+        } else if (role == Role.GIANG_VIEN) {
+            List<RegistrationDtos.ThoiKhoaBieuDto> tkb = lopHocPhanService.thoiKhoaBieuCuaToi(hocKy.getId());
+            if (tkb.isEmpty()) {
+                String emptyMsg = targetThu != null
+                        ? "📅 **Lịch giảng dạy " + dayLabel + "** trong **" + hocKy.getTen() + "**:\n\n"
+                        + (nlu.isToday() ? "Hôm nay Thầy/Cô chưa có lịch giảng dạy nào" : "Thầy/Cô chưa có lịch giảng dạy nào vào " + dayLabel)
+                        + " (chưa có lớp học phần được phân công trong " + hocKy.getTen() + ", kiểm tra lúc " + thoiDiem + ")."
+                        : "Thầy/Cô chưa có lịch giảng dạy nào trong " + hocKy.getTen() + " (Thời điểm kiểm tra: " + thoiDiem + ").";
+                return buildResponse(session, emptyMsg,
+                        ChatbotDtos.ChatActionType.NONE, null, null, null, hocKy.getTen(), thoiDiem, false);
+            }
+
+            if (targetThu != null) {
+                final int filterThu = targetThu;
+                List<RegistrationDtos.ThoiKhoaBieuDto> daily = tkb.stream()
+                        .filter(i -> i.thu() == filterThu)
+                        .sorted(Comparator.comparingInt(RegistrationDtos.ThoiKhoaBieuDto::tietBatDau))
+                        .toList();
+
+                if (daily.isEmpty()) {
+                    String emptyMsg = nlu.isToday()
+                            ? "📅 **Lịch giảng dạy " + dayLabel + "** trong **" + hocKy.getTen() + "**:\n\n"
+                            + "Hôm nay Thầy/Cô không có tiết giảng dạy nào! Chúc Thầy/Cô một ngày làm việc hiệu quả.\n\n"
+                            + "👉 Thầy/Cô có thể hỏi: *\"Lịch giảng dạy của tôi\"* hoặc *\"Danh sách lớp tôi phụ trách\"* để xem các ngày khác."
+                            : "📅 **Lịch giảng dạy " + dayLabel + "** trong **" + hocKy.getTen() + "**:\n\n"
+                            + "Thầy/Cô không có tiết giảng dạy nào vào " + dayLabel + ".";
+                    return buildResponse(session, emptyMsg, ChatbotDtos.ChatActionType.NONE, null, null,
+                            List.of("Lịch giảng dạy của tôi", "Danh sách lớp tôi phụ trách"), hocKy.getTen(), thoiDiem, false);
+                }
+
+                StringBuilder sb = new StringBuilder("📅 **Lịch giảng dạy ").append(dayLabel).append("** trong **").append(hocKy.getTen()).append("** (lấy lúc ").append(thoiDiem).append("):\n\n");
+                sb.append("Thầy/Cô có **").append(daily.size()).append("** lớp giảng dạy trong ngày:\n\n");
+                for (RegistrationDtos.ThoiKhoaBieuDto item : daily) {
+                    sb.append(String.format(Locale.ROOT, "- **%s** (%s): Tiết %d-%d (%d tiết) | Phòng: %s\n",
+                            item.maLop(), item.tenMon(), item.tietBatDau(), item.tietBatDau() + item.soTiet() - 1, item.soTiet(), item.phong()));
+                }
+                return buildResponse(session, sb.toString(), ChatbotDtos.ChatActionType.NONE, null, null,
+                        List.of("Lịch giảng dạy của tôi", "Danh sách lớp tôi phụ trách"), hocKy.getTen(), thoiDiem, false);
+            }
+
+            // Toàn bộ lịch giảng dạy
+            List<RegistrationDtos.ThoiKhoaBieuDto> sorted = tkb.stream()
+                    .sorted(Comparator.comparingInt(RegistrationDtos.ThoiKhoaBieuDto::thu)
+                            .thenComparingInt(RegistrationDtos.ThoiKhoaBieuDto::tietBatDau))
+                    .toList();
+
+            StringBuilder sb = new StringBuilder("📅 **Lịch giảng dạy của Thầy/Cô** trong **").append(hocKy.getTen()).append("** (lấy lúc ").append(thoiDiem).append("):\n\n");
+            int currentThu = -1;
+            for (RegistrationDtos.ThoiKhoaBieuDto item : sorted) {
+                if (item.thu() != currentThu) {
+                    currentThu = item.thu();
+                    sb.append("\n**").append(formatVietnameseThu(currentThu)).append(":**\n");
+                }
+                sb.append(String.format(Locale.ROOT, "- **%s** (%s): Tiết %d-%d (%d tiết) | Phòng: %s\n",
+                        item.maLop(), item.tenMon(), item.tietBatDau(), item.tietBatDau() + item.soTiet() - 1, item.soTiet(), item.phong()));
+            }
+            return buildResponse(session, sb.toString(), ChatbotDtos.ChatActionType.NONE, null, null,
+                    List.of("Lịch giảng dạy hôm nay", "Danh sách lớp tôi phụ trách"), hocKy.getTen(), thoiDiem, false);
+
+        } else {
+            return buildResponse(session, "Tài khoản Quản trị viên không có thời khóa biểu học tập hoặc giảng dạy cá nhân.",
+                    ChatbotDtos.ChatActionType.NONE, null, null, null, hocKy.getTen(), thoiDiem, false);
+        }
+    }
+
+    private ChatbotDtos.ChatResponse handleMyClasses(
+            ChatbotSessionManager.UserSession session,
+            Semester hocKy,
+            String thoiDiem,
+            Role role) {
+
+        if (role == Role.GIANG_VIEN) {
+            List<CourseClassDtos.LopHocPhanDto> myClasses = lopHocPhanService.danhSachCuaToi(hocKy.getId());
+            if (myClasses.isEmpty()) {
+                return buildResponse(session,
+                        "Thầy/Cô hiện chưa được phân công phụ trách lớp học phần nào trong " + hocKy.getTen() + " (lấy lúc " + thoiDiem + ").",
+                        ChatbotDtos.ChatActionType.NONE, null, null, null, hocKy.getTen(), thoiDiem, false);
+            }
+
+            List<ChatbotDtos.ClassCardDto> cards = myClasses.stream().map(l -> toClassCard(l, thoiDiem)).toList();
+            session.setCandidateClasses(cards);
+
+            StringBuilder sb = new StringBuilder("📚 **Danh sách các lớp Thầy/Cô phụ trách** trong **").append(hocKy.getTen()).append("** (lấy lúc ").append(thoiDiem).append("):\n\n");
+            sb.append("Tìm thấy **").append(myClasses.size()).append("** lớp học phần:\n\n");
+            for (int i = 0; i < cards.size(); i++) {
+                ChatbotDtos.ClassCardDto c = cards.get(i);
+                sb.append(String.format(Locale.ROOT, "%d. **%s** (%s - %d tín chỉ)\n" +
+                                "   - Lịch dạy: Thứ %d, tiết %d-%d | Phòng: %s\n" +
+                                "   - Sĩ số: **%d/%d** sinh viên (còn %d chỗ)\n\n",
+                        i + 1, c.ma(), c.tenMon(), c.soTinChi(),
+                        c.thu(), c.tietBatDau(), c.tietBatDau() + c.soTiet() - 1, c.phong(),
+                        c.siSoHienTai(), c.siSoToiDa(), c.conLai()));
+            }
+            return buildResponse(session, sb.toString(), ChatbotDtos.ChatActionType.NONE, null, cards,
+                    List.of("Lịch giảng dạy hôm nay", "Xem thông tin cá nhân"), hocKy.getTen(), thoiDiem, false);
+
+        } else if (role == Role.SINH_VIEN) {
+            List<RegistrationDtos.DangKyDto> myClasses = dangKyService.danhSachCuaToi(hocKy.getId());
+            if (myClasses.isEmpty()) {
+                return buildResponse(session,
+                        "Bạn chưa đăng ký lớp học phần nào trong " + hocKy.getTen() + " (lấy lúc " + thoiDiem + ").",
+                        ChatbotDtos.ChatActionType.NONE, null, null, null, hocKy.getTen(), thoiDiem, false);
+            }
+
+            StringBuilder sb = new StringBuilder("📋 **Danh sách các lớp học phần bạn đã đăng ký** trong **").append(hocKy.getTen()).append("** (lấy lúc ").append(thoiDiem).append("):\n\n");
+            sb.append("Bạn đã đăng ký thành công **").append(myClasses.size()).append("** lớp học phần:\n\n");
+            for (int i = 0; i < myClasses.size(); i++) {
+                RegistrationDtos.DangKyDto dk = myClasses.get(i);
+                sb.append(String.format(Locale.ROOT, "%d. **%s** (%s - %d tín chỉ)\n" +
+                                "   - Giảng viên: %s | Phòng: %s\n" +
+                                "   - Lịch học: Thứ %d, tiết %d-%d\n\n",
+                        i + 1, dk.maLop(), dk.tenMon(), dk.soTinChi(),
+                        dk.tenGiangVien(), dk.phong(),
+                        dk.thu(), dk.tietBatDau(), dk.tietBatDau() + dk.soTiet() - 1));
+            }
+            return buildResponse(session, sb.toString(), ChatbotDtos.ChatActionType.NONE, null, null,
+                    List.of("Thời khóa biểu hôm nay", "Xem thông tin cá nhân"), hocKy.getTen(), thoiDiem, false);
+        } else {
+            return buildResponse(session, "Quản trị viên có thể xem danh sách lớp toàn trường bằng cách hỏi: 'Tra cứu danh sách lớp học phần'.",
+                    ChatbotDtos.ChatActionType.NONE, null, null, null, hocKy.getTen(), thoiDiem, false);
+        }
+    }
+
+    private String buildConversationalSystemPrompt(Semester hocKy) {
+        StringBuilder sb = new StringBuilder(CONVERSATIONAL_SYSTEM_PROMPT);
+        LocalDate today = LocalDate.now();
+        int todayThu = toVietnameseThu(today);
+        sb.append("\nThời gian hiện tại của hệ thống:\n")
+                .append("- Hôm nay là: ").append(formatVietnameseThu(todayThu))
+                .append(", ngày ").append(today.format(DATE_FORMATTER)).append("\n");
+
+        try {
+            User user = currentUser.get();
+            sb.append("\nThông tin người dùng đang trò chuyện:\n")
+                    .append("- Tên đăng nhập: ").append(user.getUsername()).append("\n")
+                    .append("- Vai trò: ").append(user.getRole().name()).append("\n");
+            if (user.getRole() == Role.SINH_VIEN && studentRepository != null) {
+                studentRepository.findWithAcademicProfileByUserId(user.getId()).ifPresent(sv -> {
+                    sb.append("- Họ và tên: ").append(sv.getHoTen()).append("\n")
+                            .append("- Mã sinh viên: ").append(sv.getMa()).append("\n")
+                            .append("- Lớp hành chính: ").append(sv.getLopHanhChinh() != null ? sv.getLopHanhChinh().getTen() : "Chưa phân").append("\n")
+                            .append("- Khoa: ").append(sv.getKhoa() != null ? sv.getKhoa().getTen() : "Chưa phân").append("\n")
+                            .append("- Ngành: ").append(sv.getNganh() != null ? sv.getNganh().getTen() : "Chưa phân").append("\n");
+                });
+            } else if (user.getRole() == Role.GIANG_VIEN && lecturerRepository != null) {
+                lecturerRepository.findWithKhoaByUserId(user.getId()).ifPresent(gv -> {
+                    sb.append("- Họ và tên: ").append(gv.getHoTen()).append("\n")
+                            .append("- Mã giảng viên: ").append(gv.getMa()).append("\n")
+                            .append("- Khoa/Bộ môn: ").append(gv.getKhoa() != null ? gv.getKhoa().getTen() : "Chưa phân").append("\n");
+                });
+            }
+        } catch (Exception ignored) {}
+
+        if (hocKy != null) {
+            sb.append("\nThông tin học kỳ đang áp dụng (chỉ dùng đúng các dữ kiện này, không bịa thêm):\n")
+                    .append("- Học kỳ: ").append(hocKy.getTen()).append(" (năm học ").append(hocKy.getNamHoc()).append(")\n")
+                    .append("- Thời gian đăng ký: ").append(DATE_FORMATTER.format(hocKy.getDangKyTu()))
+                    .append(" đến ").append(DATE_FORMATTER.format(hocKy.getDangKyDen()))
+                    .append(hocKy.dangMoDangKy() ? " (đang mở đăng ký)" : " (hiện không trong thời gian đăng ký)").append("\n")
+                    .append("- Thời gian học: ").append(DATE_FORMATTER.format(hocKy.getNgayBatDau()))
+                    .append(" đến ").append(DATE_FORMATTER.format(hocKy.getNgayKetThuc())).append("\n")
+                    .append("- Giới hạn tín chỉ: tối thiểu ").append(hocKy.getSoTinChiToiThieu())
+                    .append(", tối đa ").append(hocKy.getSoTinChiToiDa()).append("\n");
+        }
+        return sb.toString();
     }
 
     private boolean shouldAnswerConversationally(VietnameseNluEngine.NluParseResult nlu) {
@@ -826,6 +1181,9 @@ public class ChatbotService {
         if (intent == VietnameseNluEngine.Intent.XAC_NHAN
                 || intent == VietnameseNluEngine.Intent.HUY_XAC_NHAN
                 || intent == VietnameseNluEngine.Intent.TKB_CA_NHAN
+                || intent == VietnameseNluEngine.Intent.LOP_CUA_TOI
+                || intent == VietnameseNluEngine.Intent.THONG_TIN_CA_NHAN
+                || intent == VietnameseNluEngine.Intent.DOI_MAT_KHAU
                 || intent == VietnameseNluEngine.Intent.THONG_KE
                 || intent == VietnameseNluEngine.Intent.TRO_GIUP) {
             return false;
@@ -840,30 +1198,33 @@ public class ChatbotService {
                 .append("! Mình là **Trợ lý AI Đăng ký Học phần**, rất vui được trò chuyện với bạn 😊\n\n");
         sb.append("Bạn muốn mình giúp gì hôm nay? Mình có thể:\n");
         if (role == Role.SINH_VIEN) {
+            sb.append("- 👤 Xem thông tin cá nhân tài khoản của bạn\n");
+            sb.append("- 📅 Xem thời khóa biểu hôm nay hoặc toàn kỳ\n");
             sb.append("- 🔎 Tìm lớp học phần và kiểm tra chỗ trống\n");
-            sb.append("- 📅 Xem thời khóa biểu của bạn\n");
-            sb.append("- 📝 Hướng dẫn đăng ký học phần an toàn\n");
+            sb.append("- 📝 Hướng dẫn đăng ký học phần và đổi mật khẩu\n");
             sb.append("- 🔁 Gợi ý lớp thay thế khi lớp đã đầy\n\n");
         } else if (role == Role.GIANG_VIEN) {
-            sb.append("- 📚 Xem danh sách lớp mình phụ trách\n");
-            sb.append("- 📅 Xem lịch giảng dạy\n");
-            sb.append("- 👥 Kiểm tra sĩ số lớp học phần\n\n");
+            sb.append("- 👤 Xem thông tin cá nhân giảng viên\n");
+            sb.append("- 📅 Xem lịch giảng dạy hôm nay hoặc toàn kỳ\n");
+            sb.append("- 📚 Xem danh sách và sĩ số các lớp phụ trách\n");
+            sb.append("- 🔐 Hướng dẫn đổi mật khẩu bảo mật\n\n");
         } else {
+            sb.append("- 👤 Xem thông tin tài khoản quản trị\n");
             sb.append("- 📊 Xem thống kê tổng quan đào tạo\n");
             sb.append("- 🔎 Tra cứu danh sách lớp học phần\n\n");
         }
-        sb.append("Bạn cứ nhắn tự nhiên nhé, ví dụ: \"Tìm lớp còn chỗ\" hoặc gõ \"Hướng dẫn\" để xem đầy đủ.");
+        sb.append("Bạn cứ nhắn tự nhiên nhé, ví dụ: \"Thời khóa biểu hôm nay\" hoặc gõ \"Hướng dẫn\" để xem đầy đủ.");
         return sb.toString();
     }
 
     private List<String> greetingSuggestions(Role role) {
         if (role == Role.SINH_VIEN) {
-            return List.of("Tìm lớp còn chỗ", "Thời khóa biểu của tôi", "Hướng dẫn trợ giúp");
+            return List.of("Thời khóa biểu hôm nay", "Xem thông tin cá nhân", "Tìm lớp còn chỗ", "Hướng dẫn đổi mật khẩu");
         }
         if (role == Role.GIANG_VIEN) {
-            return List.of("Xem danh sách lớp tôi phụ trách", "Lịch giảng dạy của tôi", "Hướng dẫn trợ giúp");
+            return List.of("Lịch giảng dạy hôm nay", "Xem danh sách lớp tôi phụ trách", "Xem thông tin cá nhân", "Hướng dẫn đổi mật khẩu");
         }
-        return List.of("Xem thống kê tổng quan đào tạo", "Tra cứu danh sách lớp học phần", "Hướng dẫn trợ giúp");
+        return List.of("Xem thống kê tổng quan đào tạo", "Xem thông tin tài khoản", "Tra cứu danh sách lớp học phần", "Hướng dẫn trợ giúp");
     }
 
     private String getHelpText(Role role) {
@@ -871,34 +1232,52 @@ public class ChatbotService {
             return """
                     🤖 **Trợ lý Đăng ký Học phần (QLSV Assistant)**
                     Tôi có thể hỗ trợ bạn các tác vụ sau theo dữ liệu CSDL thời gian thực:
-                    
-                    1. **Tra cứu lớp học phần & chỗ trống:**
+
+                    1. **Thông tin cá nhân & Tài khoản:**
+                       - *"Xem thông tin cá nhân của tôi"*
+                       - *"Tôi muốn đổi mật khẩu bạn hỗ trợ tôi được không?"*
+                    2. **Thời khóa biểu & Lịch học:**
+                       - *"Thời khóa biểu hôm nay của tôi thế nào?"*
+                       - *"Lịch học ngày mai của tôi"*
+                       - *"Xem thời khóa biểu của tôi"*
+                       - *"Xem các lớp tôi đã đăng ký"*
+                    3. **Tra cứu lớp học phần & chỗ trống:**
                        - *"Tìm các lớp môn Lập trình Java còn chỗ"*
                        - *"Lớp LHP01 còn bao nhiêu chỗ?"*
                        - *"Có lớp nào học thứ 4 không?"*
-                    2. **Tra cứu giảng viên & phòng học:**
+                    4. **Tra cứu giảng viên & phòng học:**
                        - *"Thầy Nguyễn Văn A dạy lớp nào?"*
                        - *"Lớp LHP02 học ở phòng nào?"*
-                    3. **Đăng ký học phần có xác nhận:**
+                    5. **Đăng ký học phần có xác nhận an toàn:**
                        - *"Tôi muốn đăng ký lớp LHP01"*
                        - Hệ thống sẽ hiển thị chi tiết lớp và chỉ ghi nhận sau khi bạn xác nhận *"Đồng ý"*.
-                    4. **Tìm lớp thay thế khi hết chỗ:**
+                    6. **Tìm lớp thay thế khi hết chỗ:**
                        - *"Lớp LHP01 đầy rồi, có lớp nào thay thế không?"*
-                    5. **Xem thời khóa biểu cá nhân:**
-                       - *"Xem thời khóa biểu của tôi"*
                     """;
         } else if (role == Role.GIANG_VIEN) {
             return """
                     🤖 **Trợ lý Giảng viên (QLSV Assistant)**
-                    - *"Xem danh sách lớp tôi phụ trách"*
-                    - *"Lịch giảng dạy của tôi"*
-                    - *"Lớp LHP01 hiện có bao nhiêu sinh viên?"*
+                    Tôi có thể hỗ trợ Thầy/Cô các tác vụ sau:
+
+                    1. **Thông tin cá nhân & Tài khoản:**
+                       - *"Xem thông tin cá nhân của tôi"*
+                       - *"Hướng dẫn đổi mật khẩu"*
+                    2. **Lịch giảng dạy:**
+                       - *"Lịch giảng dạy hôm nay của tôi"*
+                       - *"Lịch dạy ngày mai của tôi"*
+                       - *"Lịch giảng dạy của tôi"*
+                    3. **Lớp phụ trách & Sĩ số:**
+                       - *"Xem danh sách lớp tôi phụ trách"*
+                       - *"Lớp của tôi hiện có bao nhiêu sinh viên?"*
+                       - *"Lớp LHP01 hiện có bao nhiêu sinh viên?"*
                     """;
         } else {
             return """
                     🤖 **Trợ lý Quản trị Đào tạo (QLSV Assistant)**
+                    - *"Xem thông tin tài khoản"*
                     - *"Xem thống kê tổng quan đào tạo"*
                     - *"Tra cứu danh sách lớp học phần theo môn"*
+                    - *"Hướng dẫn đổi mật khẩu"*
                     """;
         }
     }

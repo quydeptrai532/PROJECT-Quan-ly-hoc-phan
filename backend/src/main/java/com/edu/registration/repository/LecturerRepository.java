@@ -17,6 +17,9 @@ public interface LecturerRepository extends JpaRepository<Lecturer, Long> {
     Optional<Lecturer> findByUser(User user);
     Optional<Lecturer> findByUserId(Long userId);
 
+    @EntityGraph(attributePaths = {"khoa"})
+    Optional<Lecturer> findWithKhoaByUserId(Long userId);
+
     Optional<Lecturer> findByMa(String ma);
 
     boolean existsByMa(String ma);

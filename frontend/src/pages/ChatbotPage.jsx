@@ -67,20 +67,20 @@ export default function ChatbotPage() {
             </h3>
             <div className="mt-3 space-y-2 text-xs text-slate-600">
               <div className="rounded-xl border border-slate-200/60 bg-white p-2.5">
-                <p className="font-semibold text-slate-800">1. Tra cứu lớp còn chỗ</p>
+                <p className="font-semibold text-slate-800">1. Xem thông tin cá nhân & Đổi MK</p>
+                <p className="italic text-slate-500">"Tôi muốn xem thông tin cá nhân của tôi" hoặc "Hướng dẫn đổi mật khẩu"</p>
+              </div>
+              <div className="rounded-xl border border-slate-200/60 bg-white p-2.5">
+                <p className="font-semibold text-slate-800">2. Lịch học & Lịch dạy hôm nay</p>
+                <p className="italic text-slate-500">"Thời khóa biểu hôm nay của tôi thế nào?" hoặc "Hôm nay tôi dạy môn gì?"</p>
+              </div>
+              <div className="rounded-xl border border-slate-200/60 bg-white p-2.5">
+                <p className="font-semibold text-slate-800">3. Tra cứu lớp còn chỗ</p>
                 <p className="italic text-slate-500">"Tìm các lớp môn Lập trình Java còn chỗ học thứ 4"</p>
               </div>
               <div className="rounded-xl border border-slate-200/60 bg-white p-2.5">
-                <p className="font-semibold text-slate-800">2. Xem lịch học cá nhân</p>
-                <p className="italic text-slate-500">"Xem thời khóa biểu của tôi"</p>
-              </div>
-              <div className="rounded-xl border border-slate-200/60 bg-white p-2.5">
-                <p className="font-semibold text-slate-800">3. Đăng ký học phần</p>
+                <p className="font-semibold text-slate-800">4. Đăng ký học phần</p>
                 <p className="italic text-slate-500">"Tôi muốn đăng ký lớp INT201.01"</p>
-              </div>
-              <div className="rounded-xl border border-slate-200/60 bg-white p-2.5">
-                <p className="font-semibold text-slate-800">4. Tìm lớp thay thế khi đầy</p>
-                <p className="italic text-slate-500">"Lớp INT201.01 đầy rồi, có lớp nào thay thế không?"</p>
               </div>
             </div>
           </div>

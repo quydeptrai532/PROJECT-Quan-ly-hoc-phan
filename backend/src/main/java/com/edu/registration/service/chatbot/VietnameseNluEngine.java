@@ -24,6 +24,9 @@ public class VietnameseNluEngine {
         TRA_CUU_GIANG_VIEN,
         TRA_CUU_PHONG,
         TKB_CA_NHAN,
+        LOP_CUA_TOI,
+        THONG_TIN_CA_NHAN,
+        DOI_MAT_KHAU,
         THONG_KE,
         TRO_GIUP,
         THOI_TIET,
@@ -46,8 +49,27 @@ public class VietnameseNluEngine {
             Integer tietBatDau,
             Integer selectionIndex,
             boolean onlyAvailableSeats,
-            boolean onlyFullClasses
+            boolean onlyFullClasses,
+            boolean isToday,
+            boolean isTomorrow
     ) {
+        public NluParseResult(
+                Intent intent,
+                String rawMessage,
+                String normalizedMessage,
+                String maLop,
+                String maMon,
+                String tenMonOrKeyword,
+                String tenGiangVien,
+                Integer thu,
+                Integer tietBatDau,
+                Integer selectionIndex,
+                boolean onlyAvailableSeats,
+                boolean onlyFullClasses
+        ) {
+            this(intent, rawMessage, normalizedMessage, maLop, maMon, tenMonOrKeyword, tenGiangVien,
+                    thu, tietBatDau, selectionIndex, onlyAvailableSeats, onlyFullClasses, false, false);
+        }
     }
 
     private static final Pattern MA_LOP_PATTERN = Pattern.compile("\\b([A-Z0-9]{2,8}\\.[0-9]{2}(?:-HK[0-9]+)?|LHP[-_]?[0-9A-Za-z]+)\\b", Pattern.CASE_INSENSITIVE);
@@ -107,7 +129,11 @@ public class VietnameseNluEngine {
             }
         }
 
-        // 4. Trích xuất thứ trong tuần
+        // 4. Trích xuất thời điểm và thứ trong tuần
+        boolean isToday = Pattern.compile("\\b(hom\\s*nay|ngay\\s*hom\\s*nay|bua\\s*nay|chieu\\s*nay|sang\\s*nay|toi\\s*nay)\\b").matcher(normalized).find();
+        boolean isTomorrow = Pattern.compile("\\b(ngay\\s*mai|sang\\s*mai|chieu\\s*mai|toi\\s*mai|\\bmai\\b)").matcher(normalized).find()
+                && !normalized.contains("khuyen mai") && !normalized.contains("thoai mai");
+
         Integer thu = null;
         if (normalized.contains("thu 2") || normalized.contains("thu hai")) thu = 2;
         else if (normalized.contains("thu 3") || normalized.contains("thu ba")) thu = 3;
@@ -116,6 +142,11 @@ public class VietnameseNluEngine {
         else if (normalized.contains("thu 6") || normalized.contains("thu sau")) thu = 6;
         else if (normalized.contains("thu 7") || normalized.contains("thu bay")) thu = 7;
         else if (normalized.contains("chu nhat") || normalized.contains("cn")) thu = 8;
+        else if (isToday) {
+            thu = java.time.LocalDate.now().getDayOfWeek().getValue() + 1;
+        } else if (isTomorrow) {
+            thu = java.time.LocalDate.now().plusDays(1).getDayOfWeek().getValue() + 1;
+        }
 
         // 5. Trích xuất tiết
         Integer tiet = null;
@@ -147,7 +178,7 @@ public class VietnameseNluEngine {
         String keyword = extractSubjectKeyword(raw, normalized);
 
         // 9. Xác định Intent
-        Intent intent = determineIntent(normalized, maLop, selectionIndex);
+        Intent intent = determineIntent(normalized, maLop, selectionIndex, isToday, isTomorrow);
 
         return new NluParseResult(
                 intent,
@@ -161,11 +192,13 @@ public class VietnameseNluEngine {
                 tiet,
                 selectionIndex,
                 onlyAvailableSeats,
-                onlyFullClasses
+                onlyFullClasses,
+                isToday,
+                isTomorrow
         );
     }
 
-    private Intent determineIntent(String normalized, String maLop, Integer selectionIndex) {
+    private Intent determineIntent(String normalized, String maLop, Integer selectionIndex, boolean isToday, boolean isTomorrow) {
         // Xác nhận đăng ký
         if (normalized.equals("xac nhan")
                 || normalized.equals("dong y")
@@ -184,6 +217,28 @@ public class VietnameseNluEngine {
                 || normalized.contains("bo qua")
                 || normalized.contains("cancel")) {
             return Intent.HUY_XAC_NHAN;
+        }
+
+        // Hỗ trợ đổi mật khẩu / Quên mật khẩu
+        if (normalized.contains("doi mat khau") || normalized.contains("thay doi mat khau")
+                || normalized.contains("quen mat khau") || normalized.contains("reset mat khau")
+                || normalized.contains("doi pass") || normalized.contains("doi password")
+                || normalized.contains("thay pass") || normalized.contains("muon doi mat khau")) {
+            return Intent.DOI_MAT_KHAU;
+        }
+
+        // Thông tin cá nhân / Tài khoản đang đăng nhập
+        if (normalized.contains("thong tin ca nhan") || normalized.contains("thong tin cua toi")
+                || normalized.contains("ho so cua toi") || normalized.contains("ho so ca nhan")
+                || normalized.contains("tai khoan cua toi") || normalized.contains("tai khoan minh")
+                || normalized.contains("tai khoan vua dang nhap") || normalized.contains("tai khoan dang dang nhap")
+                || normalized.contains("thong tin tai khoan") || normalized.contains("toi la ai")
+                || normalized.contains("ten toi la gi") || normalized.contains("ma sinh vien cua toi")
+                || normalized.contains("ma giang vien cua toi") || normalized.contains("ma so cua toi")
+                || normalized.contains("xem thong tin toi") || normalized.contains("xem thong tin cua toi")
+                || normalized.contains("xem thong tin ca nhan") || normalized.contains("xem ho so")
+                || (normalized.contains("thong tin") && (normalized.contains("ca nhan") || normalized.contains("cua toi") || normalized.contains("dang nhap")))) {
+            return Intent.THONG_TIN_CA_NHAN;
         }
 
         // Thời tiết (đặt trước rule lịch học để tránh nhầm "thời tiết" thành "tiết")
@@ -209,6 +264,16 @@ public class VietnameseNluEngine {
             return Intent.SMALL_TALK;
         }
 
+        // Lớp của tôi / Lớp tôi dạy / Lớp tôi phụ trách / Lớp đã đăng ký (trả về danh sách lớp trực tiếp)
+        if (normalized.contains("lop toi day") || normalized.contains("lop toi phu trach")
+                || normalized.contains("lop dang day") || normalized.contains("lop cua toi")
+                || normalized.contains("danh sach lop cua toi") || normalized.contains("danh sach lop toi")
+                || normalized.contains("cac lop toi day") || normalized.contains("toi day nhung lop nao")
+                || normalized.contains("toi dang day lop nao") || normalized.contains("lop da dang ky")
+                || normalized.contains("mon da dang ky") || normalized.contains("lop hoc phan cua toi")) {
+            return Intent.LOP_CUA_TOI;
+        }
+
         // Muốn đăng ký
         if (normalized.contains("dang ky") || normalized.contains("ghi danh") || normalized.contains("muon dang ky") || normalized.contains("dk")) {
             return Intent.DANG_KY;
@@ -219,10 +284,22 @@ public class VietnameseNluEngine {
             return Intent.LOP_THAY_THE;
         }
 
-        // Thời khóa biểu cá nhân
-        if (normalized.contains("tkb cua toi") || normalized.contains("thoi khoa bieu cua toi")
-                || normalized.contains("lich hoc cua toi") || normalized.contains("lop da dang ky")
-                || normalized.contains("mon da dang ky") || normalized.contains("lich day cua toi")) {
+        // Thời khóa biểu cá nhân / Lịch học / Lịch dạy hôm nay, ngày mai, thứ cụ thể hoặc toàn kỳ
+        boolean isPersonalSchedule = normalized.contains("tkb cua toi") || normalized.contains("thoi khoa bieu cua toi")
+                || normalized.contains("lich hoc cua toi") || normalized.contains("lich day cua toi")
+                || normalized.contains("thoi khoa bieu hom nay") || normalized.contains("thoi khoa bieu ngay mai")
+                || normalized.contains("lich hoc hom nay") || normalized.contains("lich hoc ngay mai")
+                || normalized.contains("lich day hom nay") || normalized.contains("lich day ngay mai")
+                || normalized.contains("hom nay toi co lich") || normalized.contains("ngay mai toi co lich")
+                || normalized.contains("hom nay toi hoc") || normalized.contains("hom nay toi day")
+                || normalized.contains("ngay mai toi hoc") || normalized.contains("ngay mai toi day")
+                || normalized.contains("hom nay hoc gi") || normalized.contains("hom nay day gi")
+                || normalized.contains("ngay mai hoc gi") || normalized.contains("ngay mai day gi")
+                || normalized.contains("hom nay co tiet") || normalized.contains("ngay mai co tiet")
+                || normalized.contains("hom nay co lop") || normalized.contains("ngay mai co lop")
+                || ((normalized.contains("thoi khoa bieu") || normalized.contains("lich hoc") || normalized.contains("lich day") || normalized.contains("tkb"))
+                && (normalized.contains("cua toi") || normalized.contains("cua minh") || isToday || isTomorrow || normalized.contains("tuan nay")));
+        if (isPersonalSchedule) {
             return Intent.TKB_CA_NHAN;
         }
 

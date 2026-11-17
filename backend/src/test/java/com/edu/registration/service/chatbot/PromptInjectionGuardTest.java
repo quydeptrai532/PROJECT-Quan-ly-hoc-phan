@@ -17,13 +17,17 @@ class PromptInjectionGuardTest {
     }
 
     @Test
-    @DisplayName("Cho phép các câu hỏi hợp lệ về lớp học, lịch học và môn học")
+    @DisplayName("Cho phép các câu hỏi hợp lệ về lớp học, lịch học, thông tin cá nhân và hướng dẫn đổi mật khẩu")
     void shouldAllowSafeQueries() {
         assertTrue(guard.checkInput("Tìm các lớp môn Lập trình Java còn chỗ").safe());
         assertTrue(guard.checkInput("Lớp LHP01 còn bao nhiêu chỗ trống?").safe());
         assertTrue(guard.checkInput("Thầy Hùng dạy lớp nào học thứ 4?").safe());
         assertTrue(guard.checkInput("Tôi muốn đăng ký lớp LHP02").safe());
         assertTrue(guard.checkInput("Xem thời khóa biểu của tôi").safe());
+        assertTrue(guard.checkInput("Tôi muốn xem thông tin cá nhân của tôi (tài khoản mình vừa đăng nhập vào)").safe());
+        assertTrue(guard.checkInput("tôi muốn đổi mật khẩu bạn hỗ trợ tôi được ko").safe());
+        assertTrue(guard.checkInput("Xem hướng dẫn đổi mật khẩu").safe());
+        assertTrue(guard.checkInput("Cho tôi xem cách đổi mật khẩu").safe());
     }
 
     @Test

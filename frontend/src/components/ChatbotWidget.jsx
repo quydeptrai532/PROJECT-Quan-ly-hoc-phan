@@ -40,20 +40,25 @@ function renderRichText(text) {
 
 const QUICK_SUGGESTIONS = {
   SINH_VIEN: [
+    "Thời khóa biểu hôm nay của tôi",
+    "Xem thông tin cá nhân của tôi",
     "Tìm các lớp học phần còn chỗ",
-    "Xem thời khóa biểu của tôi",
+    "Tôi muốn đổi mật khẩu",
     "Lớp INT201.01 còn bao nhiêu chỗ?",
-    "Thời tiết Hà Nội hôm nay",
     "Hướng dẫn trợ giúp",
   ],
   GIANG_VIEN: [
+    "Lịch giảng dạy hôm nay của tôi",
     "Xem danh sách lớp tôi phụ trách",
-    "Lịch giảng dạy của tôi",
+    "Xem thông tin cá nhân của tôi",
+    "Hướng dẫn đổi mật khẩu",
     "Hướng dẫn trợ giúp",
   ],
   QUAN_TRI: [
     "Xem thống kê tổng quan đào tạo",
+    "Xem thông tin tài khoản của tôi",
     "Tra cứu danh sách lớp học phần",
+    "Hướng dẫn đổi mật khẩu",
     "Hướng dẫn trợ giúp",
   ],
 };

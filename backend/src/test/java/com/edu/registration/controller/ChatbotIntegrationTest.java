@@ -282,4 +282,109 @@ class ChatbotIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.messageCount").value(0));
     }
+
+    @Test
+    @DisplayName("Sinh viên có thể xem thông tin cá nhân tài khoản đang đăng nhập")
+    void studentCanViewPersonalProfile() throws Exception {
+        String token = login("sv01", "123456");
+
+        MvcResult res = mockMvc.perform(post("/api/chatbot/message")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new ChatbotDtos.ChatRequest(
+                                "tôi muốn xem thông tin cá nhân của tôi ( tài khoản mình vừa đăng nhập vào )", null, null))))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode root = json(res);
+        assertEquals("NONE", root.get("actionType").asText());
+        String reply = root.get("reply").asText();
+        assertTrue(reply.contains("Thông tin cá nhân của bạn"));
+        assertTrue(reply.contains("sv01"));
+        assertTrue(reply.contains("Sinh viên"));
+        assertTrue(reply.contains("/ho-so"));
+    }
+
+    @Test
+    @DisplayName("Người dùng hỏi đổi mật khẩu nhận hướng dẫn thao tác bảo mật chi tiết")
+    void userCanGetPasswordChangeGuidance() throws Exception {
+        String token = login("sv01", "123456");
+
+        MvcResult res = mockMvc.perform(post("/api/chatbot/message")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new ChatbotDtos.ChatRequest(
+                                "tôi muốn đổi mật khẩu bạn hỗ trợ tôi được ko", null, null))))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode root = json(res);
+        assertEquals("NONE", root.get("actionType").asText());
+        String reply = root.get("reply").asText();
+        assertTrue(reply.contains("Hướng dẫn đổi mật khẩu tài khoản"));
+        assertTrue(reply.contains("/ho-so"));
+        assertTrue(reply.contains("Mật khẩu hiện tại"));
+        assertTrue(reply.contains("Mật khẩu mới"));
+    }
+
+    @Test
+    @DisplayName("Sinh viên hỏi thời khóa biểu hôm nay nhận lịch học kèm thông tin ngày thứ chính xác")
+    void studentCanQueryTodaySchedule() throws Exception {
+        String token = login("sv01", "123456");
+
+        MvcResult res = mockMvc.perform(post("/api/chatbot/message")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new ChatbotDtos.ChatRequest(
+                                "thời khóa biểu hôm nay của tôi thế nào hoặc lịch học hôm nay của tôi", null, null))))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode root = json(res);
+        assertEquals("NONE", root.get("actionType").asText());
+        String reply = root.get("reply").asText();
+        assertTrue(reply.contains("Thời khóa biểu hôm nay"));
+    }
+
+    @Test
+    @DisplayName("Giảng viên có thể tra cứu thông tin cá nhân, lịch dạy hôm nay và lớp phụ trách")
+    void lecturerPersonalAndTeachingQueries() throws Exception {
+        String token = login("gv01", "123456");
+
+        // 1. Giảng viên tra cứu thông tin cá nhân
+        MvcResult resProfile = mockMvc.perform(post("/api/chatbot/message")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new ChatbotDtos.ChatRequest(
+                                "Xem thông tin cá nhân của tôi", null, null))))
+                .andExpect(status().isOk())
+                .andReturn();
+        String replyProfile = json(resProfile).get("reply").asText();
+        assertTrue(replyProfile.contains("Thông tin cá nhân của Thầy/Cô"));
+        assertTrue(replyProfile.contains("gv01"));
+        assertTrue(replyProfile.contains("Giảng viên"));
+
+        // 2. Giảng viên tra cứu lịch dạy hôm nay
+        MvcResult resSchedule = mockMvc.perform(post("/api/chatbot/message")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new ChatbotDtos.ChatRequest(
+                                "Lịch dạy hôm nay của tôi", null, null))))
+                .andExpect(status().isOk())
+                .andReturn();
+        String replySchedule = json(resSchedule).get("reply").asText();
+        assertTrue(replySchedule.contains("Lịch giảng dạy hôm nay"));
+
+        // 3. Giảng viên tra cứu danh sách lớp phụ trách
+        MvcResult resClasses = mockMvc.perform(post("/api/chatbot/message")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new ChatbotDtos.ChatRequest(
+                                "Xem danh sách lớp tôi phụ trách", null, null))))
+                .andExpect(status().isOk())
+                .andReturn();
+        String replyClasses = json(resClasses).get("reply").asText();
+        assertTrue(replyClasses.contains("Danh sách các lớp Thầy/Cô phụ trách")
+                || replyClasses.contains("chưa được phân công"));
+    }
 }
