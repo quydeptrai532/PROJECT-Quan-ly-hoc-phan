@@ -14,8 +14,10 @@ export default function RegistrationHistoryPage() {
     if (!hocKyId && semesters?.length) setHocKyId(String(semesters[0].id));
   }, [semesters, hocKyId]);
 
-  const { data, loading, error } = useApi("/dang-ky/me/lich-su",
-    hocKyId ? { hocKyId, page, size: PAGE_SIZE } : {});
+  const { data, loading, error } = useApi(
+    hocKyId ? "/dang-ky/me/lich-su" : null,
+    hocKyId ? { hocKyId, page, size: PAGE_SIZE } : undefined
+  );
   const items = data?.content || [];
 
   return (
