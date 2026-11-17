@@ -242,12 +242,16 @@ export default function Layout({ children }) {
         }`}
       >
         <div className="relative flex h-[76px] shrink-0 items-center gap-3 border-b border-white/10 px-5">
-          <span className="grid h-10 w-10 place-items-center rounded-full bg-[#d9ed8a] text-[#173f3a]">
-            <GraduationCap size={21} />
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 text-[#0b1120] shadow-lg shadow-amber-500/20">
+            <GraduationCap size={21} strokeWidth={2.2} />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-sm font-bold tracking-wide text-white">MỘC · CAMPUS</p>
-            <p className="truncate text-[10px] uppercase tracking-[.15em] text-[#a7bdb0]">Cổng sinh viên</p>
+            <p className="font-display truncate text-sm font-extrabold tracking-wider text-white">
+              AETHERIA <span className="text-amber-400">·</span> EDU
+            </p>
+            <p className="font-mono truncate text-[10px] uppercase tracking-[0.16em] text-slate-400">
+              Cổng đào tạo số
+            </p>
           </div>
           <button
             type="button"
@@ -260,7 +264,7 @@ export default function Layout({ children }) {
         </div>
 
         <nav className="relative flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          <p className="px-3 pb-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#91aa9c]">
+          <p className="font-mono px-3 pb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-400/80">
             {SECTION_LABEL[user?.role] || "Menu"}
           </p>
           {items.map((item) => (
@@ -269,17 +273,15 @@ export default function Layout({ children }) {
               to={item.to}
               end={item.to === "/quan-tri" || item.to === "/lop-cua-toi"}
               className={({ isActive }) =>
-                `nav-link group relative flex items-center gap-3 rounded-xl px-3 py-3 text-[13px] transition-all duration-200 ${
-                  isActive
-                    ? "nav-link-active font-semibold"
-                    : ""
+                `nav-link group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] transition-all duration-200 ${
+                  isActive ? "nav-link-active font-semibold" : ""
                 }`
               }
             >
-              <item.icon size={18} className="shrink-0" />
+              <item.icon size={17} className="shrink-0 transition-transform duration-200 group-hover:scale-105" />
               <span className="truncate">{item.label}</span>
               {item.to === "/thong-bao" && unreadCount > 0 && (
-                <span className="ml-auto rounded-full bg-[#d9ed8a] px-2 py-0.5 text-[10px] font-bold text-[#173f3a]">
+                <span className="ml-auto rounded-full bg-amber-400 px-2 py-0.5 font-mono text-[10px] font-bold text-[#0b1120]">
                   {unreadCount > 99 ? "99+" : unreadCount}
                 </span>
               )}
@@ -287,33 +289,33 @@ export default function Layout({ children }) {
           ))}
         </nav>
 
-        <div className="relative space-y-2 border-t border-white/10 p-4">
+        <div className="relative space-y-2 border-t border-white/10 bg-black/20 p-4">
           <NavLink
             to="/ho-so"
             className={({ isActive }) =>
               `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${
-                isActive ? "bg-white/10 text-white" : "text-[#cfddd5] hover:bg-white/5 hover:text-white"
+                isActive ? "bg-white/10 text-amber-300" : "text-slate-300 hover:bg-white/5 hover:text-white"
               }`
             }
           >
-            <UserRound size={18} className="shrink-0" />
+            <UserRound size={17} className="shrink-0" />
             Hồ sơ cá nhân
           </NavLink>
-          <div className="rounded-xl p-2">
+          <div className="rounded-xl border border-white/5 bg-white/[0.03] p-2.5">
             <div className="flex items-center gap-2.5">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#e7b397] text-sm font-semibold text-[#40352d]">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-400 text-sm font-bold text-[#0b1120]">
                 {(user?.hoTen || user?.username || "?").slice(0, 1).toUpperCase()}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-white">{user?.hoTen || user?.username}</p>
-                <p className="truncate text-[11px] text-slate-400">
+                <p className="truncate text-sm font-semibold text-white">{user?.hoTen || user?.username}</p>
+                <p className="font-mono truncate text-[10.5px] text-slate-400">
                   {user?.ma} · {ROLE_LABEL[user?.role]}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={logout}
-                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-white/10 hover:text-white"
+                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-rose-500/20 hover:text-rose-300"
                 title="Đăng xuất"
               >
                 <LogOut size={16} />
@@ -329,33 +331,33 @@ export default function Layout({ children }) {
             <button
               type="button"
               onClick={() => setOpen(true)}
-              className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 lg:hidden"
+              className="rounded-xl p-2 text-slate-600 transition hover:bg-slate-900/5 lg:hidden"
               aria-label="Mở menu"
             >
               <Menu size={20} />
             </button>
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#78917e]">
-                Mộc Campus / {ROLE_LABEL[user?.role]}
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-700">
+                Aetheria / {ROLE_LABEL[user?.role]}
               </p>
-              <h1 className="page-heading truncate text-base font-semibold">{title}</h1>
+              <h1 className="page-heading truncate text-base font-bold">{title}</h1>
             </div>
 
-            <span className="hidden items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-500 shadow-sm xl:inline-flex">
-              <CalendarDays size={14} className="text-indigo-500" />
+            <span className="hidden items-center gap-2 rounded-full border border-slate-900/10 bg-white px-3.5 py-1.5 text-xs font-medium text-slate-600 shadow-sm xl:inline-flex">
+              <CalendarDays size={14} className="text-amber-600" />
               <span className="capitalize">{homNay}</span>
             </span>
 
             <div className="flex items-center gap-3">
               <div className="hidden text-right sm:block">
-                <p className="max-w-[220px] truncate text-sm font-medium text-slate-800">
+                <p className="max-w-[220px] truncate text-sm font-semibold text-slate-900">
                   {user?.hoTen || user?.username}
                 </p>
-                <p className="text-[11px] text-slate-500">
+                <p className="font-mono text-[11px] text-slate-500">
                   {user?.ma} · {ROLE_LABEL[user?.role]}
                 </p>
               </div>
-              <span className="grid h-9 w-9 place-items-center rounded-full bg-[#d9ed8a] text-sm font-semibold text-[#173f3a]">
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#0b1120] text-sm font-bold text-amber-400 ring-2 ring-amber-400/30">
                 {(user?.hoTen || user?.username || "?").slice(0, 1).toUpperCase()}
               </span>
             </div>

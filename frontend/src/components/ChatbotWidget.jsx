@@ -202,44 +202,44 @@ export default function ChatbotWidget({ isOpenControlled, onCloseControlled, def
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-40 flex items-center gap-2.5 rounded-full bg-gradient-to-r from-[#173f3a] to-[#2563eb] px-4 py-3.5 text-white shadow-xl shadow-slate-900/20 transition-all hover:scale-105 hover:shadow-2xl focus:outline-none focus:ring-4 focus:ring-emerald-400/40"
+          className="fixed bottom-6 right-6 z-40 flex items-center gap-2.5 rounded-2xl border border-amber-400/30 bg-[#0b1120] px-4 py-3.5 text-white shadow-2xl shadow-slate-950/35 transition-all hover:-translate-y-0.5 hover:border-amber-400/60 hover:shadow-amber-500/15 focus:outline-none focus:ring-4 focus:ring-amber-400/30"
           title="Mở Trợ lý AI Đăng ký Học phần"
           aria-label="Mở Trợ lý AI"
         >
           <div className="relative">
-            <Bot size={22} className="animate-pulse" />
+            <Bot size={21} className="text-amber-400" />
             <span className="absolute -right-1 -top-1 flex h-2.5 w-2.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-400" />
             </span>
           </div>
-          <span className="text-sm font-semibold tracking-wide">Trợ lý AI Đăng ký</span>
+          <span className="font-display text-sm font-semibold tracking-wide">Trợ lý AI</span>
         </button>
       )}
 
       {/* Chat Window Panel / Drawer */}
       {activeOpen && (
         <div
-          className={`fixed z-50 flex flex-col overflow-hidden border border-slate-200/90 bg-white shadow-2xl backdrop-blur-xl transition-all duration-300 ${
+          className={`fixed z-50 flex flex-col overflow-hidden border border-slate-900/15 bg-white shadow-2xl backdrop-blur-xl transition-all duration-300 ${
             isMaximized
-              ? "inset-4 md:inset-8 rounded-2xl"
-              : "bottom-4 right-4 h-[620px] max-h-[90vh] w-[420px] max-w-[95vw] rounded-2xl"
+              ? "inset-4 md:inset-8 rounded-[24px]"
+              : "bottom-4 right-4 h-[620px] max-h-[90vh] w-[420px] max-w-[95vw] rounded-[24px]"
           }`}
         >
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-slate-200 bg-gradient-to-r from-[#173f3a] via-[#1b4b45] to-[#1e3a8a] px-4 py-3.5 text-white">
+          <div className="flex items-center justify-between border-b border-white/10 bg-[#0b1120] px-4 py-3.5 text-white">
             <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-white/10 ring-1 ring-white/20">
-                <Sparkles size={20} className="text-amber-300" />
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-amber-400/15 ring-1 ring-amber-400/30">
+                <Sparkles size={20} className="text-amber-400" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className="truncate text-sm font-bold text-white">Trợ lý AI Đăng ký</h3>
-                  <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-300 ring-1 ring-emerald-400/30">
-                    Live
+                  <h3 className="font-display truncate text-sm font-bold text-white">Trợ lý AI Aetheria</h3>
+                  <span className="rounded-full bg-amber-400/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-amber-300 ring-1 ring-amber-400/30">
+                    LIVE
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5 text-[11px] text-slate-300">
+                <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
                   <span>
                     {status?.configured
                       ? `Provider: ${status.model}`

@@ -221,12 +221,18 @@ class ChatbotIntegrationTest {
                 .andReturn();
 
         JsonNode rootStep1 = json(resStep1);
-        // Phải ở trạng thái CONFIRM_REGISTRATION hoặc SELECTION_REQUIRED
+        // Nếu đủ điều kiện thì sang CONFIRM_REGISTRATION / SELECTION_REQUIRED;
+        // nếu không đủ điều kiện (vd: đã đăng ký môn này) thì chặn ngay ở bước 1 với REGISTRATION_FAILED và nêu rõ lý do.
         String action1 = rootStep1.get("actionType").asText();
-        assertTrue("CONFIRM_REGISTRATION".equals(action1) || "SELECTION_REQUIRED".equals(action1),
-                "Phải yêu cầu xác nhận hoặc chọn lựa, actual: " + action1);
+        assertTrue("CONFIRM_REGISTRATION".equals(action1)
+                        || "SELECTION_REQUIRED".equals(action1)
+                        || "REGISTRATION_FAILED".equals(action1),
+                "Phải yêu cầu xác nhận, chọn lựa hoặc chặn ngay với lý do cụ thể, actual: " + action1);
 
-        if ("CONFIRM_REGISTRATION".equals(action1)) {
+        if ("REGISTRATION_FAILED".equals(action1)) {
+            assertFalse(rootStep1.get("requiresConfirmation").asBoolean());
+            assertTrue(rootStep1.get("reply").asText().contains("không đủ điều kiện đăng ký"));
+        } else if ("CONFIRM_REGISTRATION".equals(action1)) {
             assertTrue(rootStep1.get("requiresConfirmation").asBoolean());
             assertNotNull(rootStep1.get("pendingClass"));
             assertTrue(rootStep1.get("reply").asText().contains("Xác nhận thông tin đăng ký"));
@@ -386,5 +392,24 @@ class ChatbotIntegrationTest {
         String replyClasses = json(resClasses).get("reply").asText();
         assertTrue(replyClasses.contains("Danh sách các lớp Thầy/Cô phụ trách")
                 || replyClasses.contains("chưa được phân công"));
+    }
+
+    @Test
+    @DisplayName("API kiểm tra điều kiện đăng ký trả về trạng thái và danh sách lý do chặn cụ thể từng lớp")
+    void studentEligibilityPreCheckEndpointWorks() throws Exception {
+        String token = login("sv01", "123456");
+
+        MvcResult res = mockMvc.perform(get("/api/dang-ky/kiem-tra-dieu-kien")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode arr = json(res);
+        assertTrue(arr.isArray());
+        assertTrue(arr.size() > 0);
+        JsonNode first = arr.get(0);
+        assertTrue(first.has("lopHocPhanId"));
+        assertTrue(first.has("duDieuKien"));
+        assertTrue(first.has("lyDoChan"));
     }
 }

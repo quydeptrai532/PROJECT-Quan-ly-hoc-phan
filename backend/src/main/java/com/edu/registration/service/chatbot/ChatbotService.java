@@ -387,7 +387,7 @@ public class ChatbotService {
             }
 
             if (matched.size() > 1) {
-                // Nhiều lớp => hỏi lại, không được tự chọn!
+                // Nhiều lớp => hỏi lại, không được tự chọn, đồng thời hiển thị rõ lớp nào đủ/không đủ điều kiện!
                 List<ChatbotDtos.ClassCardDto> cardList = matched.stream().map(l -> toClassCard(l, thoiDiem)).toList();
                 session.setCandidateClasses(cardList);
                 session.clearPendingRegistration();
@@ -396,8 +396,12 @@ public class ChatbotService {
                 sb.append("Tìm thấy **").append(matched.size()).append("** lớp học phần phù hợp trong ").append(hocKy.getTen()).append(":\n\n");
                 for (int i = 0; i < cardList.size(); i++) {
                     ChatbotDtos.ClassCardDto c = cardList.get(i);
-                    sb.append(String.format(Locale.ROOT, "%d. **%s** - Môn: %s | GV: %s | Thứ %d (tiết %d-%d) | Phòng %s | Còn: %d/%d chỗ\n",
-                            i + 1, c.ma(), c.tenMon(), c.giangVien(), c.thu(), c.tietBatDau(), c.tietBatDau() + c.soTiet() - 1, c.phong(), c.conLai(), c.siSoToiDa()));
+                    RegistrationDtos.DieuKienDangKyDto elig = dangKyService.kiemTraDieuKienDangKy(c.id(), null);
+                    String eligNote = elig.duDieuKien()
+                            ? "✅ Đủ điều kiện"
+                            : "⛔ Không đủ điều kiện: " + String.join("; ", elig.lyDoChan());
+                    sb.append(String.format(Locale.ROOT, "%d. **%s** - Môn: %s | GV: %s | Thứ %d (tiết %d-%d) | Phòng %s | Còn: %d/%d chỗ\n   ↳ %s\n",
+                            i + 1, c.ma(), c.tenMon(), c.giangVien(), c.thu(), c.tietBatDau(), c.tietBatDau() + c.soTiet() - 1, c.phong(), c.conLai(), c.siSoToiDa(), eligNote));
                 }
                 sb.append("\n**Vui lòng nhập số thứ tự (ví dụ: '1') hoặc mã lớp bạn muốn đăng ký.** Hệ thống không tự ý chọn lớp.");
                 return buildResponse(session, sb.toString(), ChatbotDtos.ChatActionType.SELECTION_REQUIRED, null, cardList, null, hocKy.getTen(), thoiDiem, false);
@@ -532,11 +536,50 @@ public class ChatbotService {
             Semester hocKy,
             String thoiDiem) {
 
-        session.setPendingRegistrationClass(card);
         session.setCurrentLopHocPhanId(card.id());
         session.setCurrentLopHocPhanMa(card.ma());
         session.setCurrentMonHocId(card.monHocId());
         session.setCurrentMonHocTen(card.tenMon());
+
+        // Kiểm tra toàn bộ điều kiện đăng ký ngay lập tức; nếu không đạt thì chặn luôn và nêu rõ lý do
+        RegistrationDtos.DieuKienDangKyDto eligibility = dangKyService.kiemTraDieuKienDangKy(card.id(), null);
+        if (!eligibility.duDieuKien()) {
+            session.clearPendingRegistration();
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("⛔ **Không thể đăng ký lớp `").append(card.ma()).append("`** (").append(card.tenMon()).append(")\n\n");
+            sb.append("Bạn hiện **không đủ điều kiện đăng ký** lớp học phần này:\n");
+            for (String reason : eligibility.lyDoChan()) {
+                sb.append("- ").append(reason).append("\n");
+            }
+            sb.append("\n(Học kỳ: ").append(hocKy.getTen()).append(" | Kiểm tra lúc: ").append(thoiDiem).append(")\n");
+
+            List<ChatbotDtos.ClassCardDto> suggestions = new ArrayList<>();
+            if (card.tenMon() != null) {
+                List<CourseClassDtos.LopHocPhanDto> alternatives = lopHocPhanService.danhSach(hocKy.getId(), card.tenMon());
+                suggestions = alternatives.stream()
+                        .filter(l -> !l.daHuy() && l.conLai() > 0 && !l.id().equals(card.id()))
+                        .filter(l -> dangKyService.kiemTraDieuKienDangKy(l.id(), null).duDieuKien())
+                        .map(l -> toClassCard(l, thoiDiem))
+                        .toList();
+            }
+
+            if (!suggestions.isEmpty()) {
+                sb.append("\n💡 **Các lớp thay thế cùng môn mà bạn đủ điều kiện đăng ký:**\n");
+                for (int i = 0; i < suggestions.size(); i++) {
+                    ChatbotDtos.ClassCardDto alt = suggestions.get(i);
+                    sb.append(String.format(Locale.ROOT, "%d. **%s** | GV: %s | Thứ %d (tiết %d-%d) | Phòng: %s | Còn %d chỗ\n",
+                            i + 1, alt.ma(), alt.giangVien(), alt.thu(), alt.tietBatDau(), alt.tietBatDau() + alt.soTiet() - 1, alt.phong(), alt.conLai()));
+                }
+                session.setCandidateClasses(suggestions);
+                sb.append("\nBạn có thể nhập số thứ tự hoặc mã lớp để đăng ký lớp thay thế.");
+            }
+
+            return buildResponse(session, sb.toString(), ChatbotDtos.ChatActionType.REGISTRATION_FAILED, null,
+                    suggestions.isEmpty() ? null : suggestions, null, hocKy.getTen(), thoiDiem, false);
+        }
+
+        session.setPendingRegistrationClass(card);
 
         String message = String.format(Locale.ROOT,
                 "### Xác nhận thông tin đăng ký học phần\n\n" +

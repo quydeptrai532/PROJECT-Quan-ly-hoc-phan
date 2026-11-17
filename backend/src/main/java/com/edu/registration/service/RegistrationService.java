@@ -455,6 +455,195 @@ public class RegistrationService {
                 ketQuaItems);
     }
 
+    /**
+     * Kiểm tra tổng hợp toàn bộ điều kiện đăng ký cho một lớp học phần của sinh viên hiện tại
+     * (trạng thái học vụ, đợt đăng ký, loại đăng ký, trùng môn, trùng lịch, môn tiên quyết, sĩ số, giới hạn tín chỉ).
+     */
+    @Transactional(readOnly = true)
+    public RegistrationDtos.DieuKienDangKyDto kiemTraDieuKienDangKy(Long lopHocPhanId, String loaiDangKyYeuCau) {
+        Student sinhVien = sinhVienHienTai();
+        CourseClass lop = lopHocPhanRepository.findWithDetailsById(lopHocPhanId)
+                .orElseGet(() -> lopHocPhanRepository.findById(lopHocPhanId)
+                        .orElseThrow(() -> ApiException.notFound("Lớp học phần không tồn tại")));
+        Semester hocKy = lop.getHocKy();
+        List<CourseRegistration> dangKyHienTai =
+                dangKyHocPhanRepository.findTheoHocKy(sinhVien.getId(), hocKy.getId(), RegistrationStatus.DA_DANG_KY);
+        String academicStatusReason = kiemTraTrangThaiHocVu(sinhVien);
+        String periodError = kiemTraThoiGianDangKy(sinhVien, hocKy);
+        String khoaSinhVien = xacDinhKhoaSinhVien(sinhVien);
+        Map<Double, Set<Long>> monDaDatTheoNguong = new HashMap<>();
+        int tinChiDaDangKy = dangKyHienTai.stream()
+                .mapToInt(dk -> dk.getLopHocPhan().getMonHoc().getSoTinChi())
+                .sum();
+        List<CourseRegistration> attempts = dangKyHocPhanRepository
+                .findBySinhVienIdOrderByLopHocPhanHocKyNgayBatDauDescIdDesc(sinhVien.getId());
+        Map<Long, Grade> attemptGrades = layDiemTheoDangKy(attempts);
+
+        return danhGiaDieuKien(sinhVien, lop, hocKy, dangKyHienTai, tinChiDaDangKy,
+                academicStatusReason, periodError, khoaSinhVien, monDaDatTheoNguong,
+                attempts, attemptGrades, loaiDangKyYeuCau);
+    }
+
+    /**
+     * Kiểm tra tổng hợp điều kiện đăng ký cho tất cả lớp học phần trong học kỳ để hiển thị chặn trực tiếp trên UI.
+     */
+    @Transactional(readOnly = true)
+    public List<RegistrationDtos.DieuKienDangKyDto> kiemTraDieuKienDangKyTheoHocKy(Long hocKyId) {
+        Student sinhVien = sinhVienHienTai();
+        Semester hocKy = hocKyService.layHoacHienTai(hocKyId);
+        List<CourseClass> classes = lopHocPhanRepository.findByHocKyIdOrderByMaAsc(hocKy.getId());
+        if (classes.isEmpty()) {
+            return List.of();
+        }
+        List<CourseRegistration> dangKyHienTai =
+                dangKyHocPhanRepository.findTheoHocKy(sinhVien.getId(), hocKy.getId(), RegistrationStatus.DA_DANG_KY);
+        String academicStatusReason = kiemTraTrangThaiHocVu(sinhVien);
+        String periodError = kiemTraThoiGianDangKy(sinhVien, hocKy);
+        String khoaSinhVien = xacDinhKhoaSinhVien(sinhVien);
+        Map<Double, Set<Long>> monDaDatTheoNguong = new HashMap<>();
+        int tinChiDaDangKy = dangKyHienTai.stream()
+                .mapToInt(dk -> dk.getLopHocPhan().getMonHoc().getSoTinChi())
+                .sum();
+        List<CourseRegistration> attempts = dangKyHocPhanRepository
+                .findBySinhVienIdOrderByLopHocPhanHocKyNgayBatDauDescIdDesc(sinhVien.getId());
+        Map<Long, Grade> attemptGrades = layDiemTheoDangKy(attempts);
+
+        return classes.stream()
+                .map(lop -> danhGiaDieuKien(sinhVien, lop, hocKy, dangKyHienTai, tinChiDaDangKy,
+                        academicStatusReason, periodError, khoaSinhVien, monDaDatTheoNguong,
+                        attempts, attemptGrades, null))
+                .toList();
+    }
+
+    private String kiemTraTrangThaiHocVu(Student sinhVien) {
+        if (studentAcademicStatusPolicy != null
+                && !studentAcademicStatusPolicy.isEligibleForRegistration(sinhVien.getTrangThaiHocTap())) {
+            return "Không đủ điều kiện học vụ: "
+                    + studentAcademicStatusPolicy.getIneligibleReason(sinhVien.getTrangThaiHocTap());
+        }
+        return null;
+    }
+
+    private String kiemTraThoiGianDangKy(Student sinhVien, Semester hocKy) {
+        if (registrationPeriodService != null) {
+            try {
+                registrationPeriodService.kiemTraQuyenDangKy(sinhVien, hocKy, null);
+                return null;
+            } catch (ApiException e) {
+                return e.getMessage();
+            }
+        }
+        if (!hocKy.dangMoDangKy()) {
+            return "Hiện không trong thời gian đăng ký của " + hocKy.getTen();
+        }
+        return null;
+    }
+
+    private RegistrationDtos.DieuKienDangKyDto danhGiaDieuKien(
+            Student sinhVien,
+            CourseClass lop,
+            Semester hocKy,
+            List<CourseRegistration> dangKyHienTai,
+            int tinChiDaDangKy,
+            String academicStatusReason,
+            String periodError,
+            String khoaSinhVien,
+            Map<Double, Set<Long>> monDaDatTheoNguong,
+            List<CourseRegistration> attempts,
+            Map<Long, Grade> attemptGrades,
+            String loaiDangKyYeuCau) {
+
+        List<String> lyDoChan = new ArrayList<>();
+        Subject monHoc = lop.getMonHoc();
+
+        if (academicStatusReason != null) {
+            lyDoChan.add(academicStatusReason);
+        }
+        if (lop.isDaHuy()) {
+            lyDoChan.add("Lớp học phần " + lop.getMa() + " đã bị hủy");
+        }
+        if (periodError != null) {
+            lyDoChan.add(periodError);
+        }
+
+        String loaiDuocPhep = loaiDangKyPhuHop(monHoc, attempts, attemptGrades);
+        if ("MOI".equals(loaiDuocPhep) && loaiDangKyYeuCau != null) {
+            lyDoChan.add("Bạn chưa có kết quả môn này nên không thuộc diện học lại hoặc học cải thiện");
+        } else if (!"MOI".equals(loaiDuocPhep) && loaiDangKyYeuCau == null) {
+            lyDoChan.add("Môn đã có kết quả trước đây; hãy đăng ký từ mục Học lại / cải thiện");
+        } else if (loaiDangKyYeuCau != null && !loaiDuocPhep.equals(loaiDangKyYeuCau)) {
+            lyDoChan.add("Kết quả gần nhất không khớp loại đăng ký ("
+                    + ("HOC_LAI".equals(loaiDuocPhep) ? "học lại" : "học cải thiện") + ")");
+        }
+
+        boolean alreadyRegisteredThisClass = false;
+        boolean alreadyRegisteredSameSubject = false;
+        for (CourseRegistration daDangKy : dangKyHienTai) {
+            CourseClass registeredClass = daDangKy.getLopHocPhan();
+            if (registeredClass.getId().equals(lop.getId())) {
+                alreadyRegisteredThisClass = true;
+                lyDoChan.add("Bạn đã đăng ký lớp này");
+            } else if (registeredClass.getMonHoc().getId().equals(monHoc.getId())) {
+                alreadyRegisteredSameSubject = true;
+                lyDoChan.add("Bạn đã đăng ký môn " + monHoc.getTen()
+                        + " (lớp " + registeredClass.getMa() + ") trong học kỳ này");
+            }
+        }
+
+        for (CourseRegistration daDangKy : dangKyHienTai) {
+            CourseClass trung = daDangKy.getLopHocPhan();
+            if (!trung.getId().equals(lop.getId()) && trung.trungLichVoi(lop)) {
+                lyDoChan.add("Trùng lịch học với lớp " + trung.getMa()
+                        + " (Thứ " + trung.getThu() + ", tiết " + trung.getTietBatDau() + "-" + trung.getTietKetThuc() + ")");
+            }
+        }
+
+        List<PrerequisiteSubject> danhSachQuanHe =
+                monTienQuyetRepository.findByMonHocIdOrderByIdAsc(monHoc.getId());
+        for (PrerequisiteSubject quanHe : danhSachQuanHe) {
+            if (!quanHe.laHieuLucCho(hocKy, khoaSinhVien, LocalDate.now())) {
+                continue;
+            }
+            if (quanHe.getLoaiQuanHeHieuLuc() == SubjectRelationType.TIEN_QUYET && quanHe.isYeuCauDatHieuLuc()) {
+                Subject monLienQuan = quanHe.getMonTienQuyet();
+                double nguongDat = quanHe.getDieuKienDatHieuLuc();
+                Set<Long> monDaDat = monDaDatTheoNguong.computeIfAbsent(
+                        nguongDat,
+                        threshold -> new HashSet<>(diemRepository.findMonDaDat(sinhVien.getId(), threshold)));
+                if (!monDaDat.contains(monLienQuan.getId())) {
+                    String chiTietNguong = Double.compare(nguongDat, AcademicRules.DIEM_DAT) != 0
+                            ? " (yêu cầu điểm >= " + nguongDat + ")"
+                            : "";
+                    lyDoChan.add("Chưa đạt môn tiên quyết: "
+                            + monLienQuan.getMa() + " - " + monLienQuan.getTen() + chiTietNguong);
+                }
+            }
+        }
+
+        if (!alreadyRegisteredThisClass && lop.getSiSoHienTai() >= lop.getSiSoToiDa()) {
+            lyDoChan.add("Lớp " + lop.getMa() + " đã đủ sĩ số (" + lop.getSiSoHienTai() + "/" + lop.getSiSoToiDa() + ")");
+        }
+
+        if (!alreadyRegisteredSameSubject && !alreadyRegisteredThisClass
+                && tinChiDaDangKy + monHoc.getSoTinChi() > hocKy.getSoTinChiToiDa()) {
+            lyDoChan.add("Vượt quá số tín chỉ tối đa (" + hocKy.getSoTinChiToiDa()
+                    + " tín chỉ) của " + hocKy.getTen());
+        }
+
+        return new RegistrationDtos.DieuKienDangKyDto(lop.getId(), lyDoChan.isEmpty(), lyDoChan);
+    }
+
+    private String loaiDangKyPhuHop(Subject monHoc, List<CourseRegistration> attempts, Map<Long, Grade> grades) {
+        for (CourseRegistration attempt : attempts) {
+            if (!attempt.getLopHocPhan().getMonHoc().getId().equals(monHoc.getId())) continue;
+            Grade grade = grades.get(attempt.getId());
+            if (attempt.getLopHocPhan().isBangDiemDaCongBo() && grade != null && grade.getDiemTongKet() != null) {
+                return grade.getDiemTongKet() < AcademicRules.DIEM_DAT ? "HOC_LAI" : "HOC_CAI_THIEN";
+            }
+        }
+        return "MOI";
+    }
+
     private void kiemTraQuanHeMonKhiDangKy(Student sinhVien, Subject monHoc, Semester hocKy,
                                            List<CourseRegistration> dangKyHienTai) {
         List<PrerequisiteSubject> danhSachQuanHe =

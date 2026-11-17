@@ -273,4 +273,7 @@ public final class RegistrationDtos {
                                  int tongSoMonDaCongBo, int tongTinChiCoDiem, int tinChiTichLuy,
                                  double gpa10, double gpa4, boolean coNhieuLanHoc) {
     }
+
+    public record DieuKienDangKyDto(Long lopHocPhanId, boolean duDieuKien, List<String> lyDoChan) {
+    }
 }

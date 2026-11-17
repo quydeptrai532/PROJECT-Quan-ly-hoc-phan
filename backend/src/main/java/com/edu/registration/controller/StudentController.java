@@ -134,6 +134,14 @@ public class StudentController {
         return dangKyService.kiemTraQuanHeDangKy(lopHocPhanId);
     }
 
+    @GetMapping("/dang-ky/kiem-tra-dieu-kien")
+    @PreAuthorize("hasRole('SINH_VIEN')")
+    @Operation(summary = "Kiểm tra điều kiện đăng ký các lớp trong học kỳ", description = "Trả về trạng thái đủ điều kiện và danh sách lý do bị chặn cụ thể cho từng lớp học phần của sinh viên hiện tại")
+    public List<RegistrationDtos.DieuKienDangKyDto> kiemTraDieuKienDangKyTheoHocKy(
+            @RequestParam(required = false) Long hocKyId) {
+        return dangKyService.kiemTraDieuKienDangKyTheoHocKy(hocKyId);
+    }
+
     @PostMapping("/dang-ky/xac-nhan-ke-hoach")
     @PreAuthorize("hasRole('SINH_VIEN')")
     @Operation(summary = "Đăng ký học phần theo kế hoạch", description = "Xác nhận đăng ký đồng thời danh sách các lớp học phần đã lên kế hoạch từ trước")
