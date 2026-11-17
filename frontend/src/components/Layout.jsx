@@ -247,7 +247,7 @@ export default function Layout({ children }) {
           </span>
           <div className="min-w-0">
             <p className="font-display truncate text-sm font-extrabold tracking-wider text-white">
-              AETHERIA <span className="text-amber-400">·</span> EDU
+              UNICOURSE <span className="text-amber-400">·</span> EDU
             </p>
             <p className="font-mono truncate text-[10px] uppercase tracking-[0.16em] text-slate-400">
               Cổng đào tạo số
@@ -338,7 +338,7 @@ export default function Layout({ children }) {
             </button>
             <div className="min-w-0 flex-1">
               <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-700">
-                Aetheria / {ROLE_LABEL[user?.role]}
+                UniCourse / {ROLE_LABEL[user?.role]}
               </p>
               <h1 className="page-heading truncate text-base font-bold">{title}</h1>
             </div>
