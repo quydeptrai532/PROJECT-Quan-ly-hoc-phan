@@ -47,6 +47,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -368,11 +369,14 @@ public class CourseClassService {
 
         boolean bangDiemKhongPhaiNhap = lop.getTrangThaiBangDiem() != null && lop.getTrangThaiBangDiem() != GradeSheetStatus.NHAP;
         boolean coDiem = soSinhVienCoDiem > 0 || bangDiemKhongPhaiNhap;
+        boolean quaHanHuy = isQuaHanHuyLop(lop, LocalDate.now());
 
-        boolean choPhepPhaoHuy = !lop.isDaHuy() && !coDiem;
+        boolean choPhepPhaoHuy = !lop.isDaHuy() && !coDiem && !quaHanHuy;
         String lyDoKhongChoPhep = null;
         if (lop.isDaHuy()) {
             lyDoKhongChoPhep = "Lớp học phần này đã bị hủy trước đó.";
+        } else if (quaHanHuy) {
+            lyDoKhongChoPhep = taoThongBaoQuaHanHuyLop(lop);
         } else if (coDiem) {
             lyDoKhongChoPhep = "Lớp học phần đã có điểm đã nhập hoặc bảng điểm ở trạng thái "
                     + lop.getTrangThaiBangDiemHieuLuc()
@@ -433,6 +437,10 @@ public class CourseClassService {
                         0,
                         lop.getLyDoHuy() != null ? lop.getLyDoHuy() : normalizedReason
                 );
+            }
+
+            if (isQuaHanHuyLop(lop, LocalDate.now())) {
+                throw ApiException.badRequest(taoThongBaoQuaHanHuyLop(lop));
             }
 
             Map<String, Object> before = auditSnapshot(lop);
@@ -1144,5 +1152,25 @@ public class CourseClassService {
                 lop.setPhongHoc(cr);
             });
         }
+    }
+
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+    private boolean isQuaHanHuyLop(CourseClass lop, LocalDate homNay) {
+        if (lop == null || lop.getHocKy() == null || lop.getHocKy().getNgayBatDau() == null) {
+            return false;
+        }
+        LocalDate hanChot = lop.getHocKy().getNgayBatDau().minusWeeks(1);
+        return !homNay.isBefore(hanChot);
+    }
+
+    private String taoThongBaoQuaHanHuyLop(CourseClass lop) {
+        LocalDate ngayBatDau = lop.getHocKy().getNgayBatDau();
+        LocalDate hanChot = ngayBatDau.minusWeeks(1);
+        return "Không thể hủy lớp học phần " + lop.getMa()
+                + " khi chỉ còn từ 1 tuần trở xuống trước ngày bắt đầu học ("
+                + ngayBatDau.format(DATE_FORMATTER)
+                + "). Chỉ được phép hủy lớp trước ngày "
+                + hanChot.format(DATE_FORMATTER) + ".";
     }
 }
