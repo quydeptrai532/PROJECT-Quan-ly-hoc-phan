@@ -498,7 +498,7 @@ public class DataSeeder implements CommandLineRunner {
         CourseClass matLop = taoLopHocPhan("MAT101.01", monMap.get("MAT101"), hocKyHienTai, gv02, "A105", 4, 7, 3, 60);
 
         // Các lớp đại cương / học lại không yêu cầu tiên quyết (dễ test đăng ký mới & học lại)
-        CourseClass int101Cur = taoLopHocPhan("INT101.01", monMap.get("INT101"), hocKyHienTai, gv01, "A101", 5, 7, 3, 60);
+        CourseClass int101Cur = taoLopHocPhan("INT101.01", monMap.get("INT101"), hocKyHienTai, giangVienList.get(3), "A101", 5, 7, 3, 60);
         CourseClass int102Cur = taoLopHocPhan("INT102.01", monMap.get("INT102"), hocKyHienTai, gv02, "A102", 2, 4, 3, 60);
         CourseClass mat102Cur = taoLopHocPhan("MAT102.01", monMap.get("MAT102"), hocKyHienTai, giangVienList.get(3), "A103", 6, 1, 3, 60);
         CourseClass phi101Cur = taoLopHocPhan("PHI101.01", monMap.get("PHI101"), hocKyHienTai, gv03, "C302", 6, 4, 3, 60); // cố ý trùng Thứ 6 tiết 4-6 với INT303.01
