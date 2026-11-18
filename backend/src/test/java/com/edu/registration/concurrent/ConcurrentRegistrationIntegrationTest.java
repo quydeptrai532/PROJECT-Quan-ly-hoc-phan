@@ -149,8 +149,8 @@ class ConcurrentRegistrationIntegrationTest {
         Semester hocKy = new Semester();
         hocKy.setTen("Concurrency test " + runId);
         hocKy.setNamHoc("2099-2100");
-        hocKy.setNgayBatDau(LocalDate.now().minusDays(1));
-        hocKy.setNgayKetThuc(LocalDate.now().plusDays(30));
+        hocKy.setNgayBatDau(LocalDate.now().plusDays(14));
+        hocKy.setNgayKetThuc(LocalDate.now().plusDays(120));
         hocKy.setDangKyTu(LocalDate.now().minusDays(1));
         hocKy.setDangKyDen(LocalDate.now().plusDays(30));
         hocKy.setSoTinChiToiThieu(0);
