@@ -468,8 +468,11 @@ export default function ClassroomPage() {
               key={type}
               type="button"
               onClick={() => setTypeFilter(typeFilter === type ? "" : type)}
-              {typeFilter === type ? "bg-indigo-600 text-white font-medium" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}
-            `}
+              className={`rounded-lg px-2.5 py-1 text-xs transition ${
+                typeFilter === type
+                  ? "bg-indigo-600 text-white font-medium"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
             >
               {formatRoomType(type)}
             </button>
