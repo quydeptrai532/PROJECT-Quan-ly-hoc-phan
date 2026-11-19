@@ -135,7 +135,7 @@ export default function LecturerDashboard() {
                 </Badge>
               )}
             </div>
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+            <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
               Xin chào, {user?.hoTen || user?.username}
             </h1>
             <p className="hero-muted max-w-xl text-sm leading-relaxed">
@@ -528,7 +528,7 @@ export default function LecturerDashboard() {
                     <span className="text-slate-500">
                       Đã nhập điểm:{" "}
                       <strong className="font-semibold text-slate-800">
-                        {lop.soDaCoDiem}/{lop.soDangHoc}
+                        {lop.soDaCoDiem ?? 0}/{lop.soDangHoc ?? lop.siSoHienTai ?? 0}
                       </strong>
                     </span>
                     <Link

@@ -357,7 +357,11 @@ export default function DashboardPage() {
         />
         <StatCard
           label="Tỷ lệ Đạt (>= 5.0)"
-          value={kpi?.tyLeDat !== undefined ? `${kpi.tyLeDat}%` : (kpiLoading ? "..." : "—")}
+          value={
+            kpi?.soSinhVienCoDiem > 0 && kpi?.tyLeDat !== undefined
+              ? `${kpi.tyLeDat}%`
+              : (kpiLoading ? "..." : "—")
+          }
           icon={CheckCircle2}
           tone="emerald"
           description={`Đạt ${kpi?.soSinhVienDat ?? 0} / ${kpi?.soSinhVienCoDiem ?? 0} SV có điểm`}

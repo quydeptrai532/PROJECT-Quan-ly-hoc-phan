@@ -4,6 +4,10 @@ import api, { getErrorMessage } from "../../api/client";
 import { Alert, Badge, EmptyState, PageHeader, Spinner } from "../../components/ui";
 
 const ACTIONS = {
+  LOGIN_SUCCESS: "Đăng nhập thành công",
+  LOGIN_FAILED: "Đăng nhập thất bại",
+  LOGOUT: "Đăng xuất",
+  PASSWORD_CHANGED: "Đổi mật khẩu",
   COURSE_CREATED: "Tạo môn học",
   COURSE_UPDATED: "Cập nhật môn học",
   COURSE_DELETED: "Xóa môn học",
@@ -116,6 +120,7 @@ const FIELDS = {
 };
 
 const ENTITY_TYPES = [
+  "AUTH",
   "COURSE",
   "COURSE_PREREQUISITE",
   "ACADEMIC_COHORT",
