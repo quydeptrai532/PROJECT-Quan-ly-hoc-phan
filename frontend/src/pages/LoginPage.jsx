@@ -87,7 +87,7 @@ export default function LoginPage() {
           </span>
           <div>
             <p className="font-display text-lg font-extrabold tracking-wider text-white">
-              AETHERIA <span className="text-amber-400">·</span> EDU
+              UNICOURSE <span className="text-amber-400">·</span> EDU
             </p>
             <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-slate-400">
               Academic Atelier Portal
@@ -144,7 +144,7 @@ export default function LoginPage() {
         </div>
 
         <p className="font-mono relative text-[11px] uppercase tracking-widest text-slate-500">
-          Aetheria Academic System · Spring Boot + ReactJS
+          UniCourse Academic System · Spring Boot + ReactJS
         </p>
       </div>
 
@@ -156,7 +156,7 @@ export default function LoginPage() {
               <GraduationCap size={23} />
             </span>
             <h1 className="font-display mt-4 text-xl font-extrabold tracking-wide text-slate-900">
-              AETHERIA · EDU
+              UNICOURSE · EDU
             </h1>
             <p className="text-sm text-slate-500">Hệ thống quản lý đào tạo và đăng ký học phần</p>
           </div>

@@ -1,38 +1,64 @@
 package com.edu.registration.config;
 
+import com.edu.registration.entity.AcademicAlert;
+import com.edu.registration.entity.AcademicAlertRuleType;
+import com.edu.registration.entity.AcademicAlertSeverity;
+import com.edu.registration.entity.AcademicAlertStatus;
 import com.edu.registration.entity.AcademicCohort;
 import com.edu.registration.entity.AdministrativeClass;
+import com.edu.registration.entity.AttendanceRecord;
+import com.edu.registration.entity.AttendanceStatus;
+import com.edu.registration.entity.ClassSession;
 import com.edu.registration.entity.CourseClass;
 import com.edu.registration.entity.CourseRegistration;
+import com.edu.registration.entity.Curriculum;
+import com.edu.registration.entity.CurriculumGroup;
 import com.edu.registration.entity.Faculty;
 import com.edu.registration.entity.Grade;
+import com.edu.registration.entity.GradeAppeal;
+import com.edu.registration.entity.GradeAppealStatus;
 import com.edu.registration.entity.GradeSheetStatus;
 import com.edu.registration.entity.Lecturer;
 import com.edu.registration.entity.Major;
+import com.edu.registration.entity.Notification;
 import com.edu.registration.entity.PrerequisiteSubject;
+import com.edu.registration.entity.RegistrationHistory;
 import com.edu.registration.entity.RegistrationPeriod;
 import com.edu.registration.entity.RegistrationStatus;
 import com.edu.registration.entity.Role;
 import com.edu.registration.entity.Semester;
 import com.edu.registration.entity.Student;
+import com.edu.registration.entity.StudentAcademicStatus;
 import com.edu.registration.entity.Subject;
+import com.edu.registration.entity.SupportRequest;
+import com.edu.registration.entity.SupportRequestPriority;
+import com.edu.registration.entity.SupportRequestStatus;
+import com.edu.registration.entity.SupportRequestType;
 import com.edu.registration.entity.User;
+import com.edu.registration.repository.AcademicAlertRepository;
 import com.edu.registration.repository.AcademicCohortRepository;
 import com.edu.registration.repository.AdministrativeClassRepository;
+import com.edu.registration.repository.AttendanceRecordRepository;
+import com.edu.registration.repository.ClassSessionRepository;
 import com.edu.registration.repository.CourseClassRepository;
 import com.edu.registration.repository.CourseRegistrationRepository;
+import com.edu.registration.repository.CurriculumRepository;
 import com.edu.registration.repository.FacultyRepository;
+import com.edu.registration.repository.GradeAppealRepository;
 import com.edu.registration.repository.GradeRepository;
 import com.edu.registration.repository.LecturerRepository;
 import com.edu.registration.repository.MajorRepository;
+import com.edu.registration.repository.NotificationRepository;
 import com.edu.registration.repository.PrerequisiteSubjectRepository;
 import com.edu.registration.entity.Classroom;
 import com.edu.registration.entity.ClassroomStatus;
 import com.edu.registration.repository.ClassroomRepository;
+import com.edu.registration.repository.RegistrationHistoryRepository;
 import com.edu.registration.repository.RegistrationPeriodRepository;
 import com.edu.registration.repository.SemesterRepository;
 import com.edu.registration.repository.StudentRepository;
 import com.edu.registration.repository.SubjectRepository;
+import com.edu.registration.repository.SupportRequestRepository;
 import com.edu.registration.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,6 +101,23 @@ public class DataSeeder implements CommandLineRunner {
     private final RegistrationPeriodRepository dotDangKyRepository;
     private final ClassroomRepository phongHocRepository;
     private final PasswordEncoder passwordEncoder;
+
+    @Autowired(required = false)
+    private CurriculumRepository chuongTrinhRepository;
+    @Autowired(required = false)
+    private RegistrationHistoryRepository lichSuDangKyRepository;
+    @Autowired(required = false)
+    private ClassSessionRepository buoiHocRepository;
+    @Autowired(required = false)
+    private AttendanceRecordRepository diemDanhRepository;
+    @Autowired(required = false)
+    private SupportRequestRepository yeuCauHoTroRepository;
+    @Autowired(required = false)
+    private GradeAppealRepository phucKhaoRepository;
+    @Autowired(required = false)
+    private AcademicAlertRepository canhBaoHocTapRepository;
+    @Autowired(required = false)
+    private NotificationRepository thongBaoRepository;
 
     @Value("${app.seed.refresh-current-window:true}")
     private boolean refreshCurrentWindow;
@@ -444,7 +487,7 @@ public class DataSeeder implements CommandLineRunner {
                 lopInt201Cu, lopInt102Cu, lopMat103Cu, lopPhy101Cu, lopPhi102Cu, lopEng102Cu
         };
 
-        // Lớp học phần kỳ hiện tại
+        // Lớp học phần kỳ hiện tại (đa dạng: đại cương không tiên quyết, cơ sở ngành, chuyên ngành, lớp đầy, xung đột lịch)
         CourseClass int20101 = taoLopHocPhan("INT201.01", monMap.get("INT201"), hocKyHienTai, gv01, "A101", 2, 1, 3, 60);
         CourseClass int20102 = taoLopHocPhan("INT201.02", monMap.get("INT201"), hocKyHienTai, gv02, "A102", 4, 4, 3, 60);
         taoLopHocPhan("INT301.01", monMap.get("INT301"), hocKyHienTai, gv01, "B201", 3, 1, 3, 60);
@@ -454,6 +497,20 @@ public class DataSeeder implements CommandLineRunner {
         CourseClass ecoLop = taoLopHocPhan("ECO101.01", monMap.get("ECO101"), hocKyHienTai, gv03, "C301", 3, 4, 3, 60);
         CourseClass matLop = taoLopHocPhan("MAT101.01", monMap.get("MAT101"), hocKyHienTai, gv02, "A105", 4, 7, 3, 60);
 
+        // Các lớp đại cương / học lại không yêu cầu tiên quyết (dễ test đăng ký mới & học lại)
+        CourseClass int101Cur = taoLopHocPhan("INT101.01", monMap.get("INT101"), hocKyHienTai, giangVienList.get(3), "A101", 5, 7, 3, 60);
+        CourseClass int102Cur = taoLopHocPhan("INT102.01", monMap.get("INT102"), hocKyHienTai, gv02, "A102", 2, 4, 3, 60);
+        CourseClass mat102Cur = taoLopHocPhan("MAT102.01", monMap.get("MAT102"), hocKyHienTai, giangVienList.get(3), "A103", 6, 1, 3, 60);
+        CourseClass phi101Cur = taoLopHocPhan("PHI101.01", monMap.get("PHI101"), hocKyHienTai, gv03, "C302", 6, 4, 3, 60); // cố ý trùng Thứ 6 tiết 4-6 với INT303.01
+        CourseClass eng101Cur = taoLopHocPhan("ENG101.01", monMap.get("ENG101"), hocKyHienTai, giangVienList.get(5), "B201", 3, 4, 2, 60); // cố ý trùng Thứ 3 tiết 4-5 với ECO101.01
+        CourseClass gen101Cur = taoLopHocPhan("GEN101.01", monMap.get("GEN101"), hocKyHienTai, giangVienList.get(6), "C303", 7, 4, 2, 60);
+        CourseClass gen101Full = taoLopHocPhan("GEN101.02", monMap.get("GEN101"), hocKyHienTai, giangVienList.get(6), "C304", 2, 7, 2, 5); // lớp sẽ đầy 5/5
+        CourseClass eng102Cur = taoLopHocPhan("ENG102.01", monMap.get("ENG102"), hocKyHienTai, giangVienList.get(7), "B202", 4, 1, 2, 60);
+        CourseClass eco102Cur = taoLopHocPhan("ECO102.01", monMap.get("ECO102"), hocKyHienTai, gv03, "C301", 5, 4, 3, 60);
+        CourseClass phy101Cur = taoLopHocPhan("PHY101.01", monMap.get("PHY101"), hocKyHienTai, giangVienList.get(10), "D401", 3, 7, 3, 60);
+        CourseClass mgt301Cur = taoLopHocPhan("MGT301.01", monMap.get("MGT301"), hocKyHienTai, giangVienList.get(11), "C302", 7, 7, 3, 60);
+        CourseClass fin301Cur = taoLopHocPhan("FIN301.01", monMap.get("FIN301"), hocKyHienTai, giangVienList.get(12), "C303", 5, 7, 3, 60);
+
         // Mở thêm các lớp cho các giảng viên khác phụ trách
         List<CourseClass> currentClasses = new ArrayList<>();
         currentClasses.add(int20101);
@@ -461,6 +518,13 @@ public class DataSeeder implements CommandLineRunner {
         currentClasses.add(int30301);
         currentClasses.add(ecoLop);
         currentClasses.add(matLop);
+        currentClasses.add(int101Cur);
+        currentClasses.add(int102Cur);
+        currentClasses.add(mat102Cur);
+        currentClasses.add(gen101Cur);
+        currentClasses.add(eng102Cur);
+        currentClasses.add(eco102Cur);
+        currentClasses.add(phy101Cur);
 
         for (int i = 13; i < 50; i++) {
             Lecturer gv = giangVienList.get(i);
@@ -476,8 +540,22 @@ public class DataSeeder implements CommandLineRunner {
             }
         }
 
-        // 10. Đăng ký & Cho điểm
-        // sv01
+        // Gán chương trình đào tạo cho sinh viên (trừ sv02, sv04 để giữ nguyên test case chưa gán CTDT)
+        Map<Long, Curriculum> curriculumByMajor = seedCurriculums(monMap, cnpm, httt, khmt, attt, qtkd, tcnh, dtvt, nna);
+        for (int i = 0; i < sinhVienList.size(); i++) {
+            Student s = sinhVienList.get(i);
+            if (i == 1 || i == 3) continue; // sv02, sv04
+            if (s.getNganh() != null && curriculumByMajor.containsKey(s.getNganh().getId())) {
+                s.setChuongTrinh(curriculumByMajor.get(s.getNganh().getId()));
+                if (i >= 480) {
+                    s.setTrangThaiHocTap(i % 2 == 0 ? StudentAcademicStatus.BAO_LUU : StudentAcademicStatus.DANG_HOC);
+                }
+                sinhVienRepository.save(s);
+            }
+        }
+
+        // 10. Đăng ký & Cho điểm (nạc mỡ đan xen: có môn đạt, có môn trượt, có môn đang học, đủ điều kiện & không đủ điều kiện)
+        // sv01: đã đạt INT101, MAT101, ECO101; đang học 4 lớp (12 TC) -> còn dư 12 TC để đăng ký thêm (INT102, INT301, GEN101...)
         dangKyVoiDiem(sv01, lopCu, 8.5, 9.0);
         dangKyVoiDiem(sv01, lopMatCu, 7.0, 8.0);
         dangKyVoiDiem(sv01, lopEcoCu, 6.5, 7.0);
@@ -486,84 +564,116 @@ public class DataSeeder implements CommandLineRunner {
         dangKyHienTai(sv01, matLop);
         dangKyHienTai(sv01, ecoLop);
 
-        // sv02 (không đăng ký lớp hiện tại để phục vụ E2E test)
+        // sv02 (không đăng ký lớp hiện tại để phục vụ E2E test; đã đạt INT101 & MAT101)
         dangKyVoiDiem(sv02, lopCu, 7.0, 8.0);
         dangKyVoiDiem(sv02, lopMatCu, 8.0, 8.5);
 
-        // sv03 (Điểm yếu < 5.0 -> Cần học lại / thi lại)
+        // sv03 (Điểm yếu < 5.0 ở INT101 -> test học lại INT101.01, đồng thời vẫn đủ điều kiện các môn đại cương như MAT102.01, GEN101.01)
         dangKyVoiDiem(sv03, lopCu, 3.5, 4.0);
         dangKyVoiDiem(sv03, lopEcoCu, 5.0, 6.0);
         dangKyHienTai(sv03, int30301);
         dangKyHienTai(sv03, matLop);
         dangKyHienTai(sv03, ecoLop);
 
-        // sv04, sv05
+        // sv04 (Chưa có điểm công bố -> test xuất PDF báo chưa có điểm; đủ điều kiện đăng ký các môn không tiên quyết)
         dangKyHienTai(sv04, int30301);
         dangKyHienTai(sv04, matLop);
         dangKyHienTai(sv04, ecoLop);
+
+        // sv05 (Đã đạt INT101, ENG101, MAT102 -> đủ điều kiện INT201, INT102, ENG102, GEN101; bị chặn INT301, INT408)
+        dangKyVoiDiem(sv05, lopCu, 7.5, 8.0);
+        dangKyVoiDiem(sv05, lopEng101Cu, 7.0, 7.5);
+        dangKyVoiDiem(sv05, lopMat102Cu, 6.5, 7.0);
         dangKyHienTai(sv05, int30301);
         dangKyHienTai(sv05, matLop);
-        dangKyHienTai(sv05, ecoLop);
 
-        // sv06..sv20 giữ nguyên tương thích test
+        // sv06..sv20: Đan xen nhiều hồ sơ học tập khác nhau
         for (int i = 6; i <= 20; i++) {
             Student sv = sinhVienList.get(i - 1);
-            dangKyVoiDiem(sv, lopCu, 6.5 + (i % 3), 7.0 + (i % 2));
-            dangKyHienTai(sv, i % 2 == 0 ? int20102 : int20101);
+            if (i % 3 == 0) {
+                // Nhóm có cả môn trượt để test học lại + môn đạt nền tảng
+                dangKyVoiDiem(sv, lopCu, 7.0, 7.5);
+                dangKyVoiDiem(sv, lopMat102Cu, 3.5, 4.0); // trượt MAT102
+                dangKyVoiDiem(sv, lopEng101Cu, 6.5, 7.0);
+            } else if (i % 2 == 0) {
+                // Nhóm đã qua chuỗi INT101 -> INT102 -> INT201 (đủ điều kiện đăng ký INT301, INT302, INT304, INT203)
+                dangKyVoiDiem(sv, lopCu, 7.5 + (i % 2), 8.0);
+                dangKyVoiDiem(sv, lopInt102Cu, 7.0, 7.5);
+                dangKyVoiDiem(sv, lopInt201Cu, 7.0, 8.0);
+                dangKyVoiDiem(sv, lopEng101Cu, 7.5, 8.0);
+            } else {
+                // Nhóm mới qua INT101 + MAT101 (đủ điều kiện INT201, INT102, đại cương; bị chặn INT301+)
+                dangKyVoiDiem(sv, lopCu, 6.5 + (i % 3), 7.0 + (i % 2));
+                dangKyVoiDiem(sv, lopMatCu, 6.0, 7.0);
+            }
+            // Chỉ đăng ký sẵn 2 lớp (6 TC) để mỗi tài khoản còn trống nhiều tín chỉ & slot thử đăng ký / lập kế hoạch
             dangKyHienTai(sv, int30301);
             dangKyHienTai(sv, matLop);
-            dangKyHienTai(sv, ecoLop);
         }
 
-        // sv21..sv500: Phân bố GPA đầy đủ từ Xuất sắc, Giỏi, Khá, Trung bình đến Yếu / Học lại
-        List<CourseClass> generalCurrentClasses = new ArrayList<>();
-        for (int j = 5; j < currentClasses.size(); j++) {
-            generalCurrentClasses.add(currentClasses.get(j));
-        }
-        if (generalCurrentClasses.isEmpty()) {
-            generalCurrentClasses.add(matLop);
-            generalCurrentClasses.add(ecoLop);
+        // Lấp đầy lớp GEN101.02 (5/5) bằng sv491..sv495 để test trường hợp lớp đã đầy
+        for (int i = 491; i <= 495; i++) {
+            dangKyHienTai(sinhVienList.get(i - 1), gen101Full);
         }
 
+        // sv21..sv500: Phân bố 4 nhóm năng lực & tiến độ rõ ràng (Xuất sắc/Chuyên ngành, Trung bình-Khá, Có môn trượt/Học lại, Tân sinh viên)
+        CourseClass[] openPoolForSeed = {matLop, ecoLop, int101Cur, mat102Cur, gen101Cur, eng102Cur, eco102Cur};
         for (int i = 21; i <= 500; i++) {
             Student sv = sinhVienList.get(i - 1);
-            int tier = i % 100;
-            double baseScore;
+            int profile = i % 10;
 
-            if (tier < 10) {
-                baseScore = 8.8 + ((i * 3) % 10) * 0.1;
-            } else if (tier < 35) {
-                baseScore = 8.0 + ((i * 7) % 8) * 0.1;
-            } else if (tier < 75) {
-                baseScore = 6.5 + ((i * 11) % 15) * 0.1;
-            } else if (tier < 90) {
-                baseScore = 5.0 + ((i * 5) % 14) * 0.1;
+            if (profile <= 3) {
+                // 40%: Đã qua nền tảng CNTT/KT (INT101, INT102, INT201, ENG101)
+                double base = 6.8 + (i % 15) * 0.1;
+                dangKyVoiDiem(sv, lopCu, Math.min(9.5, base), Math.min(9.5, base + 0.3));
+                dangKyVoiDiem(sv, lopInt102Cu, Math.min(9.5, base - 0.2), Math.min(9.5, base + 0.2));
+                dangKyVoiDiem(sv, lopInt201Cu, Math.min(9.5, base), Math.min(9.5, base + 0.4));
+                dangKyVoiDiem(sv, lopEng101Cu, Math.min(9.5, base - 0.3), Math.min(9.5, base + 0.1));
+            } else if (profile <= 6) {
+                // 30%: Đan xen môn đạt & 1 môn trượt (< 5.0) để test học lại + cải thiện
+                dangKyVoiDiem(sv, lopCu, 6.0 + (i % 3) * 0.5, 6.5 + (i % 3) * 0.5);
+                dangKyVoiDiem(sv, lopEcoCu, 6.5, 7.0);
+                dangKyVoiDiem(sv, (i % 2 == 0) ? lopInt102Cu : lopMat102Cu, 3.0 + (i % 2) * 0.5, 4.0);
+            } else if (profile <= 8) {
+                // 20%: Sinh viên năm 3-4 điểm giỏi/xuất sắc, đã tích lũy nhiều môn tiên quyết
+                double base = 8.2 + (i % 12) * 0.1;
+                dangKyVoiDiem(sv, lopCu, Math.min(9.8, base), Math.min(9.8, base + 0.2));
+                dangKyVoiDiem(sv, lopInt102Cu, Math.min(9.8, base - 0.2), Math.min(9.8, base + 0.1));
+                dangKyVoiDiem(sv, lopInt201Cu, Math.min(9.8, base), Math.min(9.8, base + 0.2));
+                dangKyVoiDiem(sv, lopMatCu, Math.min(9.8, base - 0.1), Math.min(9.8, base + 0.2));
+                dangKyVoiDiem(sv, lopEng101Cu, Math.min(9.8, base), Math.min(9.8, base));
+                dangKyVoiDiem(sv, lopEng102Cu, Math.min(9.8, base - 0.3), Math.min(9.8, base));
             } else {
-                baseScore = 3.2 + ((i * 9) % 16) * 0.1;
+                // 10%: Tân sinh viên (chỉ mới có 1 môn đại cương, bị chặn các môn cần tiên quyết)
+                dangKyVoiDiem(sv, lopPhi101Cu, 7.0, 7.5);
             }
 
-            CourseClass lopPast1 = pastClasses[i % 7];
-            CourseClass lopPast2 = pastClasses[7 + (i % 6)];
-
-            double qt1 = Math.min(10.0, Math.max(1.0, Math.round((baseScore + ((i % 5) - 2) * 0.4) * 10.0) / 10.0));
-            double ck1 = Math.min(10.0, Math.max(1.0, Math.round((baseScore + ((i % 7) - 3) * 0.3) * 10.0) / 10.0));
-            dangKyVoiDiem(sv, lopPast1, qt1, ck1);
-
-            double qt2 = Math.min(10.0, Math.max(1.0, Math.round((baseScore + ((i % 3) - 1) * 0.3) * 10.0) / 10.0));
-            double ck2 = Math.min(10.0, Math.max(1.0, Math.round((baseScore + ((i % 4) - 2) * 0.4) * 10.0) / 10.0));
-            dangKyVoiDiem(sv, lopPast2, qt2, ck2);
-
-            CourseClass curLop1 = generalCurrentClasses.get(i % generalCurrentClasses.size());
-            dangKyHienTai(sv, curLop1);
-            if (generalCurrentClasses.size() > 1 && i % 3 == 0) {
-                CourseClass curLop2 = generalCurrentClasses.get((i + 3) % generalCurrentClasses.size());
-                if (!curLop2.getId().equals(curLop1.getId()) && !curLop2.getMonHoc().getId().equals(curLop1.getMonHoc().getId())) {
-                    dangKyHienTai(sv, curLop2);
+            // Đăng ký 1-2 lớp kỳ hiện tại (3-6 TC) để luôn còn trống slot đăng ký thêm
+            CourseClass c1 = openPoolForSeed[i % openPoolForSeed.length];
+            dangKyHienTai(sv, c1);
+            if (i % 2 == 0) {
+                CourseClass c2 = openPoolForSeed[(i + 2) % openPoolForSeed.length];
+                if (!c2.getId().equals(c1.getId()) && !c2.getMonHoc().getId().equals(c1.getMonHoc().getId())) {
+                    dangKyHienTai(sv, c2);
                 }
             }
         }
 
+        // Đa dạng trạng thái bảng điểm kỳ hiện tại để Giảng viên & Quản trị test luồng duyệt điểm
+        phy101Cur.setTrangThaiBangDiem(GradeSheetStatus.CHO_DUYET);
+        lopHocPhanRepository.save(phy101Cur);
+        mgt301Cur.setTrangThaiBangDiem(GradeSheetStatus.TRA_VE);
+        mgt301Cur.setLyDoTraVeBangDiem("Thiếu cột điểm quá trình cho 2 sinh viên trong lớp");
+        lopHocPhanRepository.save(mgt301Cur);
+        fin301Cur.setTrangThaiBangDiem(GradeSheetStatus.DA_DUYET);
+        lopHocPhanRepository.save(fin301Cur);
+
+        // Khóa sổ 1 lớp cũ để test trạng thái DA_KHOA
+        lopMatCu.setTrangThaiBangDiem(GradeSheetStatus.DA_KHOA);
+        lopHocPhanRepository.save(lopMatCu);
+
         seedPhongHocNeuChuaCo();
+        seedRichFeatureData(sinhVienList, giangVienList, hocKyHienTai, int30301, int20101, matLop, ecoLop, lopCu, monMap);
         log.info("Đã tạo thành công bộ dữ liệu hoàn chỉnh: 500 sinh viên, 50 giảng viên, 50 môn học chia đều các kỳ!");
     }
 
@@ -859,5 +969,194 @@ public class DataSeeder implements CommandLineRunner {
 
         phongHocRepository.saveAll(danhSach);
         log.info("Đã tạo {} phòng học mẫu", danhSach.size());
+    }
+
+    private Map<Long, Curriculum> seedCurriculums(Map<String, Subject> monMap, Major... majors) {
+        Map<Long, Curriculum> result = new HashMap<>();
+        if (chuongTrinhRepository == null) {
+            return result;
+        }
+        for (Major major : majors) {
+            if (major == null) continue;
+            Curriculum c = new Curriculum();
+            c.setNganh(major);
+            c.setKhoaNhapHoc("K2024");
+            c.setPhienBan("2024.1");
+
+            CurriculumGroup g1 = new CurriculumGroup();
+            g1.setChuongTrinh(c);
+            g1.setTen("Kiến thức đại cương");
+            g1.setLoai(CurriculumGroup.LoaiNhom.BAT_BUOC);
+            g1.setTinChiYeuCau(14);
+            for (String code : new String[]{"MAT101", "MAT102", "PHI101", "ENG101", "GEN101", "ECO101"}) {
+                if (monMap.containsKey(code)) g1.getMonHoc().add(monMap.get(code));
+            }
+
+            CurriculumGroup g2 = new CurriculumGroup();
+            g2.setChuongTrinh(c);
+            g2.setTen("Cơ sở ngành");
+            g2.setLoai(CurriculumGroup.LoaiNhom.BAT_BUOC);
+            g2.setTinChiYeuCau(18);
+            for (String code : new String[]{"INT101", "INT102", "INT201", "INT202", "INT203", "INT301"}) {
+                if (monMap.containsKey(code)) g2.getMonHoc().add(monMap.get(code));
+            }
+
+            CurriculumGroup g3 = new CurriculumGroup();
+            g3.setChuongTrinh(c);
+            g3.setTen("Chuyên ngành & Tự chọn");
+            g3.setLoai(CurriculumGroup.LoaiNhom.TU_CHON);
+            g3.setTinChiYeuCau(15);
+            for (String code : new String[]{"INT302", "INT303", "INT304", "INT401", "CLD301", "SEC301"}) {
+                if (monMap.containsKey(code)) g3.getMonHoc().add(monMap.get(code));
+            }
+
+            c.getNhom().add(g1);
+            c.getNhom().add(g2);
+            c.getNhom().add(g3);
+            result.put(major.getId(), chuongTrinhRepository.save(c));
+        }
+        return result;
+    }
+
+    private void seedRichFeatureData(List<Student> sinhVienList, List<Lecturer> giangVienList,
+                                     Semester hocKyHienTai, CourseClass int30301, CourseClass int20101,
+                                     CourseClass matLop, CourseClass ecoLop, CourseClass lopCu,
+                                     Map<String, Subject> monMap) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDate today = LocalDate.now();
+        User gv01User = giangVienList.get(0).getUser();
+
+        // 1. Lịch sử đăng ký / hủy (đan xen DANG_KY và DA_HUY)
+        if (lichSuDangKyRepository != null) {
+            for (int i = 0; i < Math.min(20, sinhVienList.size()); i++) {
+                if (i == 1) continue; // giữ sv02 trống kỳ hiện tại
+                Student s = sinhVienList.get(i);
+                RegistrationHistory h1 = new RegistrationHistory();
+                h1.setSinhVien(s);
+                h1.setLopHocPhan(int30301);
+                h1.setHocKyId(hocKyHienTai.getId());
+                h1.setTrangThai(RegistrationStatus.DA_DANG_KY);
+                h1.setThoiGianDangKy(now.minusDays(4));
+                h1.setThoiDiem(now.minusDays(4));
+                lichSuDangKyRepository.save(h1);
+
+                if (i % 2 == 0) {
+                    RegistrationHistory h2 = new RegistrationHistory();
+                    h2.setSinhVien(s);
+                    h2.setLopHocPhan(ecoLop);
+                    h2.setHocKyId(hocKyHienTai.getId());
+                    h2.setTrangThai(RegistrationStatus.DA_HUY);
+                    h2.setThoiGianDangKy(now.minusDays(5));
+                    h2.setThoiGianHuy(now.minusDays(3));
+                    h2.setThoiDiem(now.minusDays(3));
+                    h2.setLyDoHuy("Đổi sang lớp phù hợp lịch học hơn");
+                    lichSuDangKyRepository.save(h2);
+                }
+            }
+        }
+
+        // 2. Buổi học & Điểm danh (đan xen CO_MAT, MUON, VANG_CO_PHEP, VANG)
+        if (buoiHocRepository != null && diemDanhRepository != null) {
+            AttendanceStatus[] statuses = {
+                    AttendanceStatus.CO_MAT, AttendanceStatus.CO_MAT, AttendanceStatus.MUON,
+                    AttendanceStatus.CO_PHEP, AttendanceStatus.VANG
+            };
+            for (int sIdx = 1; sIdx <= 4; sIdx++) {
+                ClassSession session = new ClassSession();
+                session.setLopHocPhan(int30301);
+                session.setNgayHoc(today.minusDays(sIdx * 3L));
+                session.setCaHoc(2);
+                session.setPhongHoc(int30301.getPhong());
+                session.setTietBatDau(int30301.getTietBatDau());
+                session.setSoTiet(int30301.getSoTiet());
+                session.setNoiDung("Buổi học số " + (5 - sIdx) + " - Mạng máy tính");
+                session.setNguoiTao(gv01User);
+                session.setThoiGianTao(now.minusDays(sIdx * 3L));
+                session = buoiHocRepository.save(session);
+
+                for (int i = 0; i < Math.min(20, sinhVienList.size()); i++) {
+                    if (i == 1) continue;
+                    Student st = sinhVienList.get(i);
+                    AttendanceRecord rec = new AttendanceRecord();
+                    rec.setBuoiHoc(session);
+                    rec.setSinhVien(st);
+                    rec.setTrangThai(statuses[(i + sIdx) % statuses.length]);
+                    rec.setNguoiTao(gv01User);
+                    rec.setThoiGianTao(now.minusDays(sIdx * 3L));
+                    diemDanhRepository.save(rec);
+                }
+            }
+        }
+
+        // 3. Yêu cầu hỗ trợ sinh viên (đan xen các loại & trạng thái)
+        if (yeuCauHoTroRepository != null) {
+            SupportRequestType[] types = SupportRequestType.values();
+            SupportRequestStatus[] reqStatuses = {
+                    SupportRequestStatus.MOI_TAO, SupportRequestStatus.DANG_XU_LY,
+                    SupportRequestStatus.CHO_PHAN_HOI_SINH_VIEN, SupportRequestStatus.DA_GIAI_QUYET,
+                    SupportRequestStatus.TU_CHOI
+            };
+            for (int i = 0; i < 12; i++) {
+                Student st = sinhVienList.get(i == 1 ? 0 : i);
+                SupportRequest req = new SupportRequest();
+                req.setMaPhieu(String.format("HT-SEED-%03d", i + 1));
+                req.setSinhVien(st);
+                req.setNguoiTao(st.getUser());
+                req.setLoaiYeuCau(types[i % types.length]);
+                req.setTieuDe("Yêu cầu hỗ trợ học vụ mẫu #" + (i + 1));
+                req.setNoiDungGoc("Sinh viên " + st.getMa() + " cần hỗ trợ kiểm tra thông tin học phần / điểm số.");
+                req.setHocKy(hocKyHienTai);
+                req.setMonHoc(monMap.get("INT201"));
+                req.setTrangThai(reqStatuses[i % reqStatuses.length]);
+                req.setMucUuTien(i % 3 == 0 ? SupportRequestPriority.CAO : SupportRequestPriority.TRUNG_BINH);
+                req.setCreatedAt(now.minusDays(12 - i));
+                req.setUpdatedAt(now.minusDays(12 - i));
+                yeuCauHoTroRepository.save(req);
+            }
+        }
+
+        // 4. Cảnh báo học tập sớm cho sinh viên có điểm trượt
+        if (canhBaoHocTapRepository != null) {
+            int[] warnIndices = {2, 8, 11, 14, 17}; // sv03, sv09, sv12, sv15, sv18
+            AcademicAlertStatus[] alertStatuses = {
+                    AcademicAlertStatus.DANG_CANH_BAO, AcademicAlertStatus.DANG_XU_LY, AcademicAlertStatus.DA_XU_LY
+            };
+            for (int idx = 0; idx < warnIndices.length; idx++) {
+                Student st = sinhVienList.get(warnIndices[idx]);
+                AcademicAlert alert = new AcademicAlert();
+                alert.setSinhVien(st);
+                alert.setLoaiLuat(AcademicAlertRuleType.GPA_GIAM);
+                alert.setMaLuat("RULE_GPA_DROP");
+                alert.setTenLuat("Cảnh báo kết quả học tập yếu / cần học lại");
+                alert.setMucDo(idx % 2 == 0 ? AcademicAlertSeverity.CAO : AcademicAlertSeverity.TRUNG_BINH);
+                alert.setLyDo("Sinh viên có môn học đạt điểm dưới 5.0 cần đăng ký học lại");
+                alert.setCongThucGiaiThich("soMonChuaDat >= 1");
+                alert.setDuLieuDanChung("{\"soMonChuaDat\": 1}");
+                alert.setNguCanh("HK-" + hocKyHienTai.getId());
+                alert.setKhoaChongTrung("SEED-" + st.getMa() + "-FAILED");
+                alert.setTrangThai(alertStatuses[idx % alertStatuses.length]);
+                alert.setNgayTao(now.minusDays(idx + 1L));
+                alert.setCapNhatLuc(now.minusDays(idx + 1L));
+                canhBaoHocTapRepository.save(alert);
+            }
+        }
+
+        // 5. Thông báo đan xen đã đọc / chưa đọc cho sv01..sv20 và gv01..gv03
+        if (thongBaoRepository != null) {
+            for (int i = 0; i < Math.min(20, sinhVienList.size()); i++) {
+                Student st = sinhVienList.get(i);
+                Notification n1 = new Notification();
+                n1.setRecipient(st.getUser());
+                n1.setEventType("REGISTRATION_OPEN");
+                n1.setIdempotencyKey("SEED-REG-" + st.getMa());
+                n1.setTitle("Mở đợt đăng ký học phần kỳ hiện tại");
+                n1.setMessage("Cổng đăng ký học phần đã mở. Sinh viên kiểm tra lộ trình và hoàn tất đăng ký đúng hạn.");
+                n1.setPriority("HIGH");
+                n1.setTargetUrl("/dang-ky");
+                n1.setCreatedAt(now.minusDays(2));
+                if (i % 2 == 0) n1.setReadAt(now.minusDays(1));
+                thongBaoRepository.save(n1);
+            }
+        }
     }
 }

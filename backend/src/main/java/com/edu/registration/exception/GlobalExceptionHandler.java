@@ -13,11 +13,14 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -90,9 +93,22 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(new ErrorResponse(firstMessage, Instant.now(), details));
     }
 
-    @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class})
+    @ExceptionHandler({
+            HttpMessageNotReadableException.class,
+            MethodArgumentTypeMismatchException.class,
+            MissingServletRequestParameterException.class
+    })
     public ResponseEntity<ErrorResponse> handleBadRequest(Exception ex) {
-        return ResponseEntity.badRequest().body(new ErrorResponse("Dữ liệu gửi lên không hợp lệ", Instant.now()));
+        String message = ex instanceof MissingServletRequestParameterException missing
+                ? "Thiếu tham số bắt buộc: " + missing.getParameterName()
+                : "Dữ liệu gửi lên không hợp lệ";
+        return ResponseEntity.badRequest().body(new ErrorResponse(message, Instant.now()));
+    }
+
+    @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
+    public ResponseEntity<ErrorResponse> handleNotFound(Exception ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse("Không tìm thấy tài nguyên yêu cầu", Instant.now()));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

@@ -168,6 +168,24 @@ export default function CourseClassPage() {
     return (lopList || []).filter((l) => l.trangThaiBangDiem === "CHO_DUYET").length;
   }, [lopList]);
 
+  const hocKyById = useMemo(() => {
+    const map = new Map();
+    (hocKyList || []).forEach((hk) => map.set(String(hk.id), hk));
+    return map;
+  }, [hocKyList]);
+
+  const isWithinOneWeekOfStart = (row) => {
+    const hk = hocKyById.get(String(row.hocKyId));
+    if (!hk?.ngayBatDau) return false;
+    const startDate = new Date(`${hk.ngayBatDau}T00:00:00`);
+    if (Number.isNaN(startDate.getTime())) return false;
+    const cutoffDate = new Date(startDate);
+    cutoffDate.setDate(cutoffDate.getDate() - 7);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return today >= cutoffDate;
+  };
+
   const rows = useMemo(() => {
     let list = lopList || [];
     if (giangVienFilter) {
@@ -342,6 +360,10 @@ export default function CourseClassPage() {
   };
 
   const huyLop = async (row) => {
+    if (isWithinOneWeekOfStart(row)) {
+      setActionError("Không thể hủy lớp học phần khi chỉ còn từ 1 tuần trở xuống trước ngày bắt đầu học.");
+      return;
+    }
     const daXacNhan = await confirm({
       title: "Hủy lớp học phần",
       message: `Bạn có chắc muốn hủy lớp ${row.ma} - ${row.tenMon}?`,
@@ -775,16 +797,22 @@ export default function CourseClassPage() {
                           >
                             <Pencil size={15} />
                           </button>
-                          {row.siSoHienTai > 0 && (
-                            <button
-                              type="button"
-                              className="rounded-md p-1.5 text-amber-600 hover:bg-amber-50"
-                              onClick={() => huyLop(row)}
-                              title="Hủy lớp học phần"
-                            >
-                              <Ban size={15} />
-                            </button>
-                          )}
+                          {row.siSoHienTai > 0 && !row.daHuy && (() => {
+                            const quaHanHuy = isWithinOneWeekOfStart(row);
+                            return (
+                              <button
+                                type="button"
+                                disabled={quaHanHuy}
+                                className="rounded-md p-1.5 text-amber-600 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                                onClick={() => huyLop(row)}
+                                title={quaHanHuy
+                                  ? "Không thể hủy lớp khi cách ngày bắt đầu học từ 1 tuần trở xuống"
+                                  : "Hủy lớp học phần"}
+                              >
+                                <Ban size={15} />
+                              </button>
+                            );
+                          })()}
                           <button
                             type="button"
                             className="rounded-md p-1.5 text-rose-500 hover:bg-rose-50"

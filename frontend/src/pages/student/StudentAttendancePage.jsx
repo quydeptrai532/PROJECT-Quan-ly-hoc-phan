@@ -13,7 +13,7 @@ import { Alert, Badge, EmptyState, PageHeader, Spinner, StatCard } from "../../c
 import { useApi } from "../../lib/useApi";
 
 export default function StudentAttendancePage() {
-  const { data: hocKyList, loading: loadingHocKy } = useApi("/common/hoc-ky");
+  const { data: hocKyList, loading: loadingHocKy } = useApi("/hoc-ky");
   const [hocKyId, setHocKyId] = useState("");
 
   const params = useMemo(() => (hocKyId ? { hocKyId } : {}), [hocKyId]);
