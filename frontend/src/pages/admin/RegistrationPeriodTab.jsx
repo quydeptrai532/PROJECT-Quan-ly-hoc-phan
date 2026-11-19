@@ -20,9 +20,9 @@ import { useApi } from "../../lib/useApi";
 
 export default function RegistrationPeriodTab() {
   const { data: hocKyList, loading: loadingHocKy } = useApi("/hoc-ky");
-  const { data: khoaHocList } = useApi("/khoa-hoc");
-  const { data: nganhList } = useApi("/nganh");
-  const { data: lopHanhChinhList } = useApi("/lop-hanh-chinh");
+  const { data: khoaHocList } = useApi("/admin/khoa-hoc");
+  const { data: nganhList } = useApi("/admin/nganh");
+  const { data: lopHanhChinhList } = useApi("/admin/lop-hanh-chinh");
 
   const [selectedHocKyId, setSelectedHocKyId] = useState("");
   const [keyword, setKeyword] = useState("");

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import api, { getErrorMessage } from "../../api/client";
 import { Alert, Badge, PageHeader, EmptyState, Spinner } from "../../components/ui";
+import { formatDateTime } from "../../lib/format";
 
 const TRANG_THAI_OPTIONS = [
   { value: "", label: "Tất cả trạng thái" },
@@ -248,7 +249,7 @@ export default function AdminVerifiableTranscriptsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-500">
-                      {item.thoiDiemPhatHanhFormatted || item.thoiDiemPhatHanh}
+                      {item.thoiDiemPhatHanhFormatted || formatDateTime(item.thoiDiemPhatHanh)}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <TrangThaiBadge trangThai={item.trangThai} />

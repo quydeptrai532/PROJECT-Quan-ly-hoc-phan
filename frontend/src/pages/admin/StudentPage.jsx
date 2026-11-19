@@ -27,6 +27,8 @@ export default function StudentPage() {
   const { data: lopList } = useApi("/admin/lop-hanh-chinh");
 
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 25;
   const [message, setMessage] = useState("");
   const [actionError, setActionError] = useState("");
   const [importResult, setImportResult] = useState(null);
@@ -70,6 +72,13 @@ export default function StudentPage() {
         item.username.toLowerCase().includes(term)
     );
   }, [sinhVienList, search]);
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages - 1);
+  const pagedRows = useMemo(
+    () => rows.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE),
+    [rows, currentPage]
+  );
 
   const openCreate = () => {
     setEditing(null);
@@ -303,7 +312,10 @@ export default function StudentPage() {
               className="input pl-9"
               placeholder="Tìm theo mã, họ tên, email, lớp..."
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(0);
+              }}
             />
           </div>
           <p className="text-sm text-slate-500">{rows.length} sinh viên</p>
@@ -314,8 +326,9 @@ export default function StudentPage() {
         ) : rows.length === 0 ? (
           <EmptyState icon={UserRound} title="Chưa có sinh viên" description="Thêm mới hoặc nhập danh sách từ CSV." />
         ) : (
+          <>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1080px]">
+            <table className="w-full min-w-[920px]">
               <thead className="bg-slate-50">
                 <tr>
                   <th className="th">Mã SV</th>
@@ -330,7 +343,7 @@ export default function StudentPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {rows.map((row) => (
+                {pagedRows.map((row) => (
                   <tr key={row.id} className="hover:bg-slate-50/60">
                     <td className="td font-medium text-slate-900">{row.ma}</td>
                     <td className="td">
@@ -409,6 +422,32 @@ export default function StudentPage() {
               </tbody>
             </table>
           </div>
+          {totalPages > 1 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-4 py-3 text-sm text-slate-600">
+              <span>
+                Trang <strong>{currentPage + 1}</strong> / {totalPages} · Tổng {rows.length} sinh viên
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="btn-secondary px-3 py-1.5 text-xs"
+                  disabled={currentPage === 0}
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                >
+                  Trước
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary px-3 py-1.5 text-xs"
+                  disabled={currentPage + 1 >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                >
+                  Sau
+                </button>
+              </div>
+            </div>
+          )}
+        </>
         )}
       </div>
 
@@ -611,6 +650,7 @@ export default function StudentPage() {
         ) : historyList.length === 0 ? (
           <EmptyState icon={History} title="Chưa có lịch sử chuyển đổi" description="Sinh viên chưa có lần chuyển đổi trạng thái học tập nào." />
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-slate-700">
@@ -654,6 +694,32 @@ export default function StudentPage() {
               </tbody>
             </table>
           </div>
+          {totalPages > 1 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-4 py-3 text-sm text-slate-600">
+              <span>
+                Trang <strong>{currentPage + 1}</strong> / {totalPages} · Tổng {rows.length} sinh viên
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="btn-secondary px-3 py-1.5 text-xs"
+                  disabled={currentPage === 0}
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                >
+                  Trước
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary px-3 py-1.5 text-xs"
+                  disabled={currentPage + 1 >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                >
+                  Sau
+                </button>
+              </div>
+            </div>
+          )}
+        </>
         )}
       </Modal>
     </div>

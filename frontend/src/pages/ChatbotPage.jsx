@@ -85,8 +85,16 @@ export default function ChatbotPage() {
                 <p className="italic text-slate-500">"Tìm các lớp môn Lập trình Java còn chỗ học thứ 4"</p>
               </div>
               <div className="rounded-xl border border-slate-200/60 bg-white p-2.5">
-                <p className="font-semibold text-slate-800">4. Đăng ký học phần</p>
-                <p className="italic text-slate-500">"Tôi muốn đăng ký lớp INT201.01"</p>
+                <p className="font-semibold text-slate-800">
+                  {user?.role === "SINH_VIEN" ? "4. Đăng ký học phần" : "4. Tra cứu lớp & thống kê"}
+                </p>
+                <p className="italic text-slate-500">
+                  {user?.role === "SINH_VIEN"
+                    ? '"Tôi muốn đăng ký lớp INT201.01"'
+                    : user?.role === "GIANG_VIEN"
+                    ? '"Danh sách lớp tôi phụ trách kỳ này?"'
+                    : '"Thống kê tình hình đăng ký học kỳ hiện tại?"'}
+                </p>
               </div>
             </div>
           </div>

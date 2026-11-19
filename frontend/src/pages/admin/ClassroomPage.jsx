@@ -48,6 +48,19 @@ const STATUS_BADGE = {
   NGUNG_SU_DUNG: { label: "Ngừng sử dụng", tone: "red", icon: Ban },
 };
 
+const ROOM_TYPE_LABELS = {
+  LY_THUYET: "Lý thuyết",
+  THUC_HANH_MAY_TINH: "Thực hành máy tính",
+  DA_NANG: "Đa năng",
+  HOI_TRUONG: "Hội trường",
+  THI_NGHIEM: "Thí nghiệm",
+};
+
+function formatRoomType(type) {
+  if (!type) return "Chung";
+  return ROOM_TYPE_LABELS[type] || type;
+}
+
 function formatAuditMeta(row) {
   const actor = row.nguoiCapNhatUsername || row.nguoiTaoUsername;
   const timestamp = row.capNhatLuc || row.taoLuc;
@@ -393,7 +406,7 @@ export default function ClassroomPage() {
               <option value="">Loại phòng: Tất cả</option>
               {availableRoomTypes.map((type) => (
                 <option key={type} value={type}>
-                  {type}
+                  {formatRoomType(type)}
                 </option>
               ))}
             </select>
@@ -461,7 +474,7 @@ export default function ClassroomPage() {
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
-              {type}
+              {formatRoomType(type)}
             </button>
           ))}
         </div>
@@ -527,7 +540,7 @@ export default function ClassroomPage() {
                     <tr key={room.id} className="transition hover:bg-slate-50/80">
                       {/* Mã phòng */}
                       <td className="px-4 py-3.5">
-                        <span className="font-mono text-xs font-semibold text-indigo-700 bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100">
+                        <span className="inline-block whitespace-nowrap font-mono text-xs font-semibold text-indigo-700 bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100">
                           {room.ma}
                         </span>
                       </td>
@@ -549,7 +562,9 @@ export default function ClassroomPage() {
                       <td className="px-4 py-3.5 text-slate-600">
                         <div className="flex flex-col text-xs">
                           <span className="font-medium text-slate-800">
-                            {room.toaNha ? `Tòa ${room.toaNha}` : "-"}
+                            {room.toaNha
+                              ? (room.toaNha.toLowerCase().startsWith("tòa") ? room.toaNha : `Tòa ${room.toaNha}`)
+                              : "-"}
                             {room.tang ? ` · Tầng ${room.tang}` : ""}
                           </span>
                           {room.viTri && <span className="text-slate-400">{room.viTri}</span>}
@@ -566,8 +581,8 @@ export default function ClassroomPage() {
 
                       {/* Loại phòng */}
                       <td className="px-4 py-3.5">
-                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
-                          {room.loaiPhong || "Chung"}
+                        <span className="inline-flex whitespace-nowrap items-center rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
+                          {formatRoomType(room.loaiPhong)}
                         </span>
                       </td>
 
@@ -595,7 +610,7 @@ export default function ClassroomPage() {
                           className="group inline-flex items-center gap-1"
                           title="Bấm vào để cập nhật trạng thái"
                         >
-                          <Badge tone={statusCfg.tone}>
+                          <Badge tone={statusCfg.tone} className="whitespace-nowrap">
                             <StatusIcon size={12} className="inline mr-1" />
                             {statusCfg.label}
                           </Badge>
