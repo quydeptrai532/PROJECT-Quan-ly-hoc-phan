@@ -35,9 +35,23 @@ export default function LoginPage() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
+    const trimmedUsername = username.trim();
+    const hasPassword = password.trim().length > 0;
+    if (!trimmedUsername && !hasPassword) {
+      setError("Vui lòng nhập tên đăng nhập và mật khẩu");
+      return;
+    }
+    if (!trimmedUsername) {
+      setError("Vui lòng nhập tên đăng nhập");
+      return;
+    }
+    if (!hasPassword) {
+      setError("Vui lòng nhập mật khẩu");
+      return;
+    }
     setSubmitting(true);
     try {
-      const profile = await login(username.trim(), password);
+      const profile = await login(trimmedUsername, password);
       navigate(homePath(profile.role), { replace: true });
     } catch (err) {
       setError(getErrorMessage(err));
@@ -155,7 +169,7 @@ export default function LoginPage() {
             Sử dụng mã người dùng và mật khẩu được phòng đào tạo cấp.
           </p>
 
-          <form className="mt-7 space-y-4" onSubmit={handleSubmit}>
+          <form className="mt-7 space-y-4" onSubmit={handleSubmit} noValidate>
             {notice && <Alert tone="warning">{notice}</Alert>}
             {error && <Alert tone="error">{error}</Alert>}
 
@@ -169,9 +183,13 @@ export default function LoginPage() {
                   id="username"
                   className="input pl-10"
                   value={username}
-                  onChange={(event) => setUsername(event.target.value)}
+                  onChange={(event) => {
+                    setUsername(event.target.value);
+                    if (error) setError("");
+                  }}
                   placeholder="VD: sv01"
                   autoComplete="username"
+                  maxLength={100}
                   required
                 />
               </div>
@@ -188,9 +206,13 @@ export default function LoginPage() {
                   className="input px-10"
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(event) => setPassword(event.target.value)}
+                  onChange={(event) => {
+                    setPassword(event.target.value);
+                    if (error) setError("");
+                  }}
                   placeholder="Nhập mật khẩu"
                   autoComplete="current-password"
+                  maxLength={100}
                   required
                 />
                 <button

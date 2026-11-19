@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BookOpen, Building2, History, KeyRound, Mail, Phone, Save, UserRound } from "lucide-react";
+import { BookOpen, Building2, Eye, EyeOff, History, KeyRound, Mail, Phone, Save, UserRound } from "lucide-react";
 import { formatDate, formatDateTime } from "../lib/format";
 import api, { getErrorMessage } from "../api/client";
 import { Alert, Badge, EmptyState, Field, Modal, PageHeader, Spinner } from "../components/ui";
@@ -18,6 +18,10 @@ export default function ProfilePage() {
 
   const [matKhauCu, setMatKhauCu] = useState("");
   const [matKhauMoi, setMatKhauMoi] = useState("");
+  const [xacNhanMatKhauMoi, setXacNhanMatKhauMoi] = useState("");
+  const [showOldPass, setShowOldPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
@@ -49,14 +53,19 @@ export default function ProfilePage() {
 
   const changePassword = async (event) => {
     event.preventDefault();
-    setChangingPassword(true);
     setPasswordMessage("");
     setPasswordError("");
+    if (matKhauMoi !== xacNhanMatKhauMoi) {
+      setPasswordError("Xác nhận mật khẩu mới không khớp");
+      return;
+    }
+    setChangingPassword(true);
     try {
       await api.put("/auth/doi-mat-khau", { matKhauCu, matKhauMoi });
       setPasswordMessage("Đổi mật khẩu thành công");
       setMatKhauCu("");
       setMatKhauMoi("");
+      setXacNhanMatKhauMoi("");
     } catch (err) {
       setPasswordError(getErrorMessage(err));
     } finally {
@@ -179,25 +188,65 @@ export default function ProfilePage() {
               <Alert tone="success" className="mb-4" onClose={() => setPasswordMessage("")}>{passwordMessage}</Alert>
             )}
             {passwordError && <Alert tone="error" className="mb-4">{passwordError}</Alert>}
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-3">
               <Field label="Mật khẩu hiện tại" required>
-                <input
-                  className="input"
-                  type="password"
-                  value={matKhauCu}
-                  onChange={(event) => setMatKhauCu(event.target.value)}
-                  required
-                />
+                <div className="relative">
+                  <input
+                    className="input pr-10"
+                    type={showOldPass ? "text" : "password"}
+                    value={matKhauCu}
+                    onChange={(event) => setMatKhauCu(event.target.value)}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowOldPass((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    aria-label={showOldPass ? "Ẩn mật khẩu hiện tại" : "Hiện mật khẩu hiện tại"}
+                  >
+                    {showOldPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </Field>
               <Field label="Mật khẩu mới" required hint="Tối thiểu 6 ký tự">
-                <input
-                  className="input"
-                  type="password"
-                  value={matKhauMoi}
-                  onChange={(event) => setMatKhauMoi(event.target.value)}
-                  minLength={6}
-                  required
-                />
+                <div className="relative">
+                  <input
+                    className="input pr-10"
+                    type={showNewPass ? "text" : "password"}
+                    value={matKhauMoi}
+                    onChange={(event) => setMatKhauMoi(event.target.value)}
+                    minLength={6}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPass((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    aria-label={showNewPass ? "Ẩn mật khẩu mới" : "Hiện mật khẩu mới"}
+                  >
+                    {showNewPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </Field>
+              <Field label="Xác nhận mật khẩu mới" required>
+                <div className="relative">
+                  <input
+                    className="input pr-10"
+                    type={showConfirmPass ? "text" : "password"}
+                    value={xacNhanMatKhauMoi}
+                    onChange={(event) => setXacNhanMatKhauMoi(event.target.value)}
+                    minLength={6}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPass((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    aria-label={showConfirmPass ? "Ẩn xác nhận mật khẩu" : "Hiện xác nhận mật khẩu"}
+                  >
+                    {showConfirmPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </Field>
             </div>
             <div className="mt-5 flex justify-end">

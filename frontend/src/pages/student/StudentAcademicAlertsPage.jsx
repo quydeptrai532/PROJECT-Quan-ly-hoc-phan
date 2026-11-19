@@ -53,7 +53,7 @@ export default function StudentAcademicAlertsPage() {
     try {
       setLoading(true);
       setError("");
-      const res = await api.get("/api/sinh-vien/me/canh-bao-hoc-tap", {
+      const res = await api.get("/sinh-vien/me/canh-bao-hoc-tap", {
         params: { page: 0, size: 50 },
       });
       setAlerts(res.data.content || []);
@@ -99,12 +99,22 @@ export default function StudentAcademicAlertsPage() {
         </div>
       </div>
 
-      {error && <Alert type="error" message={error} onClose={() => setError("")} />}
+      {error && <Alert tone="error" onClose={() => setError("")}>{error}</Alert>}
 
       {loading ? (
         <div className="py-16 text-center">
           <Spinner />
           <p className="mt-2 text-sm text-slate-500">Đang tải cảnh báo học vụ của bạn...</p>
+        </div>
+      ) : error ? (
+        <div className="py-8 text-center">
+          <button
+            type="button"
+            onClick={fetchMyAlerts}
+            className="btn-secondary"
+          >
+            Thử tải lại
+          </button>
         </div>
       ) : activeAlerts.length === 0 ? (
         <div className="space-y-4">
