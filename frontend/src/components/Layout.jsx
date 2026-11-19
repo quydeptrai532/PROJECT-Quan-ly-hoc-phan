@@ -242,7 +242,7 @@ export default function Layout({ children }) {
         }`}
       >
         <div className="relative flex h-[76px] shrink-0 items-center gap-3 border-b border-white/10 px-5">
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 text-[#0b1120] shadow-lg shadow-amber-500/20">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 text-[#0b1120] shadow-lg shadow-amber-500/20">
             <GraduationCap size={21} strokeWidth={2.2} />
           </span>
           <div className="min-w-0">
@@ -364,7 +364,7 @@ export default function Layout({ children }) {
           </div>
         </header>
 
-        <main className="app-main relative mx-auto w-full px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
+        <main className="app-main relative mx-auto w-full px-4 pt-6 pb-24 sm:px-6 lg:px-10 lg:pt-8 lg:pb-24">
           <div key={location.pathname} className="page-enter">
             {children}
           </div>
@@ -372,7 +372,7 @@ export default function Layout({ children }) {
       </div>
 
       {/* Floating AI Chatbot Assistant Widget */}
-      {user && <ChatbotWidget />}
+      {user && location.pathname !== "/tro-ly-ai" && <ChatbotWidget />}
     </div>
   );
 }

@@ -1,18 +1,18 @@
 import { useEffect, useState } from "react";
 import { ClipboardList, Trash2 } from "lucide-react";
 import api, { getErrorMessage } from "../../api/client";
-import { useConfirm } from "../../components/ConfirmDialog";
-import { Alert, EmptyState, PageHeader, StatCard, Spinner } from "../../components/ui";
+import { Alert, EmptyState, Modal, PageHeader, StatCard, Spinner } from "../../components/ui";
 import { formatDateTime, lichHoc, soBuoiHoc, tietLyThuyet } from "../../lib/format";
 import { useApi } from "../../lib/useApi";
 
 export default function MyCoursesPage() {
-  const confirm = useConfirm();
   const { data: hocKyList } = useApi("/hoc-ky");
   const [hocKyId, setHocKyId] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState(null);
+  const [dropTarget, setDropTarget] = useState(null);
+  const [dropReason, setDropReason] = useState("");
 
   useEffect(() => {
     if (!hocKyId && hocKyList?.length) {
@@ -27,27 +27,29 @@ export default function MyCoursesPage() {
   const items = data || [];
   const tongTinChi = items.reduce((sum, item) => sum + item.soTinChi, 0);
 
-  const huyDangKy = async (item) => {
-    const daXacNhan = await confirm({
-      title: "Hủy đăng ký học phần",
-      message: `Bạn có chắc muốn hủy đăng ký lớp ${item.maLop} - ${item.tenMon}?`,
-      detail: "Chỗ đã đăng ký sẽ được hoàn lại cho lớp học phần. Bạn có thể đăng ký lại nếu còn trong thời gian cho phép.",
-      confirmLabel: "Hủy đăng ký",
-      cancelLabel: "Giữ lại",
-      tone: "danger",
-    });
-    if (!daXacNhan) return;
-    const lyDo = window.prompt("Lý do hủy đăng ký (không bắt buộc):") ?? "";
+  const openDropModal = (item) => {
+    setDropTarget(item);
+    setDropReason("");
+  };
+
+  const confirmDrop = async () => {
+    if (!dropTarget) return;
+    const item = dropTarget;
     setBusyId(item.id);
     setError("");
     setMessage("");
     try {
-      await api.delete(`/dang-ky/${item.id}`, { params: lyDo.trim() ? { lyDo: lyDo.trim() } : {} });
+      await api.delete(`/dang-ky/${item.id}`, {
+        params: dropReason.trim() ? { lyDo: dropReason.trim() } : {},
+      });
       setMessage(`Đã hủy đăng ký lớp ${item.maLop}`);
+      setDropTarget(null);
+      setDropReason("");
       await reload();
       window.dispatchEvent(new Event("notifications:updated"));
     } catch (err) {
       setError(getErrorMessage(err));
+      setDropTarget(null);
     } finally {
       setBusyId(null);
     }
@@ -142,15 +144,19 @@ export default function MyCoursesPage() {
                     </td>
                     <td className="td text-slate-500">{formatDateTime(item.thoiGianDangKy)}</td>
                     <td className="td text-right">
-                      <button
-                        type="button"
-                        className="btn-ghost px-2.5 py-1.5 text-xs text-rose-600 hover:bg-rose-50"
-                        disabled={busyId === item.id}
-                        onClick={() => huyDangKy(item)}
-                      >
-                        <Trash2 size={14} />
-                        {busyId === item.id ? "Đang hủy..." : "Hủy"}
-                      </button>
+                      {hocKy?.dangMoDangKy ? (
+                        <button
+                          type="button"
+                          className="btn-ghost px-2.5 py-1.5 text-xs text-rose-600 hover:bg-rose-50"
+                          disabled={busyId === item.id}
+                          onClick={() => openDropModal(item)}
+                        >
+                          <Trash2 size={14} />
+                          {busyId === item.id ? "Đang hủy..." : "Hủy"}
+                        </button>
+                      ) : (
+                        <span className="text-xs text-slate-400">Đã đóng</span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -165,6 +171,57 @@ export default function MyCoursesPage() {
           Bạn đang đăng ký dưới số tín chỉ tối thiểu ({hocKy.soTinChiToiThieu}) của học kỳ.
         </p>
       )}
+
+      <Modal
+        open={Boolean(dropTarget)}
+        onClose={() => !busyId && setDropTarget(null)}
+        size="sm"
+        title="Hủy đăng ký học phần"
+        footer={
+          <>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={Boolean(busyId)}
+              onClick={() => setDropTarget(null)}
+            >
+              Giữ lại
+            </button>
+            <button
+              type="button"
+              className="btn-danger"
+              disabled={Boolean(busyId)}
+              onClick={confirmDrop}
+            >
+              {busyId ? "Đang hủy..." : "Hủy đăng ký"}
+            </button>
+          </>
+        }
+      >
+        {dropTarget && (
+          <div className="space-y-4">
+            <p className="text-sm font-medium text-slate-800">
+              Bạn có chắc muốn hủy đăng ký lớp {dropTarget.maLop} - {dropTarget.tenMon}?
+            </p>
+            <p className="text-xs leading-relaxed text-slate-500">
+              Chỗ đã đăng ký sẽ được hoàn lại cho lớp học phần. Bạn có thể đăng ký lại nếu còn trong thời gian cho phép.
+            </p>
+            <div>
+              <label className="label" htmlFor="drop-reason">
+                Lý do hủy đăng ký (không bắt buộc)
+              </label>
+              <input
+                id="drop-reason"
+                className="input"
+                maxLength={255}
+                placeholder="VD: Đổi sang lớp khác hoặc điều chỉnh kế hoạch..."
+                value={dropReason}
+                onChange={(event) => setDropReason(event.target.value)}
+              />
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

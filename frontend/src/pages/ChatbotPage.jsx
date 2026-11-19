@@ -71,8 +71,14 @@ export default function ChatbotPage() {
                 <p className="italic text-slate-500">"Tôi muốn xem thông tin cá nhân của tôi" hoặc "Hướng dẫn đổi mật khẩu"</p>
               </div>
               <div className="rounded-xl border border-slate-200/60 bg-white p-2.5">
-                <p className="font-semibold text-slate-800">2. Lịch học & Lịch dạy hôm nay</p>
-                <p className="italic text-slate-500">"Thời khóa biểu hôm nay của tôi thế nào?" hoặc "Hôm nay tôi dạy môn gì?"</p>
+                <p className="font-semibold text-slate-800">
+                  {user?.role === "GIANG_VIEN" ? "2. Lịch dạy hôm nay" : "2. Lịch học hôm nay"}
+                </p>
+                <p className="italic text-slate-500">
+                  {user?.role === "GIANG_VIEN"
+                    ? '"Hôm nay tôi dạy môn gì?" hoặc "Lịch dạy tuần này của tôi?"'
+                    : '"Thời khóa biểu hôm nay của tôi thế nào?" hoặc "Tuần này tôi học những môn gì?"'}
+                </p>
               </div>
               <div className="rounded-xl border border-slate-200/60 bg-white p-2.5">
                 <p className="font-semibold text-slate-800">3. Tra cứu lớp còn chỗ</p>

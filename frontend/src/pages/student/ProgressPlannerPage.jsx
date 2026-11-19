@@ -173,7 +173,7 @@ export default function ProgressPlannerPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Academic Planner — Kế hoạch môn còn thiếu"
+        title="Kế hoạch môn còn thiếu"
         description="Đối chiếu phiên bản chương trình được gán với kết quả đạt của sinh viên, phân nhóm bắt buộc/tự chọn và gợi ý lớp mở kỳ tới."
         actions={
           <div className="flex flex-wrap items-center gap-2">

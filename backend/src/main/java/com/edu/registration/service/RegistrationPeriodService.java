@@ -29,6 +29,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @Transactional
@@ -347,11 +348,22 @@ public class RegistrationPeriodService {
      */
     @Transactional(readOnly = true)
     public void kiemTraQuyenDangKy(Student sinhVien, Semester hocKy, LocalDateTime at) {
+        layLyDoKhongDuocDangKy(sinhVien, hocKy, at).ifPresent(reason -> {
+            throw ApiException.badRequest(reason);
+        });
+    }
+
+    /**
+     * Trả về lý do không được đăng ký (nếu có) mà không ném RuntimeException để tránh đánh dấu rollback-only
+     * cho transaction đang gọi khi caller chỉ cần đánh giá điều kiện hiển thị.
+     */
+    @Transactional(readOnly = true)
+    public Optional<String> layLyDoKhongDuocDangKy(Student sinhVien, Semester hocKy, LocalDateTime at) {
         if (sinhVien == null) {
-            throw ApiException.badRequest("Không tìm thấy thông tin sinh viên để kiểm tra điều kiện đăng ký");
+            return Optional.of("Không tìm thấy thông tin sinh viên để kiểm tra điều kiện đăng ký");
         }
         if (hocKy == null) {
-            throw ApiException.badRequest("Học kỳ không hợp lệ");
+            return Optional.of("Học kỳ không hợp lệ");
         }
         LocalDateTime thoiDiem = (at != null) ? at : nowInZone();
 
@@ -359,10 +371,10 @@ public class RegistrationPeriodService {
         if (danhSachDot.isEmpty()) {
             // Tương thích ngược: kiểm tra theo cấu hình ngày của học kỳ
             if (!hocKy.dangMoDangKy()) {
-                throw ApiException.badRequest("Hiện không trong thời gian đăng ký của " + hocKy.getTen()
+                return Optional.of("Hiện không trong thời gian đăng ký của " + hocKy.getTen()
                         + " (Thời gian mở: " + hocKy.getDangKyTu() + " đến " + hocKy.getDangKyDen() + ")");
             }
-            return;
+            return Optional.empty();
         }
 
         String cohort = xacDinhKhoaSinhVien(sinhVien);
@@ -372,35 +384,35 @@ public class RegistrationPeriodService {
 
         if (dotPhuHop.isEmpty()) {
             String moTaSv = moTaSinhVien(sinhVien, cohort);
-            throw ApiException.badRequest("Tài khoản của bạn không thuộc đối tượng được đăng ký trong " + hocKy.getTen()
+            return Optional.of("Tài khoản của bạn không thuộc đối tượng được đăng ký trong " + hocKy.getTen()
                     + " (" + moTaSv + ")");
         }
 
         // Kiểm tra xem có đợt nào đang mở không
         boolean coDotDangMo = dotPhuHop.stream().anyMatch(p -> p.dangMo(thoiDiem));
         if (coDotDangMo) {
-            return;
+            return Optional.empty();
         }
 
         // Nếu không có đợt nào đang mở, tìm lý do chi tiết nhất để báo cho sinh viên
         RegistrationPeriod dotGanNhat = dotPhuHop.get(0);
         if (dotGanNhat.isDongSom()) {
-            throw ApiException.badRequest("Đợt đăng ký '" + dotGanNhat.getTenDot()
+            return Optional.of("Đợt đăng ký '" + dotGanNhat.getTenDot()
                     + "' dành cho bạn đã đóng sớm. Lý do: "
                     + (dotGanNhat.getLyDoDongSom() != null ? dotGanNhat.getLyDoDongSom() : "Theo quyết định của Nhà trường"));
         }
-        if (thoiDiem.isBefore(dotGanNhat.getThoiGianBatDau())) {
-            throw ApiException.badRequest("Chưa đến thời gian đăng ký dành cho bạn trong " + hocKy.getTen()
+        if (dotGanNhat.getThoiGianBatDau() != null && thoiDiem.isBefore(dotGanNhat.getThoiGianBatDau())) {
+            return Optional.of("Chưa đến thời gian đăng ký dành cho bạn trong " + hocKy.getTen()
                     + ". Đợt '" + dotGanNhat.getTenDot() + "' sẽ mở lúc: "
                     + dotGanNhat.getThoiGianBatDau().format(FORMATTER) + " (" + properties.getTimezone() + ")");
         }
-        if (thoiDiem.isAfter(dotGanNhat.getThoiGianKetThuc())) {
-            throw ApiException.badRequest("Đã hết thời gian đăng ký dành cho bạn trong " + hocKy.getTen()
+        if (dotGanNhat.getThoiGianKetThuc() != null && thoiDiem.isAfter(dotGanNhat.getThoiGianKetThuc())) {
+            return Optional.of("Đã hết thời gian đăng ký dành cho bạn trong " + hocKy.getTen()
                     + ". Đợt '" + dotGanNhat.getTenDot() + "' đã kết thúc lúc: "
                     + dotGanNhat.getThoiGianKetThuc().format(FORMATTER) + " (" + properties.getTimezone() + ")");
         }
 
-        throw ApiException.badRequest("Hiện không trong thời gian đăng ký dành cho bạn trong " + hocKy.getTen());
+        return Optional.of("Hiện không trong thời gian đăng ký dành cho bạn trong " + hocKy.getTen());
     }
 
     /**

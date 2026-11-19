@@ -47,11 +47,11 @@ export default function TimetableGrid({ items, weekStart, announcements = [] }) 
 
   return (
     <div className="overflow-x-auto">
-      <div className="min-w-[860px]">
+      <div className="min-w-[680px]">
         <div
           className="grid"
           style={{
-            gridTemplateColumns: "64px repeat(7, minmax(0, 1fr))",
+            gridTemplateColumns: "48px repeat(7, minmax(0, 1fr))",
             gridTemplateRows: "auto repeat(12, minmax(54px, auto))",
           }}
         >

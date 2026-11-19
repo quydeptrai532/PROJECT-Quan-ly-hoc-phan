@@ -105,7 +105,7 @@ export default function AdminEarlyWarningPage() {
       if (severityFilter) params.mucDo = severityFilter;
       if (keyword.trim()) params.keyword = keyword.trim();
 
-      const res = await api.get("/api/admin/canh-bao-hoc-tap", { params });
+      const res = await api.get("/admin/canh-bao-hoc-tap", { params });
       setAlertsPage(res.data);
     } catch (err) {
       setError(getErrorMessage(err));
@@ -116,7 +116,7 @@ export default function AdminEarlyWarningPage() {
 
   const fetchConfig = async () => {
     try {
-      const res = await api.get("/api/admin/canh-bao-hoc-tap/cau-hinh");
+      const res = await api.get("/admin/canh-bao-hoc-tap/cau-hinh");
       setConfig(res.data);
     } catch (err) {
       console.error("Lỗi lấy cấu hình:", err);
@@ -135,7 +135,7 @@ export default function AdminEarlyWarningPage() {
       setScanning(true);
       setError("");
       setSuccess("");
-      const res = await api.post("/api/admin/canh-bao-hoc-tap/quet-du-lieu");
+      const res = await api.post("/admin/canh-bao-hoc-tap/quet-du-lieu");
       setSuccess(res.data.thongBao || "Quét hoàn tất thành công!");
       fetchAlerts();
     } catch (err) {
@@ -150,7 +150,7 @@ export default function AdminEarlyWarningPage() {
     if (!selectedAlert) return;
     try {
       setUpdating(true);
-      const res = await api.patch(`/api/admin/canh-bao-hoc-tap/${selectedAlert.id}/xu-ly`, {
+      const res = await api.patch(`/admin/canh-bao-hoc-tap/${selectedAlert.id}/xu-ly`, {
         trangThai: actionStatus,
         ghiChu: actionNote,
       });

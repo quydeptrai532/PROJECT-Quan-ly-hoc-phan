@@ -135,9 +135,7 @@ export default function NotificationsPage() {
                       <Clock3 size={13} /> {DATE_FORMAT.format(new Date(notification.createdAt))}
                     </span>
                     <span>
-                      {EVENT_TYPE_LABELS[notification.eventType]
-                        ? `${EVENT_TYPE_LABELS[notification.eventType]} (${notification.eventType.replaceAll("_", " ")})`
-                        : notification.eventType.replaceAll("_", " ")}
+                      {EVENT_TYPE_LABELS[notification.eventType] || notification.eventType.replaceAll("_", " ")}
                     </span>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">

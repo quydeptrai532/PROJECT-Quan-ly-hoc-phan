@@ -270,14 +270,16 @@ export default function RegisterPage() {
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"
-                            className="btn-secondary px-2.5 py-1.5 text-xs"
+                            className="btn-secondary whitespace-nowrap px-2.5 py-1.5 text-xs"
                             onClick={() => kiemTraQuanHe(lop)}
                             title="Kiểm tra quan hệ môn học"
                           >
                             <GitBranch size={13} /> Quan hệ môn
                           </button>
                           {disabled ? (
-                            <Badge tone={tone}>{label}</Badge>
+                            <span className="whitespace-nowrap">
+                              <Badge tone={tone}>{label}</Badge>
+                            </span>
                           ) : (
                             <button
                               type="button"

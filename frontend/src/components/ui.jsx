@@ -51,6 +51,8 @@ export function Alert({ tone = "info", children, onClose, className = "" }) {
   const Icon = config.Icon;
   return (
     <div
+      role="alert"
+      aria-live="polite"
       className={`flex items-start gap-3 rounded-2xl border px-4 py-3.5 text-sm shadow-sm backdrop-blur-sm ${config.shell} ${className}`}
     >
       <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-xl ${config.icon}`}>

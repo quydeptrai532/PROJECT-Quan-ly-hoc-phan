@@ -526,12 +526,7 @@ public class RegistrationService {
 
     private String kiemTraThoiGianDangKy(Student sinhVien, Semester hocKy) {
         if (registrationPeriodService != null) {
-            try {
-                registrationPeriodService.kiemTraQuyenDangKy(sinhVien, hocKy, null);
-                return null;
-            } catch (ApiException e) {
-                return e.getMessage();
-            }
+            return registrationPeriodService.layLyDoKhongDuocDangKy(sinhVien, hocKy, null).orElse(null);
         }
         if (!hocKy.dangMoDangKy()) {
             return "Hiện không trong thời gian đăng ký của " + hocKy.getTen();
